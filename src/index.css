@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Sushi Delivery Dark Premium Orange Theme */
+  --color-sushi-bg: #0C0A08;
+  --color-sushi-radial: #1A1108;
+  --color-sushi-card: #141210;
+  --color-sushi-card-light: #181512;
+  --color-sushi-border: #2A211A;
+  --color-sushi-border-light: #3A2E24;
+  --color-sushi-orange-burnt: #C2410C;
+  --color-sushi-orange: #F97316;
+  --color-sushi-orange-light: #FB923C;
+  --color-sushi-badge-bg: #1F1209;
+  --color-sushi-badge-border: #4A2A10;
+
+  /* Mapped Overrides for Tailwind Utilities */
+  --color-blue-500: #F97316;
+  --color-blue-600: #C2410C;
+  --color-blue-700: #9A3412;
+  --color-blue-400: #FB923C;
+
+  --color-emerald-400: #FB923C;
+  --color-emerald-500: #F97316;
+  --color-emerald-600: #EA580C;
+  --color-emerald-700: #C2410C;
+}
+
+/* Custom scrollbar styling for dark sushi theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0C0A08;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A211A;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4A2A10;
+}
+
+/* Base style reset for Sushi Delivery dark theme */
+body {
+  background-color: #0C0A08 !important;
+  color: #F5F0EA !important;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Global Primary Button with Solid Komy Orange #FF6A00 */
+.btn-pedify-primary, .btn-sushi-primary {
+  background-color: #FF6A00 !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  border-radius: 0.75rem !important; /* 12px */
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 0 4px 12px rgba(255, 106, 0, 0.25) !important;
+}
+
+.btn-pedify-primary:hover, .btn-sushi-primary:hover {
+  background-color: #E65F00 !important;
+  box-shadow: 0 6px 16px rgba(255, 106, 0, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Radial Glow Background */
+.bg-pedify-hero, .bg-sushi-hero {
+  background: radial-gradient(circle at 50% 0%, #1A1108 0%, #0C0A08 75%) !important;
+}
+
+/* Card Utilities */
+.card-pedify, .card-sushi {
+  background-color: #141210 !important;
+  border: 1px solid #2A211A !important;
+  border-radius: 0.875rem !important; /* 14px */
+  transition: border-color 0.2s ease-in-out;
+}
+
+.card-pedify:hover, .card-sushi:hover {
+  border-color: rgba(194, 65, 12, 0.3) !important;
+}
+
+.card-pedify-light, .card-sushi-light {
+  background-color: #181512 !important;
+  border: 1px solid #2A211A !important;
+  border-radius: 0.875rem !important;
+}
+
+/* Badge Utility */
+.badge-pedify, .badge-sushi {
+  background-color: #1F1209 !important;
+  border: 1px solid #4A2A10 !important;
+  color: #FB923C !important;
+}
+
+/* Smooth Bottom-to-Top Chart Reveal Animation */
+@keyframes riseUpFromBottom {
+  0% {
+    clip-path: inset(100% 0 0 0);
+    opacity: 0.2;
+  }
+  100% {
+    clip-path: inset(0% 0 0 0);
+    opacity: 1;
+  }
+}
+
+.animate-rise-up {
+  animation: riseUpFromBottom 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Input Utility */
+.input-pedify, .input-sushi {
+  background-color: #181512 !important;
+  border: 1px solid #2A211A !important;
+  color: #F5F0EA !important;
+  border-radius: 0.625rem !important;
+}
+.input-pedify:focus, .input-sushi:focus {
+  border-color: #F97316 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25) !important;
+}
+
+/* Date input white calendar icon */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1) !important;
+  cursor: pointer;
+  opacity: 1 !important;
+}
+input[type="date"] {
+  color-scheme: dark !important;
+}
+
+/* Subtle bamboo/tatami weave texture class (< 4% opacity) */
+.bg-sushi-texture {
+  background-image: radial-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 0), linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 0), linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 0);
+  background-size: 24px 24px, 12px 12px, 12px 12px;
+}
+
+
+
