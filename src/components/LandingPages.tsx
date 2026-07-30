@@ -70,7 +70,7 @@ export default function LandingPages() {
               onClick={handleEnterDemo}
               className="px-5 py-2.5 btn-sushi-primary text-white text-xs font-bold flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
             >
-              <span>Acessar Demonstrativo</span>
+              <span>Login</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
