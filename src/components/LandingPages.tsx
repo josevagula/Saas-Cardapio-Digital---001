@@ -98,7 +98,7 @@ export default function LandingPages() {
               </h1>
 
               <p className="text-base text-[#A8A29A] leading-relaxed font-normal max-w-xl">
-                A plataforma completa para gerenciar pedidos em tempo real, automatizar vendas pelo WhatsApp e otimizar margens de lucro do seu sushi.
+                Exemplo de site de cardapio digital
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
