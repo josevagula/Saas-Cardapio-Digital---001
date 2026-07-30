@@ -34,7 +34,7 @@ export default function LandingPages() {
         'Relatórios de Faturamento',
         'Suporte WhatsApp 24h'
       ],
-      cta: 'Experimentar 7 dias Grátis',
+      cta: 'Experimente 7 dias Grátis',
       popular: true
     }
   ];
@@ -106,7 +106,7 @@ export default function LandingPages() {
                   onClick={handleEnterDemo}
                   className="px-6 py-3.5 btn-sushi-primary text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:scale-105 transition-transform"
                 >
-                  <span>Experimentar 7 dias Grátis</span>
+                  <span>Experimente 7 dias Grátis</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
