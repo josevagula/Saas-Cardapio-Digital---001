@@ -60,7 +60,6 @@ export default function LandingPages() {
           {/* Central Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-[#A8A29A]">
             <a href="#recursos" className="hover:text-[#FB923C] transition-colors">Recursos</a>
-            <a href="#demo" className="hover:text-[#FB923C] transition-colors">Demonstração</a>
             <a href="#precos" className="hover:text-[#FB923C] transition-colors">Preços</a>
           </nav>
 
@@ -102,12 +101,18 @@ export default function LandingPages() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button 
+                <button
                   onClick={handleEnterDemo}
                   className="px-6 py-3.5 btn-sushi-primary text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:scale-105 transition-transform"
                 >
                   <span>Experimente 7 dias Grátis</span>
                   <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleEnterDemo}
+                  className="px-6 py-3.5 border border-[#2A211A] text-[#F5F0EA] text-xs font-bold flex items-center justify-center gap-2 rounded-lg hover:border-[#FB923C] transition-colors cursor-pointer"
+                >
+                  <span>Demonstração</span>
                 </button>
               </div>
             </motion.div>
