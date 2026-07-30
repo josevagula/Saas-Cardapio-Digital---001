@@ -272,10 +272,6 @@ export default function LandingPages() {
                   transition={{ duration: 0.7, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
                   className="bg-[#141210] p-8 sm:p-10 rounded-2xl border border-[#F97316] ring-1 ring-[#F97316]/40 shadow-2xl shadow-orange-950/50 flex flex-col justify-between relative transition-all"
                 >
-                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white font-mono font-bold uppercase tracking-wider text-[10px] px-3 py-1 rounded-full shadow-md shadow-orange-500/20">
-                    Plano Recomendado
-                  </span>
-
                   <div className="space-y-6">
                     <div>
                       <h4 className="text-xl font-display font-bold text-[#F5F0EA]">{p.name}</h4>
