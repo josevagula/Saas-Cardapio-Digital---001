@@ -377,6 +377,42 @@ export const INITIAL_ANALYTICS: SalesAnalytics = {
   ]
 };
 
+// Blank starting state for a brand-new trial account: no demo data,
+// so the customer builds their own menu/catalog from scratch.
+export const BLANK_VISUAL_CONFIG: VisualConfig = {
+  establishmentName: "",
+  phone: "",
+  address: "",
+  logoUrl: "",
+  bannerUrl: "",
+  primaryColor: "#F97316",
+  fontFamily: "display",
+  themeMode: "dark",
+  deliveryFee: 0,
+  menuSlug: "",
+  openingTime: "",
+  closingTime: "",
+  openingDays: "",
+  operatingDaysList: [],
+  deliveryTime: "",
+  autoStatusByTime: false,
+  isStoreOpenManual: false
+};
+
+export const BLANK_ANALYTICS: SalesAnalytics = {
+  dailyRevenue: 0,
+  weeklyRevenue: 0,
+  monthlyRevenue: 0,
+  totalOrders: 0,
+  ticketAverage: 0,
+  activeCustomers: 0,
+  repurchaseRate: 0,
+  sushiTypeDistribution: [],
+  revenueHistory: [],
+  ordersHistory: [],
+  paymentDistribution: []
+};
+
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'basic',

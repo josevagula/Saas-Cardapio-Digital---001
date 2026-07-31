@@ -7,7 +7,9 @@ import {
   INITIAL_ORDERS,
   INITIAL_COUPONS,
   INITIAL_CUSTOMERS,
-  INITIAL_ANALYTICS
+  INITIAL_ANALYTICS,
+  BLANK_VISUAL_CONFIG,
+  BLANK_ANALYTICS
 } from '../data/mockData';
 
 interface AppContextType {
@@ -38,6 +40,8 @@ interface AppContextType {
   // Public (logged-out) marketing screens: landing, login, trial signup
   publicView: 'landing' | 'login' | 'trial';
   setPublicView: (view: 'landing' | 'login' | 'trial') => void;
+  // Logs a brand-new trial account in with a blank workspace (no demo data)
+  startBlankTrialAccount: () => void;
 
   // Shopping Cart & Checkout
   cart: OrderItem[];
@@ -559,6 +563,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCategories(prev => prev.filter(c => c.id !== id));
   };
 
+  // First-time trial signup: start from a completely blank workspace
+  // (no demo products/orders/customers) so the client builds their own menu.
+  const startBlankTrialAccount = () => {
+    setVisualConfig(BLANK_VISUAL_CONFIG);
+    setCategories([]);
+    setProducts([]);
+    setOrders([]);
+    setCoupons([]);
+    setCustomers([]);
+    setAnalytics(BLANK_ANALYTICS);
+    setCart([]);
+    setAppliedCoupon(null);
+    setIsAdmin(true);
+    setLoggedIn(true);
+    setCurrentView('dashboard');
+  };
+
   return (
     <AppContext.Provider value={{
       visualConfig,
@@ -585,6 +606,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentPlan,
       publicView,
       setPublicView,
+      startBlankTrialAccount,
       cart,
       addToCart,
       removeFromCart,

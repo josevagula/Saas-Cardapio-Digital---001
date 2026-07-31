@@ -22,7 +22,7 @@ function formatExpiry(value: string) {
 }
 
 export default function TrialSignupPage() {
-  const { setPublicView } = useApp();
+  const { setPublicView, startBlankTrialAccount } = useApp();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -48,7 +48,12 @@ export default function TrialSignupPage() {
     // TODO: os campos de cartão abaixo são apenas visuais (layout). Na integração
     // real, substituir por Stripe Elements (ou gateway equivalente) e nunca
     // enviar/armazenar número de cartão bruto — isso não deve ir pra produção assim.
+    // TODO: conectar criação de conta real (backend/Supabase) aqui.
     console.log('Trial signup attempt:', { fullName, phone, cardNumber, cardExpiry, cardCvc });
+
+    // Novo cliente entra com o workspace zerado (sem produtos/pedidos de exemplo)
+    // para montar o cardápio do jeito dele.
+    startBlankTrialAccount();
   };
 
   return (
