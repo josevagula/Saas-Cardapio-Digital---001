@@ -57,8 +57,9 @@ export default function TrialSignupPage() {
     console.log('Trial signup attempt:', { fullName, phone, email, password, cardNumber, cardExpiry, cardCvc });
 
     // Novo cliente entra com o workspace zerado (sem produtos/pedidos de exemplo)
-    // para montar o cardápio do jeito dele.
-    startBlankTrialAccount();
+    // para montar o cardápio do jeito dele. Este e-mail/senha passam a ser as
+    // credenciais usadas para fazer login depois.
+    startBlankTrialAccount(email, password);
   };
 
   return (

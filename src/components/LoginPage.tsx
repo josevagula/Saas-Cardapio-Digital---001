@@ -4,10 +4,11 @@ import { SushiLogoEmblem } from './SushiIcons';
 import { ArrowLeft, Mail, Lock } from 'lucide-react';
 
 export default function LoginPage() {
-  const { setPublicView } = useApp();
+  const { setPublicView, attemptLogin } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [formError, setFormError] = useState('');
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -24,10 +25,17 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     if (!validate()) return;
 
-    // TODO: conectar autenticação real (backend/Supabase) aqui.
+    // TODO: conectar autenticação real (backend/Supabase) aqui. Por enquanto,
+    // valida contra o e-mail/senha usados no cadastro do teste grátis.
     console.log('Login attempt:', { email, password });
+
+    const result = attemptLogin(email, password);
+    if (!result.success) {
+      setFormError(result.message);
+    }
   };
 
   return (
@@ -58,6 +66,12 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              {formError && (
+                <div className="bg-red-950/40 border border-red-500/40 rounded-lg px-3 py-2.5">
+                  <p className="text-[11px] text-red-400 font-medium">{formError}</p>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label htmlFor="login-email" className="text-xs font-semibold text-[#A8A29A]">E-mail</label>
                 <div className="relative">

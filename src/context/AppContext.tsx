@@ -40,8 +40,12 @@ interface AppContextType {
   // Public (logged-out) marketing screens: landing, login, trial signup
   publicView: 'landing' | 'login' | 'trial';
   setPublicView: (view: 'landing' | 'login' | 'trial') => void;
-  // Logs a brand-new trial account in with a blank workspace (no demo data)
-  startBlankTrialAccount: () => void;
+  // Locally-stored trial account credentials (mock only — no real backend auth yet)
+  registeredCredentials: { email: string; password: string } | null;
+  // Registers the e-mail/senha and logs a brand-new trial account in with a blank workspace (no demo data)
+  startBlankTrialAccount: (email: string, password: string) => void;
+  // Validates e-mail/senha against the locally-stored trial account and logs in on match
+  attemptLogin: (email: string, password: string) => { success: boolean; message: string };
 
   // Shopping Cart & Checkout
   cart: OrderItem[];
@@ -190,6 +194,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [currentPlan, setCurrentPlan] = useState<'basic' | 'pro' | 'premium'>('premium');
   const [publicView, setPublicView] = useState<'landing' | 'login' | 'trial'>('landing');
+  // TODO: mock-only credential storage (plaintext in localStorage). Replace with
+  // real backend authentication (e.g. Supabase Auth) before going to production.
+  const [registeredCredentials, setRegisteredCredentials] = useState<{ email: string; password: string } | null>(() => {
+    const saved = localStorage.getItem('luvia_account_credentials');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return null;
+  });
 
   // Shopping Cart State
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -236,6 +253,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     safeSetLocalStorage('luvia_analytics', analytics);
   }, [analytics]);
+
+  useEffect(() => {
+    if (registeredCredentials) {
+      safeSetLocalStorage('luvia_account_credentials', registeredCredentials);
+    }
+  }, [registeredCredentials]);
 
   // Shopping Cart Handlers
   const addToCart = (product: Product, quantity = 1, notes = "", removedIngredients?: string[]) => {
@@ -565,7 +588,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // First-time trial signup: start from a completely blank workspace
   // (no demo products/orders/customers) so the client builds their own menu.
-  const startBlankTrialAccount = () => {
+  // The e-mail/senha informed here become the credentials used to log back in later.
+  const startBlankTrialAccount = (email: string, password: string) => {
+    setRegisteredCredentials({ email, password });
     setVisualConfig(BLANK_VISUAL_CONFIG);
     setCategories([]);
     setProducts([]);
@@ -578,6 +603,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsAdmin(true);
     setLoggedIn(true);
     setCurrentView('dashboard');
+  };
+
+  // Mock login: checks e-mail/senha against the locally-stored trial account.
+  // TODO: replace with a real backend authentication call.
+  const attemptLogin = (email: string, password: string) => {
+    if (!registeredCredentials) {
+      return { success: false, message: 'Nenhuma conta encontrada com esse e-mail. Crie sua conta grátis primeiro.' };
+    }
+    if (
+      registeredCredentials.email.trim().toLowerCase() !== email.trim().toLowerCase() ||
+      registeredCredentials.password !== password
+    ) {
+      return { success: false, message: 'E-mail ou senha incorretos.' };
+    }
+    setIsAdmin(true);
+    setLoggedIn(true);
+    setCurrentView('dashboard');
+    return { success: true, message: 'Login realizado com sucesso.' };
   };
 
   return (
@@ -606,7 +649,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentPlan,
       publicView,
       setPublicView,
+      registeredCredentials,
       startBlankTrialAccount,
+      attemptLogin,
       cart,
       addToCart,
       removeFromCart,
