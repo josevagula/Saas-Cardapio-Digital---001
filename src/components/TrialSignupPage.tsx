@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { SushiLogoEmblem } from './SushiIcons';
-import { ArrowLeft, User, Phone, CreditCard, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Lock, CreditCard, ShieldCheck } from 'lucide-react';
 
 function formatBRPhone(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -25,6 +25,8 @@ export default function TrialSignupPage() {
   const { setPublicView, startBlankTrialAccount } = useApp();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
@@ -34,6 +36,9 @@ export default function TrialSignupPage() {
     const newErrors: Record<string, string> = {};
     if (!fullName.trim()) newErrors.fullName = 'Informe seu nome completo.';
     if (phone.replace(/\D/g, '').length < 10) newErrors.phone = 'Informe um telefone válido com DDD.';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) newErrors.email = 'Informe um e-mail válido.';
+    if (password.length < 6) newErrors.password = 'A senha deve ter no mínimo 6 caracteres.';
     if (cardNumber.replace(/\D/g, '').length < 16) newErrors.cardNumber = 'Número do cartão inválido.';
     if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) newErrors.cardExpiry = 'Validade inválida (MM/AA).';
     if (cardCvc.replace(/\D/g, '').length < 3) newErrors.cardCvc = 'CVC inválido.';
@@ -49,7 +54,7 @@ export default function TrialSignupPage() {
     // real, substituir por Stripe Elements (ou gateway equivalente) e nunca
     // enviar/armazenar número de cartão bruto — isso não deve ir pra produção assim.
     // TODO: conectar criação de conta real (backend/Supabase) aqui.
-    console.log('Trial signup attempt:', { fullName, phone, cardNumber, cardExpiry, cardCvc });
+    console.log('Trial signup attempt:', { fullName, phone, email, password, cardNumber, cardExpiry, cardCvc });
 
     // Novo cliente entra com o workspace zerado (sem produtos/pedidos de exemplo)
     // para montar o cardápio do jeito dele.
@@ -115,6 +120,38 @@ export default function TrialSignupPage() {
                   />
                 </div>
                 {errors.phone && <p className="text-[11px] text-red-400 font-medium">{errors.phone}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="trial-email" className="text-xs font-semibold text-[#A8A29A]">E-mail</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-[#A8A29A] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="trial-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seuemail@gmail.com"
+                    className="input-sushi w-full pl-9 pr-3 py-2.5 text-sm"
+                  />
+                </div>
+                {errors.email && <p className="text-[11px] text-red-400 font-medium">{errors.email}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="trial-password" className="text-xs font-semibold text-[#A8A29A]">Senha</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-[#A8A29A] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="trial-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Crie uma senha"
+                    className="input-sushi w-full pl-9 pr-3 py-2.5 text-sm"
+                  />
+                </div>
+                {errors.password && <p className="text-[11px] text-red-400 font-medium">{errors.password}</p>}
               </div>
 
               {/*
