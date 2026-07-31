@@ -35,6 +35,9 @@ interface AppContextType {
   setLoggedIn: (loggedIn: boolean) => void;
   currentPlan: 'basic' | 'pro' | 'premium';
   setCurrentPlan: (plan: 'basic' | 'pro' | 'premium') => void;
+  // Public (logged-out) marketing screens: landing, login, trial signup
+  publicView: 'landing' | 'login' | 'trial';
+  setPublicView: (view: 'landing' | 'login' | 'trial') => void;
 
   // Shopping Cart & Checkout
   cart: OrderItem[];
@@ -182,6 +185,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return urlParams.has('menu');
   });
   const [currentPlan, setCurrentPlan] = useState<'basic' | 'pro' | 'premium'>('premium');
+  const [publicView, setPublicView] = useState<'landing' | 'login' | 'trial'>('landing');
 
   // Shopping Cart State
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -579,6 +583,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoggedIn,
       currentPlan,
       setCurrentPlan,
+      publicView,
+      setPublicView,
       cart,
       addToCart,
       removeFromCart,

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 export default function LandingPages() {
-  const { setLoggedIn, setIsAdmin, setCurrentView } = useApp();
+  const { setLoggedIn, setIsAdmin, setCurrentView, setPublicView } = useApp();
 
   const handleEnterDemo = () => {
     sessionStorage.setItem('just_entered_from_plans', 'true');
@@ -19,6 +19,9 @@ export default function LandingPages() {
     setIsAdmin(true);
     setCurrentView('dashboard');
   };
+
+  const handleGoToLogin = () => setPublicView('login');
+  const handleGoToTrial = () => setPublicView('trial');
 
   const plans = [
     {
@@ -65,8 +68,8 @@ export default function LandingPages() {
 
           {/* CTA Right */}
           <div className="flex items-center gap-3">
-            <button 
-              onClick={handleEnterDemo}
+            <button
+              onClick={handleGoToLogin}
               className="px-5 py-2.5 btn-sushi-primary text-white text-xs font-bold flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
             >
               <span>Login</span>
@@ -102,7 +105,7 @@ export default function LandingPages() {
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
-                  onClick={handleEnterDemo}
+                  onClick={handleGoToTrial}
                   className="px-6 py-3.5 btn-sushi-primary text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:scale-105 transition-transform"
                 >
                   <span>Experimente 7 dias Grátis</span>
@@ -308,7 +311,7 @@ export default function LandingPages() {
                   </div>
 
                   <button
-                    onClick={handleEnterDemo}
+                    onClick={handleGoToTrial}
                     className="mt-8 w-full py-3.5 text-xs sm:text-sm font-bold transition-all shadow-md cursor-pointer btn-sushi-primary text-white hover:scale-[1.02]"
                   >
                     {p.cta}

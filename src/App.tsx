@@ -10,19 +10,23 @@ import AISmartAssistant from './components/AISmartAssistant';
 import VisualCustomizer from './components/VisualCustomizer';
 import PublicMenuPage from './components/PublicMenuPage';
 import LandingPages from './components/LandingPages';
+import LoginPage from './components/LoginPage';
+import TrialSignupPage from './components/TrialSignupPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Menu } from 'lucide-react';
 import { SushiLogoEmblem } from './components/SushiIcons';
 
 export default function App() {
-  const { loggedIn, isAdmin, currentView, visualConfig } = useApp();
+  const { loggedIn, isAdmin, currentView, visualConfig, publicView } = useApp();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // 1. Landing Marketing & Pricing page if not signed in yet
+  // 1. Landing Marketing & Pricing page (or Login / Trial signup) if not signed in yet
   if (!loggedIn) {
     return (
       <ErrorBoundary>
-        <LandingPages />
+        {publicView === 'login' && <LoginPage />}
+        {publicView === 'trial' && <TrialSignupPage />}
+        {publicView === 'landing' && <LandingPages />}
       </ErrorBoundary>
     );
   }
