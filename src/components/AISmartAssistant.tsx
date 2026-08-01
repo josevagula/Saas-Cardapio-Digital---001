@@ -45,7 +45,7 @@ export default function AISmartAssistant() {
 
         <div className="flex items-center gap-1.5 bg-[#1F1209] border border-[#4A2A10] px-3.5 py-1.5 rounded-full text-xs font-bold text-[#FB923C] self-start">
           <Sparkles className="w-3.5 h-3.5 text-[#FB923C] fill-[#FB923C]" />
-          <span>Gemini Pro Ativo</span>
+          <span>ChatGPT Ativo</span>
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export default function AISmartAssistant() {
               </div>
               <div className="flex gap-2.5">
                 <span className="text-white font-bold">3.</span>
-                <p>O Gemini sugere estratégias de copy persuasivas ideais para postagem rápida no WhatsApp.</p>
+                <p>O ChatGPT sugere estratégias de copy persuasivas ideais para postagem rápida no WhatsApp.</p>
               </div>
             </div>
           </div>
@@ -99,7 +99,7 @@ export default function AISmartAssistant() {
             <div className="bg-[#141210] p-12 text-center rounded-2xl border border-[#2A211A] shadow-xs space-y-4">
               <div className="w-10 h-10 rounded-full border-2 border-[#F97316] border-t-transparent animate-spin mx-auto"></div>
               <div>
-                <h4 className="font-bold text-[#F5F0EA]">Conectando ao Gemini...</h4>
+                <h4 className="font-bold text-[#F5F0EA]">Conectando à OpenAI...</h4>
                 <p className="text-xs text-[#A8A29A] mt-1">Estruturando combinações de alta rentabilidade com IA.</p>
               </div>
             </div>
