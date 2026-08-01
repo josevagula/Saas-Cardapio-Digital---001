@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  Users, 
-  TrendingUp, 
-  Sparkles, 
-  Palette, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Users,
+  TrendingUp,
+  Sparkles,
+  Palette,
+  LogOut,
   Globe,
   Copy,
   ExternalLink,
-  X
+  X,
+  ShieldAlert
 } from 'lucide-react';
 import { HashiIcon, SushiRollIcon, SushiLogoEmblem, WasabiTag } from './SushiIcons';
 
@@ -21,7 +22,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) {
-  const { currentView, setCurrentView, visualConfig, currentPlan, setIsAdmin, setLoggedIn } = useApp();
+  const { currentView, setCurrentView, visualConfig, currentPlan, planStatus, cancelPlan, setIsAdmin, setLoggedIn } = useApp();
   const [copied, setCopied] = useState(false);
 
   const menuItems = [
@@ -194,6 +195,25 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           <LogOut className="w-3.5 h-3.5 text-[#A8A29A]" />
           <span>Sair da Sessão</span>
         </button>
+
+        {planStatus === 'active' ? (
+          <button
+            onClick={() => {
+              if (window.confirm('Cancelar sua assinatura? O painel e o Cardápio Digital ficarão bloqueados até você renovar o plano.')) {
+                cancelPlan();
+              }
+            }}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-[#6B655C] hover:text-red-400 transition-all font-semibold cursor-pointer"
+          >
+            <ShieldAlert className="w-3 h-3" />
+            <span>Cancelar assinatura</span>
+          </button>
+        ) : (
+          <div className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-red-400 font-bold">
+            <ShieldAlert className="w-3 h-3" />
+            <span>Assinatura cancelada</span>
+          </div>
+        )}
       </div>
     </aside>
   );

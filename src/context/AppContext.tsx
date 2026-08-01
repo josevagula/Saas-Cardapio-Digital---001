@@ -37,6 +37,11 @@ interface AppContextType {
   setLoggedIn: (loggedIn: boolean) => void;
   currentPlan: 'basic' | 'pro' | 'premium';
   setCurrentPlan: (plan: 'basic' | 'pro' | 'premium') => void;
+  // Billing status of the current account's subscription (mock only — no real payment gateway yet).
+  // When 'cancelled', the admin dashboard renders blurred with a renewal prompt until renewPlan() is called.
+  planStatus: 'active' | 'cancelled';
+  cancelPlan: () => void;
+  renewPlan: () => void;
   // Public (logged-out) marketing screens: landing, login, trial signup
   publicView: 'landing' | 'login' | 'trial';
   setPublicView: (view: 'landing' | 'login' | 'trial') => void;
@@ -193,6 +198,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return urlParams.has('menu');
   });
   const [currentPlan, setCurrentPlan] = useState<'basic' | 'pro' | 'premium'>('premium');
+  const [planStatus, setPlanStatus] = useState<'active' | 'cancelled'>(() => {
+    return localStorage.getItem('luvia_plan_status') === 'cancelled' ? 'cancelled' : 'active';
+  });
   const [publicView, setPublicView] = useState<'landing' | 'login' | 'trial'>('landing');
   // TODO: mock-only credential storage (plaintext in localStorage). Replace with
   // real backend authentication (e.g. Supabase Auth) before going to production.
@@ -259,6 +267,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       safeSetLocalStorage('luvia_account_credentials', registeredCredentials);
     }
   }, [registeredCredentials]);
+
+  useEffect(() => {
+    safeSetLocalStorage('luvia_plan_status', planStatus);
+  }, [planStatus]);
 
   // Shopping Cart Handlers
   const addToCart = (product: Product, quantity = 1, notes = "", removedIngredients?: string[]) => {
@@ -600,10 +612,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAnalytics(BLANK_ANALYTICS);
     setCart([]);
     setAppliedCoupon(null);
+    setPlanStatus('active');
     setIsAdmin(true);
     setLoggedIn(true);
     setCurrentView('dashboard');
   };
+
+  // Mock billing actions (no real payment gateway yet). Cancelling keeps the account
+  // logged in but locks the dashboard behind a blurred renewal prompt (see App.tsx);
+  // renewing clears that lock and restores full access, including o Cardápio Digital.
+  const cancelPlan = () => setPlanStatus('cancelled');
+  const renewPlan = () => setPlanStatus('active');
 
   // Mock login: checks e-mail/senha against the locally-stored trial account.
   // TODO: replace with a real backend authentication call.
@@ -647,6 +666,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoggedIn,
       currentPlan,
       setCurrentPlan,
+      planStatus,
+      cancelPlan,
+      renewPlan,
       publicView,
       setPublicView,
       registeredCredentials,
