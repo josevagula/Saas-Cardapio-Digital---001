@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, OrderItem, OrderStatus, PaymentMethod, DeliveryMethod } from '../types';
 import {
   INITIAL_VISUAL_CONFIG,
@@ -11,6 +11,7 @@ import {
   BLANK_VISUAL_CONFIG,
   BLANK_ANALYTICS
 } from '../data/mockData';
+import { useAuth } from './AuthContext';
 
 interface AppContextType {
   visualConfig: VisualConfig;
@@ -83,6 +84,13 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  // Identifies which Supabase account (if any) is signed in, so this
+  // browser's saved workspace data can be isolated per account below —
+  // otherwise two accounts sharing a device/browser would see each other's
+  // (or the built-in demo's) products/orders/etc.
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
+
   // Restore states from localStorage or use initial mock data
   const [visualConfig, setVisualConfig] = useState<VisualConfig>(() => {
     const saved = localStorage.getItem('sushi_visual_config');
@@ -216,39 +224,82 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sync state to localStorage on modification
+  // Workspace data (visual config, catalog, orders, etc.) is namespaced per
+  // signed-in Supabase account once one is known, instead of one shared key
+  // per browser — otherwise a second account signing in on the same device
+  // would see the first account's (or the built-in demo's) data.
+  const scopedKey = (base: string) => (userId ? `sushi_${base}_${userId}` : `sushi_${base}`);
+  const [workspaceReady, setWorkspaceReady] = useState(false);
+  const loadedUserIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
-    safeSetLocalStorage('sushi_visual_config', visualConfig);
+    if (authLoading) return;
+    if (loadedUserIdRef.current === userId) {
+      setWorkspaceReady(true);
+      return;
+    }
+    loadedUserIdRef.current = userId;
+
+    if (userId) {
+      const readJSON = (key: string) => {
+        const saved = localStorage.getItem(key);
+        if (!saved) return undefined;
+        try { return JSON.parse(saved); } catch { return undefined; }
+      };
+      setVisualConfig(readJSON(scopedKey('visual_config')) ?? BLANK_VISUAL_CONFIG);
+      setCategories(readJSON(scopedKey('categories')) ?? []);
+      setProducts(readJSON(scopedKey('products')) ?? []);
+      setOrders(readJSON(scopedKey('orders')) ?? []);
+      setCoupons(readJSON(scopedKey('coupons')) ?? []);
+      setCustomers(readJSON(scopedKey('customers')) ?? []);
+      setAnalytics(readJSON(scopedKey('analytics')) ?? BLANK_ANALYTICS);
+    }
+    setWorkspaceReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, authLoading]);
+
+  // Sync state to localStorage on modification (skipped until the
+  // account-scoped workspace above has finished loading, so we never
+  // overwrite a saved account's data with another account's stale state).
+  useEffect(() => {
+    if (!workspaceReady) return;
+    safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
     if (visualConfig.establishmentName) {
       document.title = `Cardapio Dígital - ${visualConfig.establishmentName}`;
     } else {
       document.title = 'Cardapio Dígital';
     }
-  }, [visualConfig]);
+  }, [visualConfig, workspaceReady, userId]);
 
   useEffect(() => {
-    safeSetLocalStorage('sushi_categories', categories);
-  }, [categories]);
+    if (!workspaceReady) return;
+    safeSetLocalStorage(scopedKey('categories'), categories);
+  }, [categories, workspaceReady, userId]);
 
   useEffect(() => {
-    safeSetLocalStorage('sushi_products', products);
-  }, [products]);
+    if (!workspaceReady) return;
+    safeSetLocalStorage(scopedKey('products'), products);
+  }, [products, workspaceReady, userId]);
 
   useEffect(() => {
-    safeSetLocalStorage('sushi_orders', orders);
-  }, [orders]);
+    if (!workspaceReady) return;
+    safeSetLocalStorage(scopedKey('orders'), orders);
+  }, [orders, workspaceReady, userId]);
 
   useEffect(() => {
-    safeSetLocalStorage('sushi_coupons', coupons);
-  }, [coupons]);
+    if (!workspaceReady) return;
+    safeSetLocalStorage(scopedKey('coupons'), coupons);
+  }, [coupons, workspaceReady, userId]);
 
   useEffect(() => {
-    safeSetLocalStorage('sushi_customers', customers);
-  }, [customers]);
+    if (!workspaceReady) return;
+    safeSetLocalStorage(scopedKey('customers'), customers);
+  }, [customers, workspaceReady, userId]);
 
   useEffect(() => {
-    safeSetLocalStorage('sushi_analytics', analytics);
-  }, [analytics]);
+    if (!workspaceReady) return;
+    safeSetLocalStorage(scopedKey('analytics'), analytics);
+  }, [analytics, workspaceReady, userId]);
 
   useEffect(() => {
     safeSetLocalStorage('sushi_plan_status', planStatus);
@@ -623,9 +674,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const cancelPlan = () => setPlanStatus('cancelled');
   const renewPlan = () => setPlanStatus('active');
 
-  // Enters the admin dashboard for an already-authenticated Supabase user,
-  // keeping whatever workspace data is already in this browser (unlike
-  // resetToBlankWorkspace, used for brand-new trial signups).
+  // Enters the admin dashboard for an already-authenticated Supabase user.
+  // Workspace data isn't reset here — it's loaded automatically by the
+  // account-scoped effect above, keyed to this specific account's id, so it
+  // shows that account's own saved data (or a blank slate if it has none)
+  // rather than resetToBlankWorkspace's forced wipe, used only for brand-new
+  // trial signups.
   const enterAdminDashboard = () => {
     setIsAdmin(true);
     setLoggedIn(true);
