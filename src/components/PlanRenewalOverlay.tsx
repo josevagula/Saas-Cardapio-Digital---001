@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Lock, RefreshCw, ShieldCheck, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { SushiLogoEmblem } from './SushiIcons';
 
 export default function PlanRenewalOverlay() {
   const { renewPlan, setLoggedIn, setCurrentView } = useApp();
+  const { logout } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const handleRenew = () => {
@@ -69,7 +71,8 @@ export default function PlanRenewalOverlay() {
           </button>
 
           <button
-            onClick={() => {
+            onClick={async () => {
+              await logout();
               setLoggedIn(false);
               setCurrentView('home');
             }}

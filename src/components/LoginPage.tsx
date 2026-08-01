@@ -1,14 +1,27 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
 import { SushiLogoEmblem } from './SushiIcons';
 import { ArrowLeft, Mail, Lock } from 'lucide-react';
 
+function mapLoginError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes('email not confirmed')) {
+    return 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada (e o spam).';
+  }
+  if (lower.includes('invalid login credentials')) {
+    return 'E-mail ou senha incorretos.';
+  }
+  return message;
+}
+
 export default function LoginPage() {
-  const { setPublicView, attemptLogin } = useApp();
+  const { setPublicView, enterAdminDashboard } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -23,19 +36,21 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     if (!validate()) return;
 
-    // TODO: conectar autenticação real (backend/Supabase) aqui. Por enquanto,
-    // valida contra o e-mail/senha usados no cadastro do teste grátis.
-    console.log('Login attempt:', { email, password });
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
 
-    const result = attemptLogin(email, password);
-    if (!result.success) {
-      setFormError(result.message);
+    if (error) {
+      setFormError(mapLoginError(error.message));
+      return;
     }
+
+    enterAdminDashboard();
   };
 
   return (
@@ -116,9 +131,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full py-3 btn-sushi-primary text-white text-sm font-bold cursor-pointer hover:scale-[1.02] transition-transform"
+                disabled={loading}
+                className="w-full py-3 btn-sushi-primary text-white text-sm font-bold cursor-pointer hover:scale-[1.02] transition-transform disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                Entrar
+                {loading ? 'Entrando...' : 'Entrar'}
               </button>
             </form>
 

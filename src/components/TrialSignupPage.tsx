@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
 import { SushiLogoEmblem } from './SushiIcons';
-import { ArrowLeft, User, Phone, Mail, Lock, CreditCard, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Lock } from 'lucide-react';
+
+function mapSignupError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes('already registered') || lower.includes('already exists') || lower.includes('user already')) {
+    return 'Já existe uma conta com esse e-mail. Faça login em vez de criar uma nova.';
+  }
+  if (lower.includes('password')) {
+    return 'Senha muito fraca. Use pelo menos 6 caracteres.';
+  }
+  return message;
+}
 
 function formatBRPhone(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -10,27 +22,15 @@ function formatBRPhone(value: string) {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
-function formatCardNumber(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 16);
-  return digits.replace(/(.{4})/g, '$1 ').trim();
-}
-
-function formatExpiry(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-}
-
 export default function TrialSignupPage() {
-  const { setPublicView, startBlankTrialAccount } = useApp();
+  const { setPublicView, resetToBlankWorkspace } = useApp();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvc, setCardCvc] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -39,27 +39,49 @@ export default function TrialSignupPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) newErrors.email = 'Informe um e-mail válido.';
     if (password.length < 6) newErrors.password = 'A senha deve ter no mínimo 6 caracteres.';
-    if (cardNumber.replace(/\D/g, '').length < 16) newErrors.cardNumber = 'Número do cartão inválido.';
-    if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) newErrors.cardExpiry = 'Validade inválida (MM/AA).';
-    if (cardCvc.replace(/\D/g, '').length < 3) newErrors.cardCvc = 'CVC inválido.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     if (!validate()) return;
 
-    // TODO: os campos de cartão abaixo são apenas visuais (layout). Na integração
-    // real, substituir por Stripe Elements (ou gateway equivalente) e nunca
-    // enviar/armazenar número de cartão bruto — isso não deve ir pra produção assim.
-    // TODO: conectar criação de conta real (backend/Supabase) aqui.
-    console.log('Trial signup attempt:', { fullName, phone, email, password, cardNumber, cardExpiry, cardCvc });
+    // NOTE: os campos de cartão abaixo continuam apenas visuais (layout) nesta
+    // etapa — a integração real com gateway de pagamento (Stripe) fica para
+    // quando for pedida explicitamente. Nunca enviamos/armazenamos esses dados.
+    setLoading(true);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { nome: fullName, telefone: phone } }
+    });
+
+    if (error) {
+      setLoading(false);
+      setFormError(mapSignupError(error.message));
+      return;
+    }
+
+    // A tabela profiles já é preenchida automaticamente por um trigger no banco
+    // a partir dos metadados acima. Este upsert é só uma garantia extra para
+    // quando já existe sessão ativa (ex: confirmação de e-mail desativada).
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({ id: data.user.id, nome: fullName, telefone: phone });
+      if (profileError) {
+        console.warn('Perfil será preenchido pelo trigger (sem sessão ativa ainda):', profileError.message);
+      }
+    }
+
+    setLoading(false);
 
     // Novo cliente entra com o workspace zerado (sem produtos/pedidos de exemplo)
-    // para montar o cardápio do jeito dele. Este e-mail/senha passam a ser as
-    // credenciais usadas para fazer login depois.
-    startBlankTrialAccount(email, password);
+    // para montar o cardápio do jeito dele. A autenticação em si já é 100% real,
+    // via Supabase Auth.
+    resetToBlankWorkspace();
   };
 
   return (
@@ -90,6 +112,12 @@ export default function TrialSignupPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              {formError && (
+                <div className="bg-red-950/40 border border-red-500/40 rounded-lg px-3 py-2.5">
+                  <p className="text-[11px] text-red-400 font-medium">{formError}</p>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label htmlFor="trial-name" className="text-xs font-semibold text-[#A8A29A]">Nome completo</label>
                 <div className="relative">
@@ -155,70 +183,12 @@ export default function TrialSignupPage() {
                 {errors.password && <p className="text-[11px] text-red-400 font-medium">{errors.password}</p>}
               </div>
 
-              {/*
-                TODO: seção de cartão apenas para layout/composição visual.
-                Substituir por Stripe Elements (ou equivalente) na integração real —
-                nunca enviar/armazenar número de cartão bruto em produção (PCI compliance).
-              */}
-              <div className="space-y-3 border-t border-[#2A211A] pt-5">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-[#FB923C]" />
-                  <span className="text-xs font-semibold text-[#A8A29A]">Dados do cartão</span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <input
-                    aria-label="Número do cartão"
-                    type="text"
-                    inputMode="numeric"
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                    placeholder="0000 0000 0000 0000"
-                    className="input-sushi w-full px-3 py-2.5 text-sm"
-                  />
-                  {errors.cardNumber && <p className="text-[11px] text-red-400 font-medium">{errors.cardNumber}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <input
-                      aria-label="Validade"
-                      type="text"
-                      inputMode="numeric"
-                      value={cardExpiry}
-                      onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                      placeholder="MM/AA"
-                      className="input-sushi w-full px-3 py-2.5 text-sm"
-                    />
-                    {errors.cardExpiry && <p className="text-[11px] text-red-400 font-medium">{errors.cardExpiry}</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <input
-                      aria-label="CVC"
-                      type="text"
-                      inputMode="numeric"
-                      value={cardCvc}
-                      onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      placeholder="CVC"
-                      className="input-sushi w-full px-3 py-2.5 text-sm"
-                    />
-                    {errors.cardCvc && <p className="text-[11px] text-red-400 font-medium">{errors.cardCvc}</p>}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 bg-[#1F1209] border border-[#4A2A10] rounded-lg p-3">
-                <ShieldCheck className="w-4 h-4 text-[#FB923C] shrink-0 mt-0.5" />
-                <p className="text-[11px] text-[#A8A29A] leading-relaxed">
-                  Seu cartão só será cobrado após os 7 dias de teste grátis. Cancele antes disso e não paga nada.
-                </p>
-              </div>
-
               <button
                 type="submit"
-                className="w-full py-3 btn-sushi-primary text-white text-sm font-bold cursor-pointer hover:scale-[1.02] transition-transform"
+                disabled={loading}
+                className="w-full py-3 btn-sushi-primary text-white text-sm font-bold cursor-pointer hover:scale-[1.02] transition-transform disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                Começar teste grátis
+                {loading ? 'Criando conta...' : 'Começar teste grátis'}
               </button>
             </form>
 

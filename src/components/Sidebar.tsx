@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -23,6 +24,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) {
   const { currentView, setCurrentView, visualConfig, currentPlan, planStatus, cancelPlan, setIsAdmin, setLoggedIn } = useApp();
+  const { logout } = useAuth();
   const [copied, setCopied] = useState(false);
 
   const menuItems = [
@@ -186,7 +188,8 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
         </div>
 
         <button
-          onClick={() => {
+          onClick={async () => {
+            await logout();
             setLoggedIn(false);
             setCurrentView('home');
           }}
