@@ -322,23 +322,6 @@ export default function LandingPages() {
           </div>
         </div>
       </section>
-
-      {/* Footer Marketing */}
-      <footer className="bg-[#0C0A08] border-t border-[#2A211A] py-12">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-[#A8A29A]">
-          <div className="flex items-center gap-2">
-            <SushiLogoEmblem size={26} />
-            <span className="font-bold text-[#F5F0EA]">Ponto japa</span>
-            <span>© 2026. Todos os direitos reservados.</span>
-          </div>
-
-          <div className="flex items-center gap-6 font-medium">
-            <button onClick={handleEnterDemo} className="hover:text-white cursor-pointer transition-colors">Termos de Uso</button>
-            <button onClick={handleEnterDemo} className="hover:text-white cursor-pointer transition-colors">Privacidade</button>
-            <button onClick={handleEnterDemo} className="hover:text-white cursor-pointer transition-colors">Suporte 24h</button>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
