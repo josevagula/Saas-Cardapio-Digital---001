@@ -72,7 +72,7 @@ export default function FinancialManager() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="luvia-financial-manager">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-financial-manager">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -143,7 +143,7 @@ export default function FinancialManager() {
           <div className="p-4 bg-[#1F1209] rounded-xl border border-[#4A2A10] text-xs text-slate-300 flex gap-2.5">
             <TrendingUp className="w-5 h-5 text-[#FB923C] shrink-0 mt-0.5" />
             <span>
-              Sua margem líquida estimada de lucro é de <strong className="text-white">{100 - parseFloat(cogsPercent)}%</strong>! Para elevar essa margem, use a inteligência artificial da Luvia para criar combos integrando bebidas e sobremesas, que possuem custos de insumo menores.
+              Sua margem líquida estimada de lucro é de <strong className="text-white">{100 - parseFloat(cogsPercent)}%</strong>! Para elevar essa margem, use a inteligência artificial da Sushi para criar combos integrando bebidas e sobremesas, que possuem custos de insumo menores.
             </span>
           </div>
         </div>

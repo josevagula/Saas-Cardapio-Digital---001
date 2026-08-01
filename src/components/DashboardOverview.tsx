@@ -140,7 +140,7 @@ export default function DashboardOverview() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="luvia-dashboard-overview">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-dashboard-overview">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -165,7 +165,7 @@ export default function DashboardOverview() {
             className="flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 btn-sushi-primary text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-75 w-full sm:w-auto"
           >
             <Sparkles className="w-3.5 h-3.5 text-orange-200 fill-orange-200" />
-            <span>{loadingAI ? "Analisando..." : "Consultar Luvia IA"}</span>
+            <span>{loadingAI ? "Analisando..." : "Consultar Sushi IA"}</span>
           </button>
         </div>
       </div>
@@ -254,7 +254,7 @@ export default function DashboardOverview() {
                 <Sparkles className="w-5 h-5 fill-white" />
               </div>
               <div>
-                <h4 className="text-base font-display font-bold text-[#F5F0EA] tracking-tight">Mapeamento Estratégico Luvia AI</h4>
+                <h4 className="text-base font-display font-bold text-[#F5F0EA] tracking-tight">Mapeamento Estratégico Sushi AI</h4>
                 <p className="text-xs text-[#A8A29A]">Resultados da análise com inteligência artificial para {visualConfig.establishmentName}</p>
               </div>
             </div>

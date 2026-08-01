@@ -85,22 +85,22 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   // Restore states from localStorage or use initial mock data
   const [visualConfig, setVisualConfig] = useState<VisualConfig>(() => {
-    const saved = localStorage.getItem('luvia_visual_config');
+    const saved = localStorage.getItem('sushi_visual_config');
     if (saved) {
       try {
         const config = JSON.parse(saved);
-        if (!config.establishmentName || config.establishmentName.includes('Burger') || config.establishmentName.includes('Grill') || config.establishmentName === 'Luvia Gourmet') {
-          config.establishmentName = 'Luvia Sushi & Temaki';
+        if (!config.establishmentName || config.establishmentName.includes('Burger') || config.establishmentName.includes('Grill') || config.establishmentName === 'Sushi Gourmet') {
+          config.establishmentName = 'Sushi & Temaki';
         }
         if (config.primaryColor === '#EC4899' || config.primaryColor === '#D85A30' || config.primaryColor === '#042C53' || config.primaryColor === '#2563EB') {
           config.primaryColor = '#F97316';
         }
         config.themeMode = 'dark';
-        if (!config.menuSlug || config.menuSlug === 'luvia-burger') {
-          config.menuSlug = 'luvia-sushi';
+        if (!config.menuSlug || config.menuSlug === 'sushi-burger') {
+          config.menuSlug = 'delivery-sushi';
         }
         config.deliveryFee = typeof config.deliveryFee === 'number' && !isNaN(config.deliveryFee) ? config.deliveryFee : (parseFloat(config.deliveryFee as any) || 0);
-        localStorage.setItem('luvia_visual_config', JSON.stringify(config));
+        localStorage.setItem('sushi_visual_config', JSON.stringify(config));
         return config;
       } catch (e) {
         console.error(e);
@@ -110,12 +110,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('luvia_categories');
+    const saved = localStorage.getItem('sushi_categories');
     if (saved) {
       try {
         const parsed: Category[] = JSON.parse(saved);
         if (parsed.some(c => c.name.toLowerCase().includes('burguer') || c.name.toLowerCase().includes('artesanal'))) {
-          localStorage.setItem('luvia_categories', JSON.stringify(INITIAL_CATEGORIES));
+          localStorage.setItem('sushi_categories', JSON.stringify(INITIAL_CATEGORIES));
           return INITIAL_CATEGORIES;
         }
         return parsed;
@@ -125,12 +125,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('luvia_products');
+    const saved = localStorage.getItem('sushi_products');
     if (saved) {
       try {
         const parsed: Product[] = JSON.parse(saved);
         if (parsed.some(p => p.name.toLowerCase().includes('burguer') || p.name.toLowerCase().includes('cheddar') || p.name.toLowerCase().includes('smash'))) {
-          localStorage.setItem('luvia_products', JSON.stringify(INITIAL_PRODUCTS));
+          localStorage.setItem('sushi_products', JSON.stringify(INITIAL_PRODUCTS));
           return INITIAL_PRODUCTS;
         }
         return parsed.map(p => ({
@@ -146,12 +146,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('luvia_orders');
+    const saved = localStorage.getItem('sushi_orders');
     if (saved) {
       try {
         const parsed: Order[] = JSON.parse(saved);
         if (parsed.some(o => o.items?.some(i => i.product?.name?.toLowerCase().includes('burguer')))) {
-          localStorage.setItem('luvia_orders', JSON.stringify(INITIAL_ORDERS));
+          localStorage.setItem('sushi_orders', JSON.stringify(INITIAL_ORDERS));
           return INITIAL_ORDERS;
         }
         return parsed;
@@ -161,12 +161,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [coupons, setCoupons] = useState<Coupon[]>(() => {
-    const saved = localStorage.getItem('luvia_coupons');
+    const saved = localStorage.getItem('sushi_coupons');
     return saved ? JSON.parse(saved) : INITIAL_COUPONS;
   });
 
   const [customers, setCustomers] = useState<CustomerInfo[]>(() => {
-    const saved = localStorage.getItem('luvia_customers');
+    const saved = localStorage.getItem('sushi_customers');
     if (saved) {
       try {
         const parsed: CustomerInfo[] = JSON.parse(saved);
@@ -181,7 +181,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [analytics, setAnalytics] = useState<SalesAnalytics>(() => {
-    const saved = localStorage.getItem('luvia_analytics');
+    const saved = localStorage.getItem('sushi_analytics');
     return saved ? JSON.parse(saved) : INITIAL_ANALYTICS;
   });
 
@@ -200,7 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [currentPlan, setCurrentPlan] = useState<'basic' | 'pro' | 'premium'>('premium');
   const [planStatus, setPlanStatus] = useState<'active' | 'cancelled'>(() => {
-    return localStorage.getItem('luvia_plan_status') === 'cancelled' ? 'cancelled' : 'active';
+    return localStorage.getItem('sushi_plan_status') === 'cancelled' ? 'cancelled' : 'active';
   });
   const [publicView, setPublicView] = useState<'landing' | 'login' | 'trial'>('landing');
 
@@ -218,7 +218,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Sync state to localStorage on modification
   useEffect(() => {
-    safeSetLocalStorage('luvia_visual_config', visualConfig);
+    safeSetLocalStorage('sushi_visual_config', visualConfig);
     if (visualConfig.establishmentName) {
       document.title = `Cardapio Dígital - ${visualConfig.establishmentName}`;
     } else {
@@ -227,38 +227,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [visualConfig]);
 
   useEffect(() => {
-    safeSetLocalStorage('luvia_categories', categories);
+    safeSetLocalStorage('sushi_categories', categories);
   }, [categories]);
 
   useEffect(() => {
-    safeSetLocalStorage('luvia_products', products);
+    safeSetLocalStorage('sushi_products', products);
   }, [products]);
 
   useEffect(() => {
-    safeSetLocalStorage('luvia_orders', orders);
+    safeSetLocalStorage('sushi_orders', orders);
   }, [orders]);
 
   useEffect(() => {
-    safeSetLocalStorage('luvia_coupons', coupons);
+    safeSetLocalStorage('sushi_coupons', coupons);
   }, [coupons]);
 
   useEffect(() => {
-    safeSetLocalStorage('luvia_customers', customers);
+    safeSetLocalStorage('sushi_customers', customers);
   }, [customers]);
 
   useEffect(() => {
-    safeSetLocalStorage('luvia_analytics', analytics);
+    safeSetLocalStorage('sushi_analytics', analytics);
   }, [analytics]);
 
   useEffect(() => {
-    safeSetLocalStorage('luvia_plan_status', planStatus);
+    safeSetLocalStorage('sushi_plan_status', planStatus);
   }, [planStatus]);
 
   // One-time cleanup: earlier versions of this app stored login credentials
   // (including the plaintext password) in localStorage as a mock auth system.
   // Auth is now handled entirely by Supabase, so purge any leftover copy.
   useEffect(() => {
-    localStorage.removeItem('luvia_account_credentials');
+    localStorage.removeItem('sushi_account_credentials');
   }, []);
 
   // Shopping Cart Handlers
@@ -472,7 +472,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return {
         description: `Delicioso ${productName} da nossa seção de ${category}. Produzido com técnicas exclusivas e ingredientes premium selecionados por nosso chef, incluindo ${ingredients.length > 0 ? ingredients.join(', ') : 'nossos temperos caseiros'}. Prato ideal para quem busca requinte e satisfação total.`,
         copy: `📣 Hora de se deliciar! O nosso maravilhoso ${productName} já está fazendo sucesso e você não pode ficar de fora. Faça seu pedido com apenas alguns cliques! 🍔✨`,
-        keywords: [productName.toLowerCase(), category.toLowerCase(), "delicia", "luvia", "premium"]
+        keywords: [productName.toLowerCase(), category.toLowerCase(), "delicia", "sushi", "premium"]
       };
     }
   };
@@ -492,7 +492,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const realNames = products.map(p => p.name).filter(Boolean);
       const fallbackCombos = realNames.length >= 2
         ? [{
-            name: `Combo Luvia Supreme: ${realNames[0]} + ${realNames[1]}`,
+            name: `Combo Sushi Supreme: ${realNames[0]} + ${realNames[1]}`,
             products: [realNames[0], realNames[1]],
             discountPercent: 15,
             description: "Uma sugestão perfeita que combina dois produtos já cadastrados no seu cardápio por um valor incrível."

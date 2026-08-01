@@ -35,7 +35,7 @@ export default function VisualCustomizer() {
   const [themeMode, setThemeMode] = useState(visualConfig.themeMode);
   const [logoUrl, setLogoUrl] = useState(visualConfig.logoUrl);
   const [bannerUrl, setBannerUrl] = useState(visualConfig.bannerUrl);
-  const [menuSlug, setMenuSlug] = useState(visualConfig.menuSlug || 'luvia-sushi');
+  const [menuSlug, setMenuSlug] = useState(visualConfig.menuSlug || 'delivery-sushi');
   const [copied, setCopied] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
@@ -101,7 +101,7 @@ export default function VisualCustomizer() {
 
   const handleCopyLink = () => {
     const formattedSlug = menuSlug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
-    const url = `${window.location.origin}${window.location.pathname}?menu=${formattedSlug || 'luvia-sushi'}`;
+    const url = `${window.location.origin}${window.location.pathname}?menu=${formattedSlug || 'delivery-sushi'}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -112,7 +112,7 @@ export default function VisualCustomizer() {
     try {
       const formattedSlug = menuSlug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
       setVisualConfig({
-        establishmentName: establishmentName || 'Luvia Sushi & Temaki',
+        establishmentName: establishmentName || 'Sushi & Temaki',
         phone: phone || '',
         address: address || '',
         deliveryFee: parseFloat(deliveryFee) || 0,
@@ -122,7 +122,7 @@ export default function VisualCustomizer() {
         themeMode: themeMode || 'dark',
         logoUrl: logoUrl || '',
         bannerUrl: bannerUrl || '',
-        menuSlug: formattedSlug || 'luvia-sushi',
+        menuSlug: formattedSlug || 'delivery-sushi',
         openingTime,
         closingTime,
         openingDays,
@@ -138,7 +138,7 @@ export default function VisualCustomizer() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="luvia-visual-customizer">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-visual-customizer">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>

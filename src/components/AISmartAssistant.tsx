@@ -34,12 +34,12 @@ export default function AISmartAssistant() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="luvia-ai-assistant">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-ai-assistant">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <span className="text-[10px] font-mono font-bold text-[#FB923C] uppercase tracking-widest">Inteligência de Mercado</span>
-          <h2 className="text-3xl font-display font-extrabold text-[#F5F0EA] tracking-tight mt-1">Luvia AI Studio</h2>
+          <h2 className="text-3xl font-display font-extrabold text-[#F5F0EA] tracking-tight mt-1">Sushi AI Studio</h2>
           <p className="text-xs text-[#A8A29A] mt-1">Gere combos lucrativos, sugestões de desconto inteligentes e automatize o marketing para suas redes sociais.</p>
         </div>
 

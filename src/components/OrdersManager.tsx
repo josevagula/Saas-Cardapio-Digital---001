@@ -95,7 +95,7 @@ export default function OrdersManager() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="luvia-orders-manager">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-orders-manager">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -267,7 +267,7 @@ export default function OrdersManager() {
               <div className="flex items-center gap-2.5">
                 <MessageSquare className="w-5 h-5 fill-white" />
                 <div>
-                  <h3 className="font-display font-bold">Simulador de WhatsApp Luvia</h3>
+                  <h3 className="font-display font-bold">Simulador de WhatsApp Sushi</h3>
                   <p className="text-[10px] text-orange-100 font-mono uppercase tracking-wider">Mapeamento de Automação de Status</p>
                 </div>
               </div>
@@ -283,7 +283,7 @@ export default function OrdersManager() {
               <div className="flex items-center gap-2.5 text-xs text-slate-300 bg-[#1F1209] p-3 rounded-xl border border-[#4A2A10]">
                 <AlertCircle className="w-4.5 h-4.5 text-[#FB923C] shrink-0" />
                 <span>
-                  O sistema Luvia dispara webhooks integrados com a API do WhatsApp Business oficial do estabelecimento para atualizar o cliente instantaneamente.
+                  O sistema Sushi dispara webhooks integrados com a API do WhatsApp Business oficial do estabelecimento para atualizar o cliente instantaneamente.
                 </span>
               </div>
 
@@ -316,7 +316,7 @@ export default function OrdersManager() {
 
               <button
                 onClick={() => {
-                  alert("Notificação enviada com sucesso no simulador Luvia!");
+                  alert("Notificação enviada com sucesso no simulador Sushi!");
                   setSelectedOrderForWhats(null);
                 }}
                 className="flex items-center gap-1.5 px-4 py-2 btn-sushi-primary text-white text-xs font-bold shadow-md cursor-pointer"

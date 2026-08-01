@@ -309,7 +309,7 @@ export default function PublicMenuPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen font-sans bg-[#0A0A0A] text-white selection:bg-[#FF6A00] selection:text-white" id="luvia-public-menu">
+    <div className="flex-1 flex flex-col min-h-screen font-sans bg-[#0A0A0A] text-white selection:bg-[#FF6A00] selection:text-white" id="sushi-public-menu">
       
       {/* ==================== 1. STICKY TOP NAVBAR ==================== */}
       <header className="py-2.5 px-3.5 sm:py-3 sm:px-8 border-b border-[#22201D] flex items-center justify-between shrink-0 sticky top-0 z-30 bg-[#0F0D0B]/95 backdrop-blur-md">

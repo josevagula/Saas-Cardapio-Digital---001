@@ -416,7 +416,7 @@ export const BLANK_ANALYTICS: SalesAnalytics = {
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'basic',
-    name: "Luvia Bronze (Essencial)",
+    name: "Sushi Bronze (Essencial)",
     price: 69.90,
     features: [
       "Cardápio Digital para Sushi e Delivery",
@@ -428,7 +428,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   },
   {
     id: 'pro',
-    name: "Luvia Prata (Automação)",
+    name: "Sushi Prata (Automação)",
     price: 149.90,
     features: [
       "Tudo do Essencial",
@@ -441,7 +441,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   },
   {
     id: 'premium',
-    name: "Luvia Ouro (Inteligência)",
+    name: "Sushi Ouro (Inteligência)",
     price: 249.90,
     features: [
       "Tudo do Automação",

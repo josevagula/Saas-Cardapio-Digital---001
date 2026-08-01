@@ -54,7 +54,7 @@ app.post("/api/gemini/generate-description", async (req, res) => {
     return res.json({
       description: `Experimente o nosso incrível ${productName}! Cuidadosamente preparado com ${ingredients && ingredients.length > 0 ? ingredients.join(", ") : "ingredientes frescos de alta qualidade"}. Uma explosão de sabores perfeita para saciar sua fome e encantar o seu paladar.`,
       copy: `🔥 Procurando o sabor ideal? Nosso ${productName} une frescor e tradição em cada mordida. Peça agora e receba quentinho em casa com entrega super rápida!`,
-      keywords: [productName.toLowerCase(), category.toLowerCase(), "delivery", "saboroso", "luvia-menu"]
+      keywords: [productName.toLowerCase(), category.toLowerCase(), "delivery", "saboroso", "sushi-menu"]
     });
   }
 
@@ -110,7 +110,7 @@ function buildFallbackCombos(names: string[]) {
     }];
   }
   const combos = [{
-    name: `Combo Luvia Mega: ${names[0]} + ${names[1]}`,
+    name: `Combo Sushi Mega: ${names[0]} + ${names[1]}`,
     products: [names[0], names[1]],
     discountPercent: 15,
     description: "A união perfeita de dois itens já cadastrados no seu cardápio por um preço super especial."

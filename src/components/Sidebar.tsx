@@ -34,10 +34,10 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
     { id: 'customers', label: 'Clientes & Fidelidade', icon: Users },
     { id: 'financial', label: 'Financeiro & Cupons', icon: TrendingUp },
     { id: 'customizer', label: 'Personalização', icon: Palette },
-    { id: 'ai_assistant', label: 'Luvia AI Studio', icon: Sparkles, highlight: true },
+    { id: 'ai_assistant', label: 'Sushi AI Studio', icon: Sparkles, highlight: true },
   ];
 
-  const activeSlug = visualConfig.menuSlug || 'luvia-sushi';
+  const activeSlug = visualConfig.menuSlug || 'delivery-sushi';
 
   const handleNavClick = (viewId: string) => {
     setCurrentView(viewId);
@@ -51,7 +51,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           ? 'w-64 bg-[#141210] text-slate-100 flex flex-col h-full font-sans border-r border-[#2A211A]' 
           : 'hidden md:flex w-64 bg-[#141210] text-slate-100 flex-col h-screen shrink-0 font-sans border-r border-[#2A211A]'
       }`} 
-      id="luvia-admin-sidebar"
+      id="sushi-admin-sidebar"
     >
       {/* Brand Header */}
       <div className="p-5 border-b border-[#2A211A] flex items-center justify-between bg-sushi-texture">

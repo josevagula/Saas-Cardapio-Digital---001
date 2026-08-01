@@ -32,7 +32,7 @@ export default function AuthPages() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0C0A08] flex flex-col lg:grid lg:grid-cols-12 min-h-screen font-sans text-slate-100" id="luvia-auth-pages">
+    <div className="flex-1 overflow-y-auto bg-[#0C0A08] flex flex-col lg:grid lg:grid-cols-12 min-h-screen font-sans text-slate-100" id="sushi-auth-pages">
       {/* Brand logo bar on mobile only */}
       <div className="lg:hidden p-6 flex justify-between items-center bg-[#141210] border-b border-[#2A211A]">
         <div className="flex items-center gap-2.5">
@@ -58,7 +58,7 @@ export default function AuthPages() {
               {authMode === 'login' ? 'Bem-vindo de volta' : 'Crie seu cardápio hoje'}
             </span>
             <h2 className="text-2xl font-display font-extrabold text-[#F5F0EA] tracking-tight">
-              {authMode === 'login' ? 'Acessar minha conta' : 'Criar minha conta Luvia'}
+              {authMode === 'login' ? 'Acessar minha conta' : 'Criar minha conta Sushi'}
             </h2>
             <p className="text-xs text-[#A8A29A] mt-1">
               {authMode === 'login' ? 'Digite suas credenciais abaixo para carregar seu delivery.' : 'Inicie seu período de teste grátis de 7 dias sem compromisso.'}
@@ -153,7 +153,7 @@ export default function AuthPages() {
       <div className="hidden lg:col-span-7 bg-[#0C0A08] text-slate-100 p-12 lg:flex flex-col justify-between">
         <div className="inline-flex items-center gap-2 bg-[#1F1209] text-[#FB923C] px-3.5 py-1.5 rounded-full text-xs font-mono font-bold border border-[#4A2A10] self-start shadow-xs">
           <Sparkles className="w-3.5 h-3.5 text-[#FB923C]" />
-          <span>Luvia AI Studio SaaS Engine</span>
+          <span>Sushi AI Studio SaaS Engine</span>
         </div>
 
         <div className="space-y-6 max-w-lg">

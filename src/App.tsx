@@ -49,7 +49,7 @@ export default function App() {
       <div className="relative h-screen w-screen overflow-hidden">
         <div
           className={`flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-[#0A0F0D] text-slate-100 font-sans transition-all duration-300 ${planCancelled ? 'blur-md pointer-events-none select-none' : ''}`}
-          id="luvia-admin-workspace"
+          id="sushi-admin-workspace"
           aria-hidden={planCancelled}
         >
           {/* Desktop Sidebar (hidden on mobile) */}
