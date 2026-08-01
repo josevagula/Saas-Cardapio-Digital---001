@@ -16,6 +16,8 @@ import {
   fetchWorkspace,
   fetchPublicMenuBySlug,
   insertPublicOrder,
+  incrementProductSales,
+  recordCustomerOrder,
   syncCategories,
   syncProducts,
   syncOrders,
@@ -510,12 +512,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Update orders list (local state, e.g. for the confirmation screen)
     setOrders(prev => [newOrder, ...prev]);
 
-    // Save the order to the restaurant's own Supabase orders table — a
-    // one-shot insert, not the admin-side syncOrders resync, since this
-    // customer's local `orders` array only ever holds order(s) they
-    // personally placed here, never the restaurant's full history.
+    // Save the order — and its side effects (sales count, loyalty points) —
+    // to the restaurant's own Supabase account. One-shot calls, not the
+    // admin-side syncOrders/syncProducts/syncCustomers resyncs, since this
+    // customer's local state only ever holds their own order, never the
+    // restaurant's full history.
     if (publicMenuOwnerId) {
       insertPublicOrder(publicMenuOwnerId, newOrder);
+      cart.forEach(item => {
+        incrementProductSales(publicMenuOwnerId, item.product.id, item.quantity);
+      });
+      recordCustomerOrder(publicMenuOwnerId, customer, pointsEarned);
     }
 
     // Update customer lists and loyalty points

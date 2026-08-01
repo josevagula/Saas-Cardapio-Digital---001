@@ -341,6 +341,36 @@ export async function insertPublicOrder(ownerId: string, order: Order) {
   if (error) console.error('Failed to save order to Supabase:', error.message);
 }
 
+// Both call narrowly-scoped SECURITY DEFINER functions (see the
+// public_order_side_effects migration) rather than updating products/
+// customers directly — anon has no general UPDATE/INSERT grant on those
+// tables, so a stranger can't rewrite a product's price or tamper with
+// another customer's loyalty points.
+export async function incrementProductSales(ownerId: string, productId: string, quantity: number) {
+  const { error } = await supabase.rpc('increment_product_sales', {
+    p_user_id: ownerId,
+    p_product_id: productId,
+    p_quantity: quantity
+  });
+  if (error) console.error('Failed to update product sales count:', error.message);
+}
+
+export async function recordCustomerOrder(
+  ownerId: string,
+  customer: { name: string; phone: string; email?: string; address?: string },
+  points: number
+) {
+  const { error } = await supabase.rpc('record_customer_order', {
+    p_user_id: ownerId,
+    p_name: customer.name,
+    p_phone: customer.phone,
+    p_email: customer.email || '',
+    p_address: customer.address || '',
+    p_points: points
+  });
+  if (error) console.error('Failed to update customer loyalty record:', error.message);
+}
+
 export async function syncVisualConfig(userId: string, visualConfig: VisualConfig) {
   const { error } = await supabase.from('visual_configs').upsert(visualConfigToRow(visualConfig, userId), { onConflict: 'user_id' });
   if (error) console.error('Failed to save visual config to Supabase:', error.message);
