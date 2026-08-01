@@ -12,6 +12,16 @@ import {
   BLANK_ANALYTICS
 } from '../data/mockData';
 import { useAuth } from './AuthContext';
+import {
+  fetchWorkspace,
+  syncCategories,
+  syncProducts,
+  syncOrders,
+  syncCoupons,
+  syncCustomers,
+  syncVisualConfig,
+  syncAnalytics
+} from '../lib/workspaceRepo';
 
 interface AppContextType {
   visualConfig: VisualConfig;
@@ -224,11 +234,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Workspace data (visual config, catalog, orders, etc.) is namespaced per
-  // signed-in Supabase account once one is known, instead of one shared key
-  // per browser — otherwise a second account signing in on the same device
-  // would see the first account's (or the built-in demo's) data.
-  const scopedKey = (base: string) => (userId ? `sushi_${base}_${userId}` : `sushi_${base}`);
+  // Workspace data (visual config, catalog, orders, etc.) lives in Supabase,
+  // scoped to the signed-in account, once one is known — real, persistent
+  // storage instead of a browser-local blob, and isolated per account so a
+  // second account signing in on the same device never sees the first
+  // account's (or the built-in demo's) data. Anonymous browsing (the public
+  // menu preview / landing page, no Supabase session) keeps using the old
+  // flat localStorage keys below, since there's no account to save under.
+  const scopedKey = (base: string) => `sushi_${base}`;
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const loadedUserIdRef = useRef<string | null | undefined>(undefined);
 
@@ -241,29 +254,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadedUserIdRef.current = userId;
 
     if (userId) {
-      const readJSON = (key: string) => {
-        const saved = localStorage.getItem(key);
-        if (!saved) return undefined;
-        try { return JSON.parse(saved); } catch { return undefined; }
-      };
-      setVisualConfig(readJSON(scopedKey('visual_config')) ?? BLANK_VISUAL_CONFIG);
-      setCategories(readJSON(scopedKey('categories')) ?? []);
-      setProducts(readJSON(scopedKey('products')) ?? []);
-      setOrders(readJSON(scopedKey('orders')) ?? []);
-      setCoupons(readJSON(scopedKey('coupons')) ?? []);
-      setCustomers(readJSON(scopedKey('customers')) ?? []);
-      setAnalytics(readJSON(scopedKey('analytics')) ?? BLANK_ANALYTICS);
+      setWorkspaceReady(false);
+      fetchWorkspace(userId).then(data => {
+        setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
+        setCategories(data.categories);
+        setProducts(data.products);
+        setOrders(data.orders);
+        setCoupons(data.coupons);
+        setCustomers(data.customers);
+        setAnalytics(data.analytics ?? BLANK_ANALYTICS);
+        setWorkspaceReady(true);
+      });
+      return;
     }
     setWorkspaceReady(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, authLoading]);
 
-  // Sync state to localStorage on modification (skipped until the
+  // Sync state to Supabase (or, for anonymous/no-account browsing, to the
+  // old flat localStorage keys) on modification — skipped until the
   // account-scoped workspace above has finished loading, so we never
-  // overwrite a saved account's data with another account's stale state).
+  // overwrite a saved account's data with another account's stale state.
   useEffect(() => {
     if (!workspaceReady) return;
-    safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
+    if (userId) {
+      syncVisualConfig(userId, visualConfig);
+    } else {
+      safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
+    }
     if (visualConfig.establishmentName) {
       document.title = `Cardapio Dígital - ${visualConfig.establishmentName}`;
     } else {
@@ -273,32 +290,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!workspaceReady) return;
-    safeSetLocalStorage(scopedKey('categories'), categories);
+    if (userId) {
+      syncCategories(userId, categories);
+    } else {
+      safeSetLocalStorage(scopedKey('categories'), categories);
+    }
   }, [categories, workspaceReady, userId]);
 
   useEffect(() => {
     if (!workspaceReady) return;
-    safeSetLocalStorage(scopedKey('products'), products);
+    if (userId) {
+      syncProducts(userId, products);
+    } else {
+      safeSetLocalStorage(scopedKey('products'), products);
+    }
   }, [products, workspaceReady, userId]);
 
   useEffect(() => {
     if (!workspaceReady) return;
-    safeSetLocalStorage(scopedKey('orders'), orders);
+    if (userId) {
+      syncOrders(userId, orders);
+    } else {
+      safeSetLocalStorage(scopedKey('orders'), orders);
+    }
   }, [orders, workspaceReady, userId]);
 
   useEffect(() => {
     if (!workspaceReady) return;
-    safeSetLocalStorage(scopedKey('coupons'), coupons);
+    if (userId) {
+      syncCoupons(userId, coupons);
+    } else {
+      safeSetLocalStorage(scopedKey('coupons'), coupons);
+    }
   }, [coupons, workspaceReady, userId]);
 
   useEffect(() => {
     if (!workspaceReady) return;
-    safeSetLocalStorage(scopedKey('customers'), customers);
+    if (userId) {
+      syncCustomers(userId, customers);
+    } else {
+      safeSetLocalStorage(scopedKey('customers'), customers);
+    }
   }, [customers, workspaceReady, userId]);
 
   useEffect(() => {
     if (!workspaceReady) return;
-    safeSetLocalStorage(scopedKey('analytics'), analytics);
+    if (userId) {
+      syncAnalytics(userId, analytics);
+    } else {
+      safeSetLocalStorage(scopedKey('analytics'), analytics);
+    }
   }, [analytics, workspaceReady, userId]);
 
   useEffect(() => {
