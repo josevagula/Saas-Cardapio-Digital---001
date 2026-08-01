@@ -470,7 +470,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const generateAIDescription = async (productName: string, category: string, ingredients: string[]) => {
     try {
-      const response = await fetch('/api/ai/generate-description', {
+      const response = await fetch('/api/gemini/generate-description', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productName, category, ingredients })
@@ -490,7 +490,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const suggestAICombos = async () => {
     try {
-      const response = await fetch('/api/ai/suggest-promotions', {
+      const response = await fetch('/api/gemini/suggest-promotions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products })
@@ -530,7 +530,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const lowPerformingProducts = sorted.slice(-2).map(p => ({ name: p.name, sales: p.salesCount }));
 
     try {
-      const response = await fetch('/api/ai/analyze-sales', {
+      const response = await fetch('/api/gemini/analyze-sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

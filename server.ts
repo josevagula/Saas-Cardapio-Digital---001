@@ -1,48 +1,36 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import OpenAI from "openai";
+import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 app.use(express.json());
 
 // Initialize AI Client Lazily
-let aiClient: OpenAI | null = null;
+let aiClient: GoogleGenAI | null = null;
 
 function getAIClient() {
   if (!aiClient) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey || apiKey === "MY_OPENAI_API_KEY" || apiKey.trim() === "") {
-      console.warn("OPENAI_API_KEY is not defined in environment secrets. AI features will run with premium template simulation.");
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.trim() === "") {
+      console.warn("GEMINI_API_KEY is not defined in environment secrets. AI features will run with premium template simulation.");
       return null;
     }
-    aiClient = new OpenAI({ apiKey });
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   }
   return aiClient;
-}
-
-// Calls OpenAI's Chat Completions API in JSON mode and returns the parsed object.
-async function askAIForJSON(ai: OpenAI, systemPrompt: string, userPrompt: string) {
-  const completion = await ai.chat.completions.create({
-    model: OPENAI_MODEL,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
-    ]
-  });
-
-  const text = completion.choices[0]?.message?.content;
-  if (!text) {
-    throw new Error("Empty response from OpenAI");
-  }
-  return JSON.parse(text);
 }
 
 // ==================== API ROUTES ====================
@@ -53,7 +41,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // AI 1: Product Description Generator
-app.post("/api/ai/generate-description", async (req, res) => {
+app.post("/api/gemini/generate-description", async (req, res) => {
   const { productName, category, ingredients } = req.body;
 
   if (!productName || !category) {
@@ -71,17 +59,34 @@ app.post("/api/ai/generate-description", async (req, res) => {
   }
 
   try {
-    const parsed = await askAIForJSON(
-      ai,
-      "Você é um copywriter especialista em cardápios de delivery. Responda SEMPRE em JSON válido com exatamente as chaves: description (string), copy (string) e keywords (array de 5 strings). Todo o texto deve estar em português do Brasil.",
-      `Gere uma descrição deliciosa, uma copy de vendas persuasiva para o WhatsApp e 5 palavras-chave de busca para um item com os seguintes detalhes:
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: `Gere uma descrição deliciosa, uma copy de vendas persuasiva para o WhatsApp e 5 palavras-chave de busca para um item com os seguintes detalhes:
 Nome do Produto: ${productName}
 Categoria: ${category}
-Ingredientes: ${ingredients && ingredients.length > 0 ? ingredients.join(", ") : "Ingredientes selecionados da casa"}`
-    );
-    return res.json(parsed);
+Ingredientes: ${ingredients && ingredients.length > 0 ? ingredients.join(", ") : "Ingredientes selecionados da casa"}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            description: { type: Type.STRING, description: "A detailed and mouth-watering product description in Portuguese." },
+            copy: { type: Type.STRING, description: "A highly persuasive sales pitch copy suitable for social media or WhatsApp in Portuguese." },
+            keywords: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 relevant search or SEO keywords." }
+          },
+          required: ["description", "copy", "keywords"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (text) {
+      return res.json(JSON.parse(text));
+    } else {
+      throw new Error("Empty response from Gemini");
+    }
   } catch (error: any) {
-    console.error("Erro na API da OpenAI:", error);
+    console.error("Erro na API do Gemini:", error);
     // Graceful error recovery with custom fallback
     return res.json({
       description: `Incrível ${productName} da categoria ${category}. Preparado com maestria usando nossos melhores ingredientes selecionados. Sabor irresistível que garante uma experiência gastronômica memorável.`,
@@ -138,7 +143,7 @@ function sanitizeCombos(rawCombos: any[], validNames: string[]) {
 }
 
 // AI 2: AI Promotion Suggester
-app.post("/api/ai/suggest-promotions", async (req, res) => {
+app.post("/api/gemini/suggest-promotions", async (req, res) => {
   const { products } = req.body;
 
   if (!products || !Array.isArray(products) || products.length === 0) {
@@ -157,14 +162,50 @@ app.post("/api/ai/suggest-promotions", async (req, res) => {
   }
 
   try {
-    const parsed = await askAIForJSON(
-      ai,
-      `Você é um estrategista de marketing para restaurantes. Responda SEMPRE em JSON válido com exatamente as chaves: combos (array de objetos com name, products, discountPercent, description), bestHours (array de strings) e marketingStrategy (string). Todo o texto deve estar em português do Brasil.
-REGRA OBRIGATÓRIA: o campo "products" de cada combo deve conter APENAS nomes copiados EXATAMENTE da lista de produtos do cardápio fornecida pelo usuário. NUNCA invente, altere ou sugira produtos que não estejam nessa lista.`,
-      `Com base EXCLUSIVAMENTE na seguinte lista de produtos já cadastrados no cardápio do restaurante, sugira 2 combos promocionais altamente atrativos, os melhores dias/horários para aplicar descontos (para aumentar o fluxo em dias lentos), e uma estratégia de marketing inteligente.
-Produtos do cardápio: ${JSON.stringify(productNames)}`
-    );
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: `Com base EXCLUSIVAMENTE na seguinte lista de produtos já cadastrados no cardápio do restaurante, sugira 2 combos promocionais altamente atrativos, os melhores dias/horários para aplicar descontos (para aumentar o fluxo em dias lentos), e uma estratégia de marketing inteligente.
+REGRA OBRIGATÓRIA: use apenas os nomes de produtos exatamente como aparecem na lista abaixo. NUNCA invente, altere ou sugira produtos que não estejam nesta lista.
+Produtos do cardápio: ${JSON.stringify(productNames)}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            combos: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING, description: "Nome atrativo e comercial do combo." },
+                  products: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Lista de nomes dos produtos inclusos, copiados EXATAMENTE da lista de produtos do cardápio fornecida — nunca produtos inventados." },
+                  discountPercent: { type: Type.INTEGER, description: "Porcentagem recomendada de desconto do combo." },
+                  description: { type: Type.STRING, description: "Explicação do porquê esse combo é irresistível." }
+                },
+                required: ["name", "products", "discountPercent", "description"]
+              }
+            },
+            bestHours: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "Lista de horários ou dias recomendados para promoções relâmpago."
+            },
+            marketingStrategy: {
+              type: Type.STRING,
+              description: "Uma estratégia curta de copy e divulgação para reter clientes."
+            }
+          },
+          required: ["combos", "bestHours", "marketingStrategy"]
+        }
+      }
+    });
 
+    const text = response.text;
+    if (!text) {
+      throw new Error("Empty response from Gemini");
+    }
+
+    const parsed = JSON.parse(text);
     // Never trust the model blindly: strip out any suggested product that isn't
     // actually registered in the cardápio before returning the combos.
     const sanitized = sanitizeCombos(parsed.combos, productNames);
@@ -183,7 +224,7 @@ Produtos do cardápio: ${JSON.stringify(productNames)}`
 });
 
 // AI 3: AI Sales Analyst
-app.post("/api/ai/analyze-sales", async (req, res) => {
+app.post("/api/gemini/analyze-sales", async (req, res) => {
   const { salesSummary, topProducts, lowPerformingProducts } = req.body;
 
   const ai = getAIClient();
@@ -202,15 +243,33 @@ app.post("/api/ai/analyze-sales", async (req, res) => {
   }
 
   try {
-    const parsed = await askAIForJSON(
-      ai,
-      "Você é um analista de dados especialista em SaaS de cardápios e delivery. Responda SEMPRE em JSON válido com exatamente as chaves: lowPerformingAnalysis (string), championsAnalysis (string), opportunities (array de 3 strings) e forecastSummary (string). Todo o texto deve estar em português do Brasil.",
-      `Analise os seguintes dados de vendas de uma plataforma SaaS de cardápios e deliverys, gerando conselhos e recomendações estratégicas acionáveis:
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: `Analise os seguintes dados de vendas de uma plataforma SaaS de cardápios e deliverys, gerando conselhos e recomendações estratégicas acionáveis:
 Resumo de Vendas: ${JSON.stringify(salesSummary)}
 Principais Vendedores: ${JSON.stringify(topProducts)}
-Produtos com Menor Desempenho: ${JSON.stringify(lowPerformingProducts)}`
-    );
-    return res.json(parsed);
+Produtos com Menor Desempenho: ${JSON.stringify(lowPerformingProducts)}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            lowPerformingAnalysis: { type: Type.STRING, description: "Análise profunda de porquê alguns produtos vendem pouco e como reverter o quadro." },
+            championsAnalysis: { type: Type.STRING, description: "Explicação das forças dos produtos mais vendidos e como usá-los para puxar outras vendas." },
+            opportunities: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 recomendações operacionais e estratégicas para alavancar faturamento." },
+            forecastSummary: { type: Type.STRING, description: "Previsão baseada no ticket médio e frequência de pedidos." }
+          },
+          required: ["lowPerformingAnalysis", "championsAnalysis", "opportunities", "forecastSummary"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (text) {
+      return res.json(JSON.parse(text));
+    } else {
+      throw new Error("Empty response from Gemini");
+    }
   } catch (error: any) {
     console.error("Erro na Análise de Vendas:", error);
     return res.json({
