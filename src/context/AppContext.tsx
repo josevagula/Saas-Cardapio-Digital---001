@@ -15,6 +15,7 @@ import { useAuth } from './AuthContext';
 import {
   fetchWorkspace,
   fetchPublicMenuBySlug,
+  insertPublicOrder,
   syncCategories,
   syncProducts,
   syncOrders,
@@ -249,6 +250,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const scopedKey = (base: string) => `sushi_${base}`;
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const loadedUserIdRef = useRef<string | null | undefined>(undefined);
+  // The restaurant account that owns the currently-viewed public menu link
+  // (resolved from the slug below) — lets createOrder() save a customer's
+  // order under that specific restaurant even though the customer has no
+  // account/session of their own.
+  const [publicMenuOwnerId, setPublicMenuOwnerId] = useState<string | null>(null);
 
   useEffect(() => {
     // A public menu link resolves by slug, independent of any signed-in
@@ -259,6 +265,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setWorkspaceReady(false);
       fetchPublicMenuBySlug(publicMenuSlug).then(data => {
         if (data) {
+          setPublicMenuOwnerId(data.ownerId);
           setVisualConfig(data.visualConfig);
           setCategories(data.categories);
           setProducts(data.products);
@@ -500,8 +507,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
-    // Update orders list
+    // Update orders list (local state, e.g. for the confirmation screen)
     setOrders(prev => [newOrder, ...prev]);
+
+    // Save the order to the restaurant's own Supabase orders table — a
+    // one-shot insert, not the admin-side syncOrders resync, since this
+    // customer's local `orders` array only ever holds order(s) they
+    // personally placed here, never the restaurant's full history.
+    if (publicMenuOwnerId) {
+      insertPublicOrder(publicMenuOwnerId, newOrder);
+    }
 
     // Update customer lists and loyalty points
     setCustomers(prev => {

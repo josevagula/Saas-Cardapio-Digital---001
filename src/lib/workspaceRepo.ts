@@ -290,6 +290,7 @@ export const syncCustomers = (userId: string, customers: CustomerInfo[]) =>
 // signed in — this is what lets a real customer open the link on their own
 // phone and see that specific restaurant, not whatever's cached locally.
 export async function fetchPublicMenuBySlug(slug: string): Promise<{
+  ownerId: string;
   visualConfig: VisualConfig;
   categories: Category[];
   products: Product[];
@@ -319,11 +320,25 @@ export async function fetchPublicMenuBySlug(slug: string): Promise<{
   if (couponsRes.error) console.error('Failed to load public menu coupons:', couponsRes.error.message);
 
   return {
+    ownerId: userId,
     visualConfig: rowToVisualConfig(configRow),
     categories: (categoriesRes.data || []).map(rowToCategory),
     products: (productsRes.data || []).map(rowToProduct),
     coupons: (couponsRes.data || []).map(rowToCoupon)
   };
+}
+
+// One-shot insert for an order placed by an anonymous customer on a public
+// menu link — deliberately NOT the upsert-all/delete-missing syncOrders
+// helper above, since a customer's local `orders` state only ever holds the
+// order(s) they personally just placed, never the restaurant's full order
+// history (that's never fetched for the public view, to avoid leaking every
+// past customer's name/phone/address to anyone with the menu link).
+// Reconciling against that partial local list would delete the rest of the
+// restaurant's real orders.
+export async function insertPublicOrder(ownerId: string, order: Order) {
+  const { error } = await supabase.from('orders').insert(orderToRow(order, ownerId));
+  if (error) console.error('Failed to save order to Supabase:', error.message);
 }
 
 export async function syncVisualConfig(userId: string, visualConfig: VisualConfig) {
