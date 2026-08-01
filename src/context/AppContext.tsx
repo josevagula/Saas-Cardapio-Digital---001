@@ -14,6 +14,7 @@ import {
 import { useAuth } from './AuthContext';
 import {
   fetchWorkspace,
+  fetchPublicMenuBySlug,
   syncCategories,
   syncProducts,
   syncOrders,
@@ -100,6 +101,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // (or the built-in demo's) products/orders/etc.
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id ?? null;
+  // Present only on a public menu link (?menu=<slug>) — resolves to that
+  // specific account's data via Supabase below, regardless of who's viewing
+  // it or whether they're signed in at all.
+  const publicMenuSlug = new URLSearchParams(window.location.search).get('menu');
 
   // Restore states from localStorage or use initial mock data
   const [visualConfig, setVisualConfig] = useState<VisualConfig>(() => {
@@ -246,6 +251,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadedUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
+    // A public menu link resolves by slug, independent of any signed-in
+    // session — takes priority over the account-based load below so a
+    // customer browsing someone else's restaurant never sees their own
+    // account's data (or vice versa).
+    if (publicMenuSlug) {
+      setWorkspaceReady(false);
+      fetchPublicMenuBySlug(publicMenuSlug).then(data => {
+        if (data) {
+          setVisualConfig(data.visualConfig);
+          setCategories(data.categories);
+          setProducts(data.products);
+          setCoupons(data.coupons);
+        }
+        setWorkspaceReady(true);
+      });
+      return;
+    }
+
     if (authLoading) return;
     if (loadedUserIdRef.current === userId) {
       setWorkspaceReady(true);
@@ -268,7 +291,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setWorkspaceReady(true);
-  }, [userId, authLoading]);
+  }, [userId, authLoading, publicMenuSlug]);
 
   // Sync state to Supabase (or, for anonymous/no-account browsing, to the
   // old flat localStorage keys) on modification — skipped until the

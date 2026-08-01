@@ -285,6 +285,47 @@ export const syncCoupons = (userId: string, coupons: Coupon[]) =>
 export const syncCustomers = (userId: string, customers: CustomerInfo[]) =>
   syncRows('customers', userId, customers.map(c => customerToRow(c, userId)), 'id', 'id');
 
+// Resolves a public menu link (?menu=<slug>) to its owning account's
+// branding, catalog and active coupons, without requiring the viewer to be
+// signed in — this is what lets a real customer open the link on their own
+// phone and see that specific restaurant, not whatever's cached locally.
+export async function fetchPublicMenuBySlug(slug: string): Promise<{
+  visualConfig: VisualConfig;
+  categories: Category[];
+  products: Product[];
+  coupons: Coupon[];
+} | null> {
+  const { data: configRow, error: configError } = await supabase
+    .from('visual_configs')
+    .select('*')
+    .eq('menu_slug', slug)
+    .maybeSingle();
+
+  if (configError) {
+    console.error('Failed to resolve public menu by slug:', configError.message);
+    return null;
+  }
+  if (!configRow) return null;
+
+  const userId = configRow.user_id as string;
+  const [categoriesRes, productsRes, couponsRes] = await Promise.all([
+    supabase.from('categories').select('*').eq('user_id', userId),
+    supabase.from('products').select('*').eq('user_id', userId),
+    supabase.from('coupons').select('*').eq('user_id', userId).eq('active', true)
+  ]);
+
+  if (categoriesRes.error) console.error('Failed to load public menu categories:', categoriesRes.error.message);
+  if (productsRes.error) console.error('Failed to load public menu products:', productsRes.error.message);
+  if (couponsRes.error) console.error('Failed to load public menu coupons:', couponsRes.error.message);
+
+  return {
+    visualConfig: rowToVisualConfig(configRow),
+    categories: (categoriesRes.data || []).map(rowToCategory),
+    products: (productsRes.data || []).map(rowToProduct),
+    coupons: (couponsRes.data || []).map(rowToCoupon)
+  };
+}
+
 export async function syncVisualConfig(userId: string, visualConfig: VisualConfig) {
   const { error } = await supabase.from('visual_configs').upsert(visualConfigToRow(visualConfig, userId), { onConflict: 'user_id' });
   if (error) console.error('Failed to save visual config to Supabase:', error.message);
