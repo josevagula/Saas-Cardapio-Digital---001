@@ -96,6 +96,52 @@ Ingredientes: ${ingredients && ingredients.length > 0 ? ingredients.join(", ") :
   }
 });
 
+// Builds combo suggestions using ONLY product names that really exist in the
+// caller's cardápio — never invents items, so this is safe to use both as the
+// no-API-key template and as the error-recovery fallback below.
+function buildFallbackCombos(names: string[]) {
+  if (names.length === 0) return [];
+  if (names.length === 1) {
+    return [{
+      name: `Oferta Especial: ${names[0]}`,
+      products: [names[0]],
+      discountPercent: 10,
+      description: `Desconto exclusivo no nosso ${names[0]} para atrair mais pedidos enquanto novos itens são cadastrados no cardápio.`
+    }];
+  }
+  const combos = [{
+    name: `Combo Luvia Mega: ${names[0]} + ${names[1]}`,
+    products: [names[0], names[1]],
+    discountPercent: 15,
+    description: "A união perfeita de dois itens já cadastrados no seu cardápio por um preço super especial."
+  }];
+  const last = names[names.length - 1];
+  const mid = names[Math.floor(names.length / 2)];
+  if (names.length >= 3 && last !== mid) {
+    combos.push({
+      name: "Duo Executivo do Chefe",
+      products: [mid, last],
+      discountPercent: 20,
+      description: "Peça esses dois itens já cadastrados em conjunto e garanta 20% de economia."
+    });
+  }
+  return combos;
+}
+
+// Keeps only combos whose products are exact matches (case/whitespace-insensitive)
+// against the real cardápio, dropping any hallucinated/invented item names.
+function sanitizeCombos(rawCombos: any[], validNames: string[]) {
+  const validSet = new Set(validNames.map(n => n.trim().toLowerCase()));
+  return (Array.isArray(rawCombos) ? rawCombos : [])
+    .map((combo: any) => ({
+      ...combo,
+      products: Array.isArray(combo?.products)
+        ? combo.products.filter((p: any) => typeof p === "string" && validSet.has(p.trim().toLowerCase()))
+        : []
+    }))
+    .filter((combo: any) => combo.products.length >= 1);
+}
+
 // AI 2: AI Promotion Suggester
 app.post("/api/gemini/suggest-promotions", async (req, res) => {
   const { products } = req.body;
@@ -104,26 +150,12 @@ app.post("/api/gemini/suggest-promotions", async (req, res) => {
     return res.status(400).json({ error: "É necessário enviar uma lista de produtos." });
   }
 
+  const productNames = products.map((p: any) => p?.name).filter(Boolean);
+
   const ai = getAIClient();
   if (!ai) {
-    // Template fallback
-    const combos = [
-      {
-        name: `Combo Luvia Mega: ${products[0]?.name || "Item Principal"} + Bebida`,
-        products: [products[0]?.name || "Hambúrguer Gourmet", products[1]?.name || "Batata Frita Especial"],
-        discountPercent: 15,
-        description: "A união perfeita do nosso item campeão com um acompanhamento irresistível por um preço super especial."
-      },
-      {
-        name: "Duo Executivo do Chefe",
-        products: [products[products.length - 1]?.name || "Prato Principal", products[0]?.name || "Sobremesa do Dia"],
-        discountPercent: 20,
-        description: "Peça nosso prato selecionado em conjunto com nossa estrela da casa e garanta 20% de economia."
-      }
-    ];
-
     return res.json({
-      combos,
+      combos: buildFallbackCombos(productNames),
       bestHours: ["Terça a Quinta-feira, das 18:00 às 20:00 (Período de Happy Hour)", "Domingos, das 15:00 às 17:00 (Lanche da tarde)"],
       marketingStrategy: "Ofereça frete grátis exclusivamente nas compras acima de R$ 50 feitas durantes as horas promocionais sugeridas. Divulgue no status do WhatsApp usando gatilhos de escassez (ex: 'Apenas para as próximas 10 pessoas!')."
     });
@@ -132,8 +164,9 @@ app.post("/api/gemini/suggest-promotions", async (req, res) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
-      contents: `Com base na seguinte lista de produtos do restaurante, sugira 2 combos promocionais altamente atrativos, os melhores dias/horários para aplicar descontos (para aumentar o fluxo em dias lentos), e uma estratégia de marketing inteligente:
-Produtos: ${JSON.stringify(products.map(p => ({ name: p.name, price: p.price, category: p.categoryId })))}`,
+      contents: `Com base EXCLUSIVAMENTE na seguinte lista de produtos já cadastrados no cardápio do restaurante, sugira 2 combos promocionais altamente atrativos, os melhores dias/horários para aplicar descontos (para aumentar o fluxo em dias lentos), e uma estratégia de marketing inteligente.
+REGRA OBRIGATÓRIA: use apenas os nomes de produtos exatamente como aparecem na lista abaixo. NUNCA invente, altere ou sugira produtos que não estejam nesta lista.
+Produtos do cardápio: ${JSON.stringify(productNames)}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -145,7 +178,7 @@ Produtos: ${JSON.stringify(products.map(p => ({ name: p.name, price: p.price, ca
                 type: Type.OBJECT,
                 properties: {
                   name: { type: Type.STRING, description: "Nome atrativo e comercial do combo." },
-                  products: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Lista de nomes dos produtos inclusos." },
+                  products: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Lista de nomes dos produtos inclusos, copiados EXATAMENTE da lista de produtos do cardápio fornecida — nunca produtos inventados." },
                   discountPercent: { type: Type.INTEGER, description: "Porcentagem recomendada de desconto do combo." },
                   description: { type: Type.STRING, description: "Explicação do porquê esse combo é irresistível." }
                 },
@@ -168,22 +201,22 @@ Produtos: ${JSON.stringify(products.map(p => ({ name: p.name, price: p.price, ca
     });
 
     const text = response.text;
-    if (text) {
-      return res.json(JSON.parse(text));
-    } else {
+    if (!text) {
       throw new Error("Empty response from Gemini");
     }
+
+    const parsed = JSON.parse(text);
+    // Never trust the model blindly: strip out any suggested product that isn't
+    // actually registered in the cardápio before returning the combos.
+    const sanitized = sanitizeCombos(parsed.combos, productNames);
+    return res.json({
+      ...parsed,
+      combos: sanitized.length > 0 ? sanitized : buildFallbackCombos(productNames)
+    });
   } catch (error: any) {
     console.error("Erro na API de Promoção:", error);
     return res.json({
-      combos: [
-        {
-          name: "Combo Double Sabor",
-          products: [products[0]?.name || "Item Principal", "Bebida Gelada (Suco/Refrigerante)"],
-          discountPercent: 10,
-          description: "Peça dois itens queridinhos juntos e ganhe frete reduzido."
-        }
-      ],
+      combos: buildFallbackCombos(productNames),
       bestHours: ["Quartas-feiras à noite", "Sábados à tarde"],
       marketingStrategy: "Crie campanhas de cupom relâmpago nas redes sociais para engajar o público jovem."
     });

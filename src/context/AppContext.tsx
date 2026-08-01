@@ -499,15 +499,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return await response.json();
     } catch (error) {
       console.error("Erro suggestAICombos client-side:", error);
-      return {
-        combos: [
-          {
-            name: "Combo Luvia Supreme",
-            products: [products[0]?.name || "Item Principal", products[3]?.name || "Batata Rústica"],
+      // Fail-proof fallback: only ever reference products that actually exist in the cardápio.
+      const realNames = products.map(p => p.name).filter(Boolean);
+      const fallbackCombos = realNames.length >= 2
+        ? [{
+            name: `Combo Luvia Supreme: ${realNames[0]} + ${realNames[1]}`,
+            products: [realNames[0], realNames[1]],
             discountPercent: 15,
-            description: "Uma sugestão perfeita que combina nosso produto mais querido com uma cobertura espetacular por um valor incrível."
-          }
-        ],
+            description: "Uma sugestão perfeita que combina dois produtos já cadastrados no seu cardápio por um valor incrível."
+          }]
+        : realNames.length === 1
+          ? [{
+              name: `Oferta Especial: ${realNames[0]}`,
+              products: [realNames[0]],
+              discountPercent: 10,
+              description: "Um desconto exclusivo no seu produto cadastrado para atrair mais pedidos."
+            }]
+          : [];
+      return {
+        combos: fallbackCombos,
         bestHours: ["Quintas e Sextas-feiras de noite"],
         marketingStrategy: "Disparar mensagem em lote para clientes inativos com cupom relâmpago de 10% durante as 19h."
       };
