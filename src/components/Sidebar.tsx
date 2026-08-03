@@ -13,7 +13,8 @@ import {
   Copy,
   ExternalLink,
   X,
-  ShieldAlert
+  ShieldAlert,
+  MessageCircle
 } from 'lucide-react';
 import { HashiIcon, SushiRollIcon, SushiLogoEmblem, WasabiTag } from './SushiIcons';
 
@@ -38,6 +39,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
   ];
 
   const activeSlug = visualConfig.menuSlug || 'delivery-sushi';
+  const supportWhatsappUrl = 'https://wa.me/5543996787495?text=' + encodeURIComponent('Olá! Preciso de ajuda com o SushiOS.');
 
   const handleNavClick = (viewId: string) => {
     setCurrentView(viewId);
@@ -186,6 +188,16 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
             <p className="text-[11px] text-[#A8A29A] truncate">{visualConfig.phone}</p>
           </div>
         </div>
+
+        <a
+          href={supportWhatsappUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs text-white hover:opacity-90 transition-all font-semibold bg-[#25D366] shadow-xs cursor-pointer"
+        >
+          <MessageCircle className="w-3.5 h-3.5" />
+          <span>Suporte via WhatsApp</span>
+        </a>
 
         <button
           onClick={async () => {
