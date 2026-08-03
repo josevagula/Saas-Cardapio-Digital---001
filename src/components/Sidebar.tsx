@@ -196,7 +196,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           className="w-full flex items-center justify-center gap-2 py-2 text-xs text-[#1DA851] hover:opacity-80 transition-all font-semibold cursor-pointer"
         >
           <MessageCircle className="w-3.5 h-3.5 text-[#1DA851]" />
-          <span>Suporte</span>
+          <span>Suporte Whatsapp</span>
         </a>
 
         <button
