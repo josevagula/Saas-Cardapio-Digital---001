@@ -193,10 +193,10 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           href={supportWhatsappUrl}
           target="_blank"
           rel="noreferrer"
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs text-white hover:opacity-90 transition-all font-semibold bg-[#25D366] shadow-xs cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs text-[#A8A29A] hover:bg-[#181512] hover:text-[#F5F0EA] transition-all font-semibold border border-[#2A211A] bg-[#141210] shadow-xs cursor-pointer"
         >
-          <MessageCircle className="w-3.5 h-3.5" />
-          <span>Suporte via WhatsApp</span>
+          <MessageCircle className="w-3.5 h-3.5 text-[#A8A29A]" />
+          <span>Suporte para dúvidas</span>
         </a>
 
         <button
