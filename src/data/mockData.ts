@@ -234,7 +234,15 @@ export const INITIAL_CUSTOMERS: CustomerInfo[] = [
   { id: "cust-3", name: "Thiago Silva", phone: "(11) 97345-6789", email: "thiago.silva@email.com", address: "Rua Pamplona, 520 - Jardim Paulista, São Paulo - SP", loyaltyPoints: 30, orderCount: 3, lastOrderDate: "2026-07-02" },
   { id: "cust-4", name: "Beatriz Oliveira", phone: "(11) 96456-7890", email: "bia.oliveira@email.com", address: "Alameda Lorena, 1500 - Jardim Paulista, São Paulo - SP", loyaltyPoints: 100, orderCount: 11, lastOrderDate: "2026-07-05" },
   { id: "cust-5", name: "Rodrigo Sato", phone: "(11) 95111-2233", email: "rodrigo.sato@email.com", address: "Rua dos Pinheiros, 850 - Pinheiros, São Paulo - SP", loyaltyPoints: 60, orderCount: 6, lastOrderDate: "2026-07-06" },
-  { id: "cust-6", name: "Camila Tanaka", phone: "(11) 94222-3344", email: "camila.tanaka@email.com", address: "Rua Oscar Freire, 300 - Jardins, São Paulo - SP", loyaltyPoints: 150, orderCount: 15, lastOrderDate: "2026-07-06" }
+  { id: "cust-6", name: "Camila Tanaka", phone: "(11) 94222-3344", email: "camila.tanaka@email.com", address: "Rua Oscar Freire, 300 - Jardins, São Paulo - SP", loyaltyPoints: 150, orderCount: 15, lastOrderDate: "2026-07-06" },
+  { id: "cust-7", name: "Felipe Nogueira", phone: "(11) 93123-9988", email: "felipe.nogueira@email.com", address: "Rua Teodoro Sampaio, 800 - Pinheiros, São Paulo - SP", loyaltyPoints: 45, orderCount: 5, lastOrderDate: "2026-07-05" },
+  { id: "cust-8", name: "Juliana Costa", phone: "(11) 92234-8877", email: "juliana.costa@email.com", address: "Rua Haddock Lobo, 400 - Cerqueira César, São Paulo - SP", loyaltyPoints: 90, orderCount: 9, lastOrderDate: "2026-07-05" },
+  { id: "cust-9", name: "Lucas Yamamoto", phone: "(11) 91345-7766", email: "lucas.yamamoto@email.com", address: "Av. Rebouças, 1200 - Pinheiros, São Paulo - SP", loyaltyPoints: 130, orderCount: 12, lastOrderDate: "2026-07-05" },
+  { id: "cust-10", name: "Patricia Ramos", phone: "(11) 90456-6655", email: "patricia.ramos@email.com", address: "Rua Bela Cintra, 900 - Consolação, São Paulo - SP", loyaltyPoints: 55, orderCount: 6, lastOrderDate: "2026-07-05" },
+  { id: "cust-11", name: "André Kobayashi", phone: "(11) 89567-5544", email: "andre.kobayashi@email.com", address: "Rua Estados Unidos, 1500 - Jardim América, São Paulo - SP", loyaltyPoints: 200, orderCount: 20, lastOrderDate: "2026-07-05", vipTier: "Ouro" },
+  { id: "cust-12", name: "Fernanda Lima", phone: "(11) 88678-4433", email: "fernanda.lima@email.com", address: "Rua Cardeal Arcoverde, 600 - Pinheiros, São Paulo - SP", loyaltyPoints: 40, orderCount: 4, lastOrderDate: "2026-07-05" },
+  { id: "cust-13", name: "Bruno Tanaka", phone: "(11) 87789-3322", email: "bruno.tanaka@email.com", address: "Rua Fradique Coutinho, 700 - Vila Madalena, São Paulo - SP", loyaltyPoints: 70, orderCount: 7, lastOrderDate: "2026-07-05" },
+  { id: "cust-14", name: "Isabela Martins", phone: "(11) 86890-2211", email: "isabela.martins@email.com", address: "Alameda Santos, 1800 - Cerqueira César, São Paulo - SP", loyaltyPoints: 180, orderCount: 16, lastOrderDate: "2026-07-05", vipTier: "Diamond" }
 ];
 
 export const INITIAL_ORDERS: Order[] = [
@@ -333,6 +341,248 @@ export const INITIAL_ORDERS: Order[] = [
     total: 72.80,
     createdAt: "2026-07-04T19:30:00-07:00",
     pointsEarned: 7
+  },
+  {
+    id: "LUV-4025",
+    customerName: "Camila Tanaka",
+    customerPhone: "(11) 94222-3344",
+    customerEmail: "camila.tanaka@email.com",
+    customerAddress: "Rua Oscar Freire, 300 - Jardins, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[7], quantity: 1 },
+      { product: INITIAL_PRODUCTS[12], quantity: 2 }
+    ],
+    status: "received",
+    paymentMethod: "pix",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 74.79,
+    createdAt: "2026-07-05T11:40:00-07:00",
+    pointsEarned: 7
+  },
+  {
+    id: "LUV-4024",
+    customerName: "Felipe Nogueira",
+    customerPhone: "(11) 93123-9988",
+    customerEmail: "felipe.nogueira@email.com",
+    customerAddress: "Rua Teodoro Sampaio, 800 - Pinheiros, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[0], quantity: 1 },
+      { product: INITIAL_PRODUCTS[4], quantity: 1 }
+    ],
+    status: "received",
+    paymentMethod: "credit_card",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 90.80,
+    createdAt: "2026-07-05T11:20:00-07:00",
+    pointsEarned: 9
+  },
+  {
+    id: "LUV-4023",
+    customerName: "Juliana Costa",
+    customerPhone: "(11) 92234-8877",
+    customerEmail: "juliana.costa@email.com",
+    customerAddress: "Rua Haddock Lobo, 400 - Cerqueira César, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[9], quantity: 2 }
+    ],
+    status: "received",
+    paymentMethod: "pix",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 86.80,
+    createdAt: "2026-07-05T11:05:00-07:00",
+    pointsEarned: 8
+  },
+  {
+    id: "LUV-4022",
+    customerName: "Lucas Yamamoto",
+    customerPhone: "(11) 91345-7766",
+    customerEmail: "lucas.yamamoto@email.com",
+    customerAddress: "Av. Rebouças, 1200 - Pinheiros, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[6], quantity: 1 },
+      { product: INITIAL_PRODUCTS[5], quantity: 1 }
+    ],
+    status: "preparing",
+    paymentMethod: "debit_card",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 123.80,
+    createdAt: "2026-07-05T10:50:00-07:00",
+    pointsEarned: 12
+  },
+  {
+    id: "LUV-4021",
+    customerName: "Patricia Ramos",
+    customerPhone: "(11) 90456-6655",
+    customerEmail: "patricia.ramos@email.com",
+    customerAddress: "Rua Bela Cintra, 900 - Consolação, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[1], quantity: 1 }
+    ],
+    status: "preparing",
+    paymentMethod: "pix",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 81.90,
+    createdAt: "2026-07-05T10:35:00-07:00",
+    pointsEarned: 8
+  },
+  {
+    id: "LUV-4020",
+    customerName: "André Kobayashi",
+    customerPhone: "(11) 89567-5544",
+    customerEmail: "andre.kobayashi@email.com",
+    customerAddress: "Rua Estados Unidos, 1500 - Jardim América, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[2], quantity: 1 }
+    ],
+    status: "preparing",
+    paymentMethod: "credit_card",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 126.90,
+    createdAt: "2026-07-05T10:20:00-07:00",
+    pointsEarned: 12
+  },
+  {
+    id: "LUV-4019",
+    customerName: "Fernanda Lima",
+    customerPhone: "(11) 88678-4433",
+    customerEmail: "fernanda.lima@email.com",
+    customerAddress: "Rua Cardeal Arcoverde, 600 - Pinheiros, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[8], quantity: 1 },
+      { product: INITIAL_PRODUCTS[11], quantity: 1 }
+    ],
+    status: "dispatched",
+    paymentMethod: "pix",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 60.80,
+    createdAt: "2026-07-05T09:55:00-07:00",
+    pointsEarned: 6
+  },
+  {
+    id: "LUV-4018",
+    customerName: "Bruno Tanaka",
+    customerPhone: "(11) 87789-3322",
+    customerEmail: "bruno.tanaka@email.com",
+    customerAddress: "Rua Fradique Coutinho, 700 - Vila Madalena, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[10], quantity: 2 }
+    ],
+    status: "dispatched",
+    paymentMethod: "cash",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 80.80,
+    createdAt: "2026-07-05T09:40:00-07:00",
+    pointsEarned: 8,
+    needsChange: true,
+    changeAmount: "100.00"
+  },
+  {
+    id: "LUV-4017",
+    customerName: "Isabela Martins",
+    customerPhone: "(11) 86890-2211",
+    customerEmail: "isabela.martins@email.com",
+    customerAddress: "Alameda Santos, 1800 - Cerqueira César, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[3], quantity: 1 }
+    ],
+    status: "dispatched",
+    paymentMethod: "credit_card",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 226.90,
+    createdAt: "2026-07-05T09:10:00-07:00",
+    pointsEarned: 22
+  },
+  {
+    id: "LUV-4006",
+    customerName: "Gabriel Menezes",
+    customerPhone: "(11) 99123-4567",
+    customerEmail: "gabriel.menezes@email.com",
+    customerAddress: "Av. Paulista, 1000 - Bela Vista, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[7], quantity: 2 }
+    ],
+    status: "delivered",
+    paymentMethod: "pix",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 86.98,
+    createdAt: "2026-07-04T20:15:00-07:00",
+    pointsEarned: 8
+  },
+  {
+    id: "LUV-4005",
+    customerName: "Mariana Alencar",
+    customerPhone: "(11) 98234-5678",
+    customerEmail: "mariana.al@email.com",
+    customerAddress: "Rua Augusta, 2400 - Cerqueira César, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[9], quantity: 1 },
+      { product: INITIAL_PRODUCTS[12], quantity: 1 }
+    ],
+    status: "delivered",
+    paymentMethod: "debit_card",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 60.80,
+    createdAt: "2026-07-04T19:40:00-07:00",
+    pointsEarned: 6
+  },
+  {
+    id: "LUV-4004",
+    customerName: "Rodrigo Sato",
+    customerPhone: "(11) 95111-2233",
+    customerEmail: "rodrigo.sato@email.com",
+    customerAddress: "Rua dos Pinheiros, 850 - Pinheiros, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[0], quantity: 1 }
+    ],
+    status: "delivered",
+    paymentMethod: "pix",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 7.00,
+    total: 49.90,
+    createdAt: "2026-07-04T18:50:00-07:00",
+    pointsEarned: 4,
+    couponCode: "FRETEGRATIS"
+  },
+  {
+    id: "LUV-4003",
+    customerName: "Beatriz Oliveira",
+    customerPhone: "(11) 96456-7890",
+    customerEmail: "bia.oliveira@email.com",
+    customerAddress: "Alameda Lorena, 1500 - Jardim Paulista, São Paulo - SP",
+    items: [
+      { product: INITIAL_PRODUCTS[6], quantity: 1 }
+    ],
+    status: "delivered",
+    paymentMethod: "credit_card",
+    deliveryMethod: "delivery",
+    deliveryFee: 7.00,
+    discountAmount: 0,
+    total: 86.90,
+    createdAt: "2026-07-04T12:30:00-07:00",
+    pointsEarned: 8
   }
 ];
 
