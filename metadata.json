@@ -1,5 +1,5 @@
 {
-  "name": "SushiOS",
+  "name": "PontoSushi",
   "description": "Cardápio digital e sistema de delivery exclusivo para culinária japonesa, sushi e temakeria.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

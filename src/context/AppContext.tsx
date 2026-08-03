@@ -314,9 +314,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
     }
     if (visualConfig.establishmentName) {
-      document.title = `SushiOS - ${visualConfig.establishmentName}`;
+      document.title = `PontoSushi - ${visualConfig.establishmentName}`;
     } else {
-      document.title = 'SushiOS';
+      document.title = 'PontoSushi';
     }
   }, [visualConfig, workspaceReady, userId]);
 

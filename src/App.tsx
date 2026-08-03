@@ -60,7 +60,7 @@ export default function App() {
             <div className="flex items-center gap-2.5 min-w-0">
               <SushiLogoEmblem size={28} />
               <span className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-sm truncate">
-                {visualConfig.establishmentName || 'SushiOS'}
+                {visualConfig.establishmentName || 'PontoSushi'}
               </span>
             </div>
 
