@@ -83,8 +83,8 @@ export function NoriLeafIcon({ size = 20, className = '', color = 'currentColor'
   );
 }
 
-// 4. Ponto Japa Logo SVG Icon (Location Map Pin + Chopsticks & Sushi - Exact Vector)
-export function PontoJapaLogoIcon({ size = 24, className = '', color = 'currentColor', ...props }: IconProps) {
+// 4. SushiOS Logo SVG Icon (Location Map Pin + Chopsticks & Sushi - Exact Vector)
+export function SushiOSLogoIcon({ size = 24, className = '', color = 'currentColor', ...props }: IconProps) {
   const clipId = useId();
 
   return (
@@ -138,17 +138,17 @@ export function PontoJapaLogoIcon({ size = 24, className = '', color = 'currentC
   );
 }
 
-// Data URI of the official Ponto Japa Logo for img src usage
-export const PONTO_JAPA_LOGO_DATA_URL = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23FF4D00" rx="18"/><path d="M 36 78 C 36 84 64 84 64 78" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M 50 75 C 31 55 25 45 25 35 C 25 21 36 15 50 15 C 64 15 75 21 75 35 C 75 45 69 55 50 75 Z" stroke="white" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="none"/><line x1="56" y1="38" x2="76" y2="18" stroke="white" stroke-width="5.5" stroke-linecap="round"/><line x1="62" y1="44" x2="82" y2="24" stroke="white" stroke-width="5.5" stroke-linecap="round"/><circle cx="48.5" cy="45.5" r="12" stroke="white" stroke-width="5.5" fill="none"/><clipPath id="c"><circle cx="48.5" cy="45.5" r="9.2"/></clipPath><g clip-path="url(%23c)"><line x1="13" y1="18" x2="70" y2="75" stroke="white" stroke-width="4"/><line x1="20" y1="18" x2="77" y2="75" stroke="white" stroke-width="4"/><line x1="27" y1="18" x2="84" y2="75" stroke="white" stroke-width="4"/></g></svg>`;
+// Data URI of the official SushiOS Logo for img src usage
+export const SUSHIOS_LOGO_DATA_URL = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23FF4D00" rx="18"/><path d="M 36 78 C 36 84 64 84 64 78" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M 50 75 C 31 55 25 45 25 35 C 25 21 36 15 50 15 C 64 15 75 21 75 35 C 75 45 69 55 50 75 Z" stroke="white" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="none"/><line x1="56" y1="38" x2="76" y2="18" stroke="white" stroke-width="5.5" stroke-linecap="round"/><line x1="62" y1="44" x2="82" y2="24" stroke="white" stroke-width="5.5" stroke-linecap="round"/><circle cx="48.5" cy="45.5" r="12" stroke="white" stroke-width="5.5" fill="none"/><clipPath id="c"><circle cx="48.5" cy="45.5" r="9.2"/></clipPath><g clip-path="url(%23c)"><line x1="13" y1="18" x2="70" y2="75" stroke="white" stroke-width="4"/><line x1="20" y1="18" x2="77" y2="75" stroke="white" stroke-width="4"/><line x1="27" y1="18" x2="84" y2="75" stroke="white" stroke-width="4"/></g></svg>`;
 
-// 5. Logo Emblem Container with Exact Ponto Japa Icon
+// 5. Logo Emblem Container with Exact SushiOS Icon
 export function SushiLogoEmblem({ size = 32, className = '' }: { size?: number; className?: string }) {
   return (
-    <div 
+    <div
       className={`relative rounded-xl bg-[#FF4D00] flex items-center justify-center text-white shadow-md shadow-orange-600/30 overflow-hidden shrink-0 ${className}`}
       style={{ width: size, height: size }}
     >
-      <PontoJapaLogoIcon size={size * 0.78} color="#FFFFFF" />
+      <SushiOSLogoIcon size={size * 0.78} color="#FFFFFF" />
     </div>
   );
 }

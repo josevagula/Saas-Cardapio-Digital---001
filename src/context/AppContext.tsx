@@ -314,9 +314,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
     }
     if (visualConfig.establishmentName) {
-      document.title = `Cardapio Dígital - ${visualConfig.establishmentName}`;
+      document.title = `SushiOS - ${visualConfig.establishmentName}`;
     } else {
-      document.title = 'Cardapio Dígital';
+      document.title = 'SushiOS';
     }
   }, [visualConfig, workspaceReady, userId]);
 

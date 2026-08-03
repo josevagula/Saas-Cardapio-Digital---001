@@ -59,7 +59,7 @@ export default function LoginPage() {
         <button onClick={() => setPublicView('landing')} className="flex items-center gap-2.5 cursor-pointer">
           <SushiLogoEmblem size={34} />
           <span className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-lg">
-            Ponto<span className="text-[#FB923C]"> japa</span>
+            Sushi<span className="text-[#FB923C]">OS</span>
           </span>
         </button>
       </header>

@@ -1,11 +1,11 @@
 import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, SubscriptionPlan } from '../types';
-import { PONTO_JAPA_LOGO_DATA_URL } from '../components/SushiIcons';
+import { SUSHIOS_LOGO_DATA_URL } from '../components/SushiIcons';
 
 export const INITIAL_VISUAL_CONFIG: VisualConfig = {
   establishmentName: "Ponto japa",
   phone: "(11) 98765-4321",
   address: "Alameda das Esmeraldas, 450 - Jardins, São Paulo - SP",
-  logoUrl: PONTO_JAPA_LOGO_DATA_URL,
+  logoUrl: SUSHIOS_LOGO_DATA_URL,
   bannerUrl: "https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=1200&h=400&fit=crop&q=80",
   primaryColor: "#F97316", // Orange Sushi Premium
   fontFamily: "display",

@@ -59,7 +59,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           <SushiLogoEmblem size={34} />
           <div>
             <h1 className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-base sm:text-lg leading-tight">
-              {visualConfig.establishmentName || 'Ponto japa'}
+              {visualConfig.establishmentName || 'SushiOS'}
             </h1>
           </div>
         </div>
