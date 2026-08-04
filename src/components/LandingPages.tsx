@@ -132,7 +132,7 @@ export default function LandingPages() {
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500/80"></span>
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
                     <span className="w-2.5 h-2.5 rounded-full bg-orange-500/80"></span>
-                    <span className="text-[10px] font-mono text-[#A8A29A] ml-2">app.pontosushi.com/dashboard</span>
+                    <span className="text-[10px] font-mono text-[#A8A29A] ml-2">app.zushy.com/dashboard</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono font-bold bg-[#1F1209] text-[#FB923C] px-2 py-0.5 rounded-full border border-[#4A2A10]">
