@@ -336,9 +336,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
     }
     if (visualConfig.establishmentName) {
-      document.title = `PontoSushi - ${visualConfig.establishmentName}`;
+      document.title = `Zushy - ${visualConfig.establishmentName}`;
     } else {
-      document.title = 'PontoSushi';
+      document.title = 'Zushy';
     }
   }, [visualConfig, workspaceReady, userId, isDemoMode]);
 

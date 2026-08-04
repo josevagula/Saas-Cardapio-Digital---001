@@ -39,7 +39,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
   ];
 
   const activeSlug = visualConfig.menuSlug || 'delivery-sushi';
-  const supportWhatsappUrl = 'https://wa.me/5543996787495?text=' + encodeURIComponent('Olá! Preciso de ajuda com o PontoSushi.');
+  const supportWhatsappUrl = 'https://wa.me/5543996787495?text=' + encodeURIComponent('Olá! Preciso de ajuda com o Zushy.');
 
   const handleNavClick = (viewId: string) => {
     setCurrentView(viewId);
@@ -61,7 +61,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           <SushiLogoEmblem size={34} />
           <div>
             <h1 className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-base sm:text-lg leading-tight">
-              {visualConfig.establishmentName || 'PontoSushi'}
+              {visualConfig.establishmentName || 'Zushy'}
             </h1>
           </div>
         </div>
