@@ -176,7 +176,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (saved) {
       try {
         const parsed: Order[] = JSON.parse(saved);
-        if (parsed.some(o => o.items?.some(i => i.product?.name?.toLowerCase().includes('burguer')))) {
+        // Old demo seed only ever contained these 5 orders — refresh browsers
+        // still holding that stale snapshot to the fuller current seed.
+        const oldDemoIds = new Set(['LUV-4008', 'LUV-4009', 'LUV-4010', 'LUV-4011', 'LUV-4012']);
+        const isStaleDemoSeed = parsed.length > 0 && parsed.every(o => oldDemoIds.has(o.id));
+        if (isStaleDemoSeed || parsed.some(o => o.items?.some(i => i.product?.name?.toLowerCase().includes('burguer')))) {
           localStorage.setItem('sushi_orders', JSON.stringify(INITIAL_ORDERS));
           return INITIAL_ORDERS;
         }
@@ -198,6 +202,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const parsed: CustomerInfo[] = JSON.parse(saved);
         // Filter out test data entries
         const clean = parsed.filter(c => c.name && !/^[0-9a-zA-Z]{3,6}$/.test(c.name) && c.name.length > 2 && c.name !== "23413" && c.name !== "12312" && c.name !== "gdfg" && c.name !== "dfgd" && c.name !== "fafds");
+        // Old demo seed only ever contained these 6 customers — refresh
+        // browsers still holding that stale snapshot to the fuller current seed.
+        const oldDemoIds = new Set(['cust-1', 'cust-2', 'cust-3', 'cust-4', 'cust-5', 'cust-6']);
+        const isStaleDemoSeed = clean.length > 0 && clean.every(c => oldDemoIds.has(c.id));
+        if (isStaleDemoSeed) {
+          localStorage.setItem('sushi_customers', JSON.stringify(INITIAL_CUSTOMERS));
+          return INITIAL_CUSTOMERS;
+        }
         if (clean.length > 0) return clean;
       } catch (e) {
         console.error(e);
