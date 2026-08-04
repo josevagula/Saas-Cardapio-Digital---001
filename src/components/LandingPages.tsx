@@ -54,7 +54,7 @@ export default function LandingPages() {
           <div className="flex items-center gap-2.5">
             <SushiLogoEmblem size={34} />
             <span className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-lg">
-              Ponto<span className="text-[#FB923C]">Sushi</span>
+              Zu<span className="text-[#FB923C]">shy</span>
             </span>
           </div>
 
