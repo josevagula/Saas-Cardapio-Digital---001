@@ -67,6 +67,10 @@ interface AppContextType {
   // Enters the admin dashboard for an already-authenticated Supabase user
   // (called after a successful signInWithPassword()).
   enterAdminDashboard: () => void;
+  // Shows the built-in mock dataset in the admin dashboard for prospects
+  // trying the product from the landing page. Never reads or writes a real
+  // Supabase account's data, even if one happens to be signed in already.
+  enterDemoMode: () => void;
 
   // Shopping Cart & Checkout
   cart: OrderItem[];
@@ -264,6 +268,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const scopedKey = (base: string) => `sushi_${base}`;
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const loadedUserIdRef = useRef<string | null | undefined>(undefined);
+  // True only while showing the landing page's "Demonstração" mock dataset.
+  // Guards every sync-to-Supabase/localStorage effect below so demo
+  // interactions never leak into (or read from) a real signed-in account.
+  const [isDemoMode, setIsDemoMode] = useState(false);
   // The restaurant account that owns the currently-viewed public menu link
   // (resolved from the slug below) — lets createOrder() save a customer's
   // order under that specific restaurant even though the customer has no
@@ -276,6 +284,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // customer browsing someone else's restaurant never sees their own
     // account's data (or vice versa).
     if (publicMenuSlug) {
+      setIsDemoMode(false);
       setWorkspaceReady(false);
       fetchPublicMenuBySlug(publicMenuSlug).then(data => {
         if (data) {
@@ -298,6 +307,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadedUserIdRef.current = userId;
 
     if (userId) {
+      setIsDemoMode(false);
       setWorkspaceReady(false);
       fetchWorkspace(userId).then(data => {
         setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
@@ -319,7 +329,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // account-scoped workspace above has finished loading, so we never
   // overwrite a saved account's data with another account's stale state.
   useEffect(() => {
-    if (!workspaceReady) return;
+    if (!workspaceReady || isDemoMode) return;
     if (userId) {
       syncVisualConfig(userId, visualConfig);
     } else {
@@ -330,61 +340,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else {
       document.title = 'PontoSushi';
     }
-  }, [visualConfig, workspaceReady, userId]);
+  }, [visualConfig, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
-    if (!workspaceReady) return;
+    if (!workspaceReady || isDemoMode) return;
     if (userId) {
       syncCategories(userId, categories);
     } else {
       safeSetLocalStorage(scopedKey('categories'), categories);
     }
-  }, [categories, workspaceReady, userId]);
+  }, [categories, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
-    if (!workspaceReady) return;
+    if (!workspaceReady || isDemoMode) return;
     if (userId) {
       syncProducts(userId, products);
     } else {
       safeSetLocalStorage(scopedKey('products'), products);
     }
-  }, [products, workspaceReady, userId]);
+  }, [products, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
-    if (!workspaceReady) return;
+    if (!workspaceReady || isDemoMode) return;
     if (userId) {
       syncOrders(userId, orders);
     } else {
       safeSetLocalStorage(scopedKey('orders'), orders);
     }
-  }, [orders, workspaceReady, userId]);
+  }, [orders, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
-    if (!workspaceReady) return;
+    if (!workspaceReady || isDemoMode) return;
     if (userId) {
       syncCoupons(userId, coupons);
     } else {
       safeSetLocalStorage(scopedKey('coupons'), coupons);
     }
-  }, [coupons, workspaceReady, userId]);
+  }, [coupons, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
-    if (!workspaceReady) return;
+    if (!workspaceReady || isDemoMode) return;
     if (userId) {
       syncCustomers(userId, customers);
     } else {
       safeSetLocalStorage(scopedKey('customers'), customers);
     }
-  }, [customers, workspaceReady, userId]);
+  }, [customers, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
-    if (!workspaceReady) return;
+    if (!workspaceReady || isDemoMode) return;
     if (userId) {
       syncAnalytics(userId, analytics);
     } else {
       safeSetLocalStorage(scopedKey('analytics'), analytics);
     }
-  }, [analytics, workspaceReady, userId]);
+  }, [analytics, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
     safeSetLocalStorage('sushi_plan_status', planStatus);
@@ -751,6 +761,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Auth already happened via supabase.auth.signUp() before this is called —
   // this only resets app-local state and enters the dashboard.
   const resetToBlankWorkspace = () => {
+    setIsDemoMode(false);
     setVisualConfig(BLANK_VISUAL_CONFIG);
     setCategories([]);
     setProducts([]);
@@ -779,6 +790,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // rather than resetToBlankWorkspace's forced wipe, used only for brand-new
   // trial signups.
   const enterAdminDashboard = () => {
+    setIsDemoMode(false);
+    setIsAdmin(true);
+    setLoggedIn(true);
+    setCurrentView('dashboard');
+  };
+
+  // Shows the built-in mock dataset in the admin dashboard for prospects
+  // trying the product from the landing page. Forces the demo dataset into
+  // local state and flags isDemoMode so the sync effects above never read
+  // from or write to a real account — even if one happens to already be
+  // signed in on this browser (e.g. the owner testing their own account).
+  const enterDemoMode = () => {
+    setIsDemoMode(true);
+    setVisualConfig(INITIAL_VISUAL_CONFIG);
+    setCategories(INITIAL_CATEGORIES);
+    setProducts(INITIAL_PRODUCTS);
+    setOrders(INITIAL_ORDERS);
+    setCoupons(INITIAL_COUPONS);
+    setCustomers(INITIAL_CUSTOMERS);
+    setAnalytics(INITIAL_ANALYTICS);
+    setCart([]);
+    setAppliedCoupon(null);
     setIsAdmin(true);
     setLoggedIn(true);
     setCurrentView('dashboard');
@@ -815,6 +848,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPublicView,
       resetToBlankWorkspace,
       enterAdminDashboard,
+      enterDemoMode,
       cart,
       addToCart,
       removeFromCart,

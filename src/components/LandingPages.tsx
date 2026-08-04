@@ -11,13 +11,11 @@ import {
 } from 'lucide-react';
 
 export default function LandingPages() {
-  const { setLoggedIn, setIsAdmin, setCurrentView, setPublicView } = useApp();
+  const { setCurrentView, setPublicView, enterDemoMode } = useApp();
 
   const handleEnterDemo = () => {
     sessionStorage.setItem('just_entered_from_plans', 'true');
-    setLoggedIn(true);
-    setIsAdmin(true);
-    setCurrentView('dashboard');
+    enterDemoMode();
   };
 
   const handleGoToLogin = () => setPublicView('login');
