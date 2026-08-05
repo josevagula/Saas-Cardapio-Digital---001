@@ -316,17 +316,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoggedIn(true);
       setCurrentView(prev => (prev === 'home' || prev === 'public_menu') ? 'dashboard' : prev);
       setWorkspaceReady(false);
-      fetchWorkspace(userId).then(data => {
-        setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
-        setCategories(data.categories);
-        setProducts(data.products);
-        setOrders(data.orders);
-        setCoupons(data.coupons);
-        setCustomers(data.customers);
-        setAnalytics(data.analytics ?? BLANK_ANALYTICS);
-        setWorkspaceReady(true);
-      });
-      return;
+
+      let cancelled = false;
+      // workspaceReady gates every "sync local state to Supabase" effect
+      // below, and those effects delete any row missing from local state —
+      // so on a failed load we must retry rather than ever flip it to true
+      // with partial/empty local state, which would get mirrored back to
+      // Supabase as real deletions.
+      const loadWorkspace = (attempt: number) => {
+        fetchWorkspace(userId).then(data => {
+          if (cancelled) return;
+          setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
+          setCategories(data.categories);
+          setProducts(data.products);
+          setOrders(data.orders);
+          setCoupons(data.coupons);
+          setCustomers(data.customers);
+          setAnalytics(data.analytics ?? BLANK_ANALYTICS);
+          setWorkspaceReady(true);
+        }).catch(err => {
+          if (cancelled) return;
+          console.error('Failed to load account workspace from Supabase, retrying:', err);
+          const delay = Math.min(2000 * 2 ** attempt, 30000);
+          setTimeout(() => { if (!cancelled) loadWorkspace(attempt + 1); }, delay);
+        });
+      };
+      loadWorkspace(0);
+      return () => { cancelled = true; };
     }
     setWorkspaceReady(true);
   }, [userId, authLoading, publicMenuSlug]);

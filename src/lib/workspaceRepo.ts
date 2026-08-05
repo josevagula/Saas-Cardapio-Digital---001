@@ -251,13 +251,24 @@ export async function fetchWorkspace(userId: string): Promise<{
     supabase.from('analytics_snapshots').select('*').eq('user_id', userId).maybeSingle()
   ]);
 
-  if (categoriesRes.error) console.error('Failed to load categories from Supabase:', categoriesRes.error.message);
-  if (productsRes.error) console.error('Failed to load products from Supabase:', productsRes.error.message);
-  if (ordersRes.error) console.error('Failed to load orders from Supabase:', ordersRes.error.message);
-  if (couponsRes.error) console.error('Failed to load coupons from Supabase:', couponsRes.error.message);
-  if (customersRes.error) console.error('Failed to load customers from Supabase:', customersRes.error.message);
-  if (visualConfigRes.error) console.error('Failed to load visual config from Supabase:', visualConfigRes.error.message);
-  if (analyticsRes.error) console.error('Failed to load analytics from Supabase:', analyticsRes.error.message);
+  // A failed read must never be treated as "this account has no data" — the
+  // caller mirrors whatever it receives back to Supabase (deleting rows that
+  // are missing locally), so silently downgrading an error into an empty
+  // array here would turn a transient network/Supabase hiccup into a
+  // permanent data-loss event for the account. Throw instead and let the
+  // caller retry without touching local state until a load actually succeeds.
+  const failures: string[] = [];
+  if (categoriesRes.error) failures.push(`categorias: ${categoriesRes.error.message}`);
+  if (productsRes.error) failures.push(`produtos: ${productsRes.error.message}`);
+  if (ordersRes.error) failures.push(`pedidos: ${ordersRes.error.message}`);
+  if (couponsRes.error) failures.push(`cupons: ${couponsRes.error.message}`);
+  if (customersRes.error) failures.push(`clientes: ${customersRes.error.message}`);
+  if (visualConfigRes.error) failures.push(`configuração visual: ${visualConfigRes.error.message}`);
+  if (analyticsRes.error) failures.push(`análises: ${analyticsRes.error.message}`);
+
+  if (failures.length > 0) {
+    throw new Error(`Falha ao carregar dados da conta do Supabase: ${failures.join('; ')}`);
+  }
 
   return {
     visualConfig: visualConfigRes.data ? rowToVisualConfig(visualConfigRes.data) : null,
