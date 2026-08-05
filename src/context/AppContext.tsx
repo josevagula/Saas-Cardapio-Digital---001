@@ -351,13 +351,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else {
       safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
     }
-    if (visualConfig.establishmentName) {
+    // Only brand the tab with the establishment's name once someone is
+    // actually inside an account (dashboard) or viewing that account's
+    // public menu — the SaaS's own landing/login/trial pages are shown
+    // logged out and should just read "Zushy", not whatever establishment
+    // name happens to be sitting in local state from a previous session.
+    if (loggedIn && visualConfig.establishmentName) {
       document.title = `Zushy - ${visualConfig.establishmentName}`;
     } else {
       document.title = 'Zushy';
     }
     return cleanup;
-  }, [visualConfig, workspaceReady, userId, isDemoMode]);
+  }, [visualConfig, workspaceReady, userId, isDemoMode, loggedIn]);
 
   useEffect(() => {
     if (!workspaceReady || isDemoMode) return;
