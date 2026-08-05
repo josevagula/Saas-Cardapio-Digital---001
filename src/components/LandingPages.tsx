@@ -2,11 +2,11 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { SushiLogoEmblem } from './SushiIcons';
-import { 
-  Sparkles, 
-  Check, 
-  MessageSquare, 
-  ArrowRight, 
+import {
+  Sparkles,
+  Check,
+  MessageSquare,
+  ArrowRight,
   ChevronRight
 } from 'lucide-react';
 
@@ -43,7 +43,7 @@ export default function LandingPages() {
   return (
     <div className="flex-1 overflow-y-auto bg-[#0C0A08] font-sans text-slate-100 overflow-x-hidden" id="sushi-landing-page">
       {/* Header / Navbar Marketing */}
-      <motion.header 
+      <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -82,7 +82,7 @@ export default function LandingPages() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Left Column: Text & CTA - Slide from Left */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -60 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
@@ -94,11 +94,11 @@ export default function LandingPages() {
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold text-[#F5F0EA] tracking-tight leading-[1.1]">
-                Aumente suas vendas de sushi com um cardápio <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F97316] to-[#FB923C]">exclusivo</span>
+                Seu sushi merece um cardápio à altura — e você merece saber exatamente <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F97316] to-[#FB923C]">quanto ele vende</span>.
               </h1>
 
               <p className="text-base text-[#A8A29A] leading-relaxed font-normal max-w-xl">
-                Exemplo de site de cardapio digital
+                O Zushy transforma seu cardápio em uma experiência digital completa e te entrega um dashboard de vendas em tempo real — pra você parar de adivinhar o que funciona no seu restaurante e começar a comprovar.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -119,7 +119,7 @@ export default function LandingPages() {
             </motion.div>
 
             {/* Right Column: Interactive SaaS Dashboard Mockup - Slide from Right */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 60, scale: 0.95 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
@@ -204,7 +204,7 @@ export default function LandingPages() {
 
       {/* Product Highlights Grid - Recursos Premium with Scroll Animations */}
       <section className="max-w-6xl mx-auto px-6 py-20 overflow-hidden" id="recursos">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
@@ -218,7 +218,7 @@ export default function LandingPages() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Card 1 - Slides in smoothly from the LEFT */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -80 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -235,7 +235,7 @@ export default function LandingPages() {
           </motion.div>
 
           {/* Card 2 - Slides in smoothly from the RIGHT */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 80 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -256,7 +256,7 @@ export default function LandingPages() {
       {/* Pricing Plans Section with Scroll Animations */}
       <section className="bg-[#141210] border-y border-[#2A211A] py-24 overflow-hidden" id="precos">
         <div className="max-w-6xl mx-auto px-6 space-y-14">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
@@ -270,8 +270,8 @@ export default function LandingPages() {
           <div className="grid grid-cols-1 max-w-md mx-auto gap-8 items-stretch">
             {plans.map((p, idx) => {
               return (
-                <motion.div 
-                  key={idx} 
+                <motion.div
+                  key={idx}
                   initial={{ opacity: 0, y: 50, scale: 0.92 }}
                   whileInView={{ opacity: 1, y: 0, scale: 1 }}
                   viewport={{ once: true, margin: "-60px" }}
@@ -293,8 +293,8 @@ export default function LandingPages() {
                     {/* Features list */}
                     <div className="space-y-3.5 border-t border-[#2A211A] pt-6">
                       {p.features.map((feat, fIdx) => (
-                        <motion.div 
-                          key={fIdx} 
+                        <motion.div
+                          key={fIdx}
                           initial={{ opacity: 0, x: -20 }}
                           whileInView={{ opacity: 1, x: 0 }}
                           viewport={{ once: true }}
@@ -323,4 +323,3 @@ export default function LandingPages() {
     </div>
   );
 }
-
