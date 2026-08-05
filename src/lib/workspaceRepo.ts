@@ -216,8 +216,7 @@ async function syncRows(table: string, userId: string, rows: Record<string, any>
   if (rows.length > 0) {
     const { error: upsertError } = await supabase.from(table).upsert(rows, { onConflict });
     if (upsertError) {
-      console.error(`Failed to save ${table} to Supabase:`, upsertError.message);
-      return;
+      throw new Error(`Failed to save ${table} to Supabase: ${upsertError.message}`);
     }
   }
 
@@ -228,7 +227,7 @@ async function syncRows(table: string, userId: string, rows: Record<string, any>
   }
   const { error: deleteError } = await deleteQuery;
   if (deleteError) {
-    console.error(`Failed to prune removed ${table} rows in Supabase:`, deleteError.message);
+    throw new Error(`Failed to prune removed ${table} rows in Supabase: ${deleteError.message}`);
   }
 }
 
@@ -349,7 +348,7 @@ export async function fetchPublicMenuBySlug(slug: string): Promise<{
 // restaurant's real orders.
 export async function insertPublicOrder(ownerId: string, order: Order) {
   const { error } = await supabase.from('orders').insert(orderToRow(order, ownerId));
-  if (error) console.error('Failed to save order to Supabase:', error.message);
+  if (error) throw new Error(`Failed to save order to Supabase: ${error.message}`);
 }
 
 // Both call narrowly-scoped SECURITY DEFINER functions (see the
@@ -363,7 +362,7 @@ export async function incrementProductSales(ownerId: string, productId: string, 
     p_product_id: productId,
     p_quantity: quantity
   });
-  if (error) console.error('Failed to update product sales count:', error.message);
+  if (error) throw new Error(`Failed to update product sales count: ${error.message}`);
 }
 
 export async function recordCustomerOrder(
@@ -379,17 +378,17 @@ export async function recordCustomerOrder(
     p_address: customer.address || '',
     p_points: points
   });
-  if (error) console.error('Failed to update customer loyalty record:', error.message);
+  if (error) throw new Error(`Failed to update customer loyalty record: ${error.message}`);
 }
 
 export async function syncVisualConfig(userId: string, visualConfig: VisualConfig) {
   const { error } = await supabase.from('visual_configs').upsert(visualConfigToRow(visualConfig, userId), { onConflict: 'user_id' });
-  if (error) console.error('Failed to save visual config to Supabase:', error.message);
+  if (error) throw new Error(`Failed to save visual config to Supabase: ${error.message}`);
 }
 
 export async function syncAnalytics(userId: string, analytics: SalesAnalytics) {
   const { error } = await supabase
     .from('analytics_snapshots')
     .upsert({ user_id: userId, data: analytics, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-  if (error) console.error('Failed to save analytics to Supabase:', error.message);
+  if (error) throw new Error(`Failed to save analytics to Supabase: ${error.message}`);
 }

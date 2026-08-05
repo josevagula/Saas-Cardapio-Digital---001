@@ -26,6 +26,7 @@ import {
   syncVisualConfig,
   syncAnalytics
 } from '../lib/workspaceRepo';
+import { retryUntilSuccess } from '../lib/retry';
 
 interface AppContextType {
   visualConfig: VisualConfig;
@@ -317,15 +318,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentView(prev => (prev === 'home' || prev === 'public_menu') ? 'dashboard' : prev);
       setWorkspaceReady(false);
 
-      let cancelled = false;
       // workspaceReady gates every "sync local state to Supabase" effect
       // below, and those effects delete any row missing from local state —
       // so on a failed load we must retry rather than ever flip it to true
       // with partial/empty local state, which would get mirrored back to
       // Supabase as real deletions.
-      const loadWorkspace = (attempt: number) => {
+      return retryUntilSuccess(() =>
         fetchWorkspace(userId).then(data => {
-          if (cancelled) return;
           setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
           setCategories(data.categories);
           setProducts(data.products);
@@ -334,15 +333,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCustomers(data.customers);
           setAnalytics(data.analytics ?? BLANK_ANALYTICS);
           setWorkspaceReady(true);
-        }).catch(err => {
-          if (cancelled) return;
-          console.error('Failed to load account workspace from Supabase, retrying:', err);
-          const delay = Math.min(2000 * 2 ** attempt, 30000);
-          setTimeout(() => { if (!cancelled) loadWorkspace(attempt + 1); }, delay);
-        });
-      };
-      loadWorkspace(0);
-      return () => { cancelled = true; };
+        })
+      );
     }
     setWorkspaceReady(true);
   }, [userId, authLoading, publicMenuSlug]);
@@ -353,8 +345,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // overwrite a saved account's data with another account's stale state.
   useEffect(() => {
     if (!workspaceReady || isDemoMode) return;
+    let cleanup: (() => void) | undefined;
     if (userId) {
-      syncVisualConfig(userId, visualConfig);
+      cleanup = retryUntilSuccess(() => syncVisualConfig(userId, visualConfig));
     } else {
       safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
     }
@@ -363,60 +356,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else {
       document.title = 'Zushy';
     }
+    return cleanup;
   }, [visualConfig, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
     if (!workspaceReady || isDemoMode) return;
     if (userId) {
-      syncCategories(userId, categories);
-    } else {
-      safeSetLocalStorage(scopedKey('categories'), categories);
+      return retryUntilSuccess(() => syncCategories(userId, categories));
     }
+    safeSetLocalStorage(scopedKey('categories'), categories);
   }, [categories, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
     if (!workspaceReady || isDemoMode) return;
     if (userId) {
-      syncProducts(userId, products);
-    } else {
-      safeSetLocalStorage(scopedKey('products'), products);
+      return retryUntilSuccess(() => syncProducts(userId, products));
     }
+    safeSetLocalStorage(scopedKey('products'), products);
   }, [products, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
     if (!workspaceReady || isDemoMode) return;
     if (userId) {
-      syncOrders(userId, orders);
-    } else {
-      safeSetLocalStorage(scopedKey('orders'), orders);
+      return retryUntilSuccess(() => syncOrders(userId, orders));
     }
+    safeSetLocalStorage(scopedKey('orders'), orders);
   }, [orders, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
     if (!workspaceReady || isDemoMode) return;
     if (userId) {
-      syncCoupons(userId, coupons);
-    } else {
-      safeSetLocalStorage(scopedKey('coupons'), coupons);
+      return retryUntilSuccess(() => syncCoupons(userId, coupons));
     }
+    safeSetLocalStorage(scopedKey('coupons'), coupons);
   }, [coupons, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
     if (!workspaceReady || isDemoMode) return;
     if (userId) {
-      syncCustomers(userId, customers);
-    } else {
-      safeSetLocalStorage(scopedKey('customers'), customers);
+      return retryUntilSuccess(() => syncCustomers(userId, customers));
     }
+    safeSetLocalStorage(scopedKey('customers'), customers);
   }, [customers, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
     if (!workspaceReady || isDemoMode) return;
     if (userId) {
-      syncAnalytics(userId, analytics);
-    } else {
-      safeSetLocalStorage(scopedKey('analytics'), analytics);
+      return retryUntilSuccess(() => syncAnalytics(userId, analytics));
     }
+    safeSetLocalStorage(scopedKey('analytics'), analytics);
   }, [analytics, workspaceReady, userId, isDemoMode]);
 
   useEffect(() => {
@@ -563,11 +551,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // customer's local state only ever holds their own order, never the
     // restaurant's full history.
     if (publicMenuOwnerId) {
-      insertPublicOrder(publicMenuOwnerId, newOrder);
+      retryUntilSuccess(() => insertPublicOrder(publicMenuOwnerId, newOrder));
       cart.forEach(item => {
-        incrementProductSales(publicMenuOwnerId, item.product.id, item.quantity);
+        retryUntilSuccess(() => incrementProductSales(publicMenuOwnerId, item.product.id, item.quantity));
       });
-      recordCustomerOrder(publicMenuOwnerId, customer, pointsEarned);
+      retryUntilSuccess(() => recordCustomerOrder(publicMenuOwnerId, customer, pointsEarned));
     }
 
     // Update customer lists and loyalty points
