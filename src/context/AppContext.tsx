@@ -307,7 +307,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadedUserIdRef.current = userId;
 
     if (userId) {
+      // A persisted Supabase session (e.g. after a page refresh) means this
+      // browser is already signed in to a real account — go straight to the
+      // dashboard instead of the landing page. The only way back to the
+      // landing page is the explicit "Sair da Sessão" logout button.
       setIsDemoMode(false);
+      setIsAdmin(true);
+      setLoggedIn(true);
+      setCurrentView(prev => (prev === 'home' || prev === 'public_menu') ? 'dashboard' : prev);
       setWorkspaceReady(false);
       fetchWorkspace(userId).then(data => {
         setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
