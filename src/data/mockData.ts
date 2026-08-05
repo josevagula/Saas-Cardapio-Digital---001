@@ -2,7 +2,7 @@ import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnal
 import { SUSHIOS_LOGO_DATA_URL } from '../components/SushiIcons';
 
 export const INITIAL_VISUAL_CONFIG: VisualConfig = {
-  establishmentName: "Ponto japa",
+  establishmentName: "Zushy",
   phone: "(11) 98765-4321",
   address: "Alameda das Esmeraldas, 450 - Jardins, São Paulo - SP",
   logoUrl: SUSHIOS_LOGO_DATA_URL,
@@ -11,7 +11,7 @@ export const INITIAL_VISUAL_CONFIG: VisualConfig = {
   fontFamily: "display",
   themeMode: "dark", // Mode escuro padrão para consistência com o painel SaaS
   deliveryFee: 7.00,
-  menuSlug: "ponto-japa",
+  menuSlug: "zushy",
   openingTime: "18:00",
   closingTime: "23:30",
   openingDays: "Segunda a Domingo",
