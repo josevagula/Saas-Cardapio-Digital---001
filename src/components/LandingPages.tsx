@@ -94,7 +94,7 @@ export default function LandingPages() {
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold text-[#F5F0EA] tracking-tight leading-[1.1]">
-                Seu sushi merece um cardápio à altura — e você merece saber exatamente <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F97316] to-[#FB923C]">quanto ele vende</span>.
+                Seu sushi merece um cardápio à altura — com dados de <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F97316] to-[#FB923C]">quanto ele vende</span>.
               </h1>
 
               <p className="text-base text-[#A8A29A] leading-relaxed font-normal max-w-xl">
