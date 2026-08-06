@@ -27,6 +27,7 @@ import {
   syncAnalytics
 } from '../lib/workspaceRepo';
 import { retryUntilSuccess } from '../lib/retry';
+import { buildFallbackPromoReport } from '../lib/promoFallback';
 
 interface AppContextType {
   visualConfig: VisualConfig;
@@ -663,28 +664,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return await response.json();
     } catch (error) {
       console.error("Erro suggestAICombos client-side:", error);
-      // Fail-proof fallback: only ever reference products that actually exist in the cardápio.
-      const realNames = products.map(p => p.name).filter(Boolean);
-      const fallbackCombos = realNames.length >= 2
-        ? [{
-            name: `Combo Sushi Supreme: ${realNames[0]} + ${realNames[1]}`,
-            products: [realNames[0], realNames[1]],
-            discountPercent: 15,
-            description: "Uma sugestão perfeita que combina dois produtos já cadastrados no seu cardápio por um valor incrível."
-          }]
-        : realNames.length === 1
-          ? [{
-              name: `Oferta Especial: ${realNames[0]}`,
-              products: [realNames[0]],
-              discountPercent: 10,
-              description: "Um desconto exclusivo no seu produto cadastrado para atrair mais pedidos."
-            }]
-          : [];
-      return {
-        combos: fallbackCombos,
-        bestHours: ["Quintas e Sextas-feiras de noite"],
-        marketingStrategy: "Disparar mensagem em lote para clientes inativos com cupom relâmpago de 10% durante as 19h."
-      };
+      // Fail-proof fallback (this is what actually runs on the static GitHub
+      // Pages deploy, since there's no server behind /api there): reshuffles
+      // the account's own products and randomizes the copy/discount on every
+      // call, so clicking "Criar Novas Promoções" again produces a new
+      // promotion instead of repeating the same fixed combo — while only
+      // ever referencing products that actually exist in the cardápio.
+      return buildFallbackPromoReport(products);
     }
   };
 

@@ -99,30 +99,59 @@ Ingredientes: ${ingredients && ingredients.length > 0 ? ingredients.join(", ") :
 // Builds combo suggestions using ONLY product names that really exist in the
 // caller's cardápio — never invents items, so this is safe to use both as the
 // no-API-key template and as the error-recovery fallback below.
+const FALLBACK_COMBO_NAME_TEMPLATES: ((a: string, b: string) => string)[] = [
+  (a, b) => `Combo Sushi Mega: ${a} + ${b}`,
+  (a, b) => `Duo Executivo do Chefe: ${a} + ${b}`,
+  (a, b) => `Combo Relâmpago: ${a} + ${b}`,
+  (a, b) => `Combinado Especial: ${a} + ${b}`
+];
+const FALLBACK_COMBO_DESCRIPTIONS = [
+  "A união perfeita de dois itens já cadastrados no seu cardápio por um preço super especial.",
+  "Peça esses dois itens já cadastrados em conjunto e garanta um desconto exclusivo.",
+  "Uma combinação pensada para vender mais nos horários de pico, usando só o que já está no seu cardápio."
+];
+const FALLBACK_DISCOUNTS = [10, 12, 15, 18, 20, 22, 25];
+
+function shuffleNames(names: string[]) {
+  const copy = [...names];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+function pickRandom<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+// Reshuffles the caller's own products and randomizes the copy/discount on
+// every call, so clicking "Criar Novas Promoções" again produces a new
+// promotion instead of the same fixed combo — never invents a product that
+// isn't already registered in the cardápio, so this is safe to use both as
+// the no-API-key template and as the error-recovery fallback below.
 function buildFallbackCombos(names: string[]) {
-  if (names.length === 0) return [];
-  if (names.length === 1) {
+  const shuffled = shuffleNames(names);
+  if (shuffled.length === 0) return [];
+  if (shuffled.length === 1) {
     return [{
-      name: `Oferta Especial: ${names[0]}`,
-      products: [names[0]],
-      discountPercent: 10,
-      description: `Desconto exclusivo no nosso ${names[0]} para atrair mais pedidos enquanto novos itens são cadastrados no cardápio.`
+      name: `Oferta Especial: ${shuffled[0]}`,
+      products: [shuffled[0]],
+      discountPercent: pickRandom(FALLBACK_DISCOUNTS),
+      description: `Desconto exclusivo no nosso ${shuffled[0]} para atrair mais pedidos enquanto novos itens são cadastrados no cardápio.`
     }];
   }
   const combos = [{
-    name: `Combo Sushi Mega: ${names[0]} + ${names[1]}`,
-    products: [names[0], names[1]],
-    discountPercent: 15,
-    description: "A união perfeita de dois itens já cadastrados no seu cardápio por um preço super especial."
+    name: pickRandom(FALLBACK_COMBO_NAME_TEMPLATES)(shuffled[0], shuffled[1]),
+    products: [shuffled[0], shuffled[1]],
+    discountPercent: pickRandom(FALLBACK_DISCOUNTS),
+    description: pickRandom(FALLBACK_COMBO_DESCRIPTIONS)
   }];
-  const last = names[names.length - 1];
-  const mid = names[Math.floor(names.length / 2)];
-  if (names.length >= 3 && last !== mid) {
+  if (shuffled.length >= 4) {
     combos.push({
-      name: "Duo Executivo do Chefe",
-      products: [mid, last],
-      discountPercent: 20,
-      description: "Peça esses dois itens já cadastrados em conjunto e garanta 20% de economia."
+      name: pickRandom(FALLBACK_COMBO_NAME_TEMPLATES)(shuffled[2], shuffled[3]),
+      products: [shuffled[2], shuffled[3]],
+      discountPercent: pickRandom(FALLBACK_DISCOUNTS),
+      description: pickRandom(FALLBACK_COMBO_DESCRIPTIONS)
     });
   }
   return combos;
