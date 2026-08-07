@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React from 'react';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number | string;
@@ -83,72 +83,20 @@ export function NoriLeafIcon({ size = 20, className = '', color = 'currentColor'
   );
 }
 
-// 4. SushiOS Logo SVG Icon (Location Map Pin + Chopsticks & Sushi - Exact Vector)
-export function SushiOSLogoIcon({ size = 24, className = '', color = 'currentColor', ...props }: IconProps) {
-  const clipId = useId();
+// Official Zushy logo image, used for every logo/emblem in the app. Built
+// from import.meta.env.BASE_URL (not a hardcoded "/") so it still resolves
+// correctly if the app is ever deployed under a sub-path, matching how Vite
+// itself rewrites public/ asset references in index.html.
+export const SUSHIOS_LOGO_DATA_URL = `${import.meta.env.BASE_URL}logo-zushy.png`;
 
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      {...props}
-    >
-      <defs>
-        {/* Clip path for the 3 interior sushi roll diagonal stripes */}
-        <clipPath id={clipId}>
-          <circle cx="48.5" cy="45.5" r="9.2" />
-        </clipPath>
-      </defs>
-
-      {/* Ground oval line under pin */}
-      <path 
-        d="M 36 78 C 36 84, 64 84, 64 78" 
-        stroke={color} 
-        strokeWidth="5" 
-        strokeLinecap="round" 
-      />
-      
-      {/* Outer Teardrop Location Map Pin */}
-      <path 
-        d="M 50 75 C 31 55 25 45 25 35 C 25 21 36 15 50 15 C 64 15 75 21 75 35 C 75 45 69 55 50 75 Z" 
-        stroke={color} 
-        strokeWidth="5.5" 
-        strokeLinejoin="round" 
-        strokeLinecap="round" 
-      />
-      
-      {/* Chopsticks extending to upper right */}
-      <line x1="56" y1="38" x2="76" y2="18" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
-      <line x1="62" y1="44" x2="82" y2="24" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
-      
-      {/* Central Sushi Roll Outer Ring */}
-      <circle cx="48.5" cy="45.5" r="12" stroke={color} strokeWidth="5.5" />
-      
-      {/* 3 Parallel Diagonal Stripes inside sushi roll (top-left to bottom-right) */}
-      <g clipPath={`url(#${clipId})`}>
-        <line x1="13" y1="18" x2="70" y2="75" stroke={color} strokeWidth="4" />
-        <line x1="20" y1="18" x2="77" y2="75" stroke={color} strokeWidth="4" />
-        <line x1="27" y1="18" x2="84" y2="75" stroke={color} strokeWidth="4" />
-      </g>
-    </svg>
-  );
-}
-
-// Data URI of the official SushiOS Logo for img src usage
-export const SUSHIOS_LOGO_DATA_URL = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23FF4D00" rx="18"/><path d="M 36 78 C 36 84 64 84 64 78" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M 50 75 C 31 55 25 45 25 35 C 25 21 36 15 50 15 C 64 15 75 21 75 35 C 75 45 69 55 50 75 Z" stroke="white" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="none"/><line x1="56" y1="38" x2="76" y2="18" stroke="white" stroke-width="5.5" stroke-linecap="round"/><line x1="62" y1="44" x2="82" y2="24" stroke="white" stroke-width="5.5" stroke-linecap="round"/><circle cx="48.5" cy="45.5" r="12" stroke="white" stroke-width="5.5" fill="none"/><clipPath id="c"><circle cx="48.5" cy="45.5" r="9.2"/></clipPath><g clip-path="url(%23c)"><line x1="13" y1="18" x2="70" y2="75" stroke="white" stroke-width="4"/><line x1="20" y1="18" x2="77" y2="75" stroke="white" stroke-width="4"/><line x1="27" y1="18" x2="84" y2="75" stroke="white" stroke-width="4"/></g></svg>`;
-
-// 5. Logo Emblem Container with Exact SushiOS Icon
+// 5. Logo Emblem Container with the official Zushy logo image
 export function SushiLogoEmblem({ size = 32, className = '' }: { size?: number; className?: string }) {
   return (
     <div
-      className={`relative rounded-xl bg-[#FF4D00] flex items-center justify-center text-white shadow-md shadow-orange-600/30 overflow-hidden shrink-0 ${className}`}
+      className={`relative rounded-xl bg-[#FF4D00] shadow-md shadow-orange-600/30 overflow-hidden shrink-0 ${className}`}
       style={{ width: size, height: size }}
     >
-      <SushiOSLogoIcon size={size * 0.78} color="#FFFFFF" />
+      <img src={SUSHIOS_LOGO_DATA_URL} alt="Zushy" className="w-full h-full object-cover" />
     </div>
   );
 }
