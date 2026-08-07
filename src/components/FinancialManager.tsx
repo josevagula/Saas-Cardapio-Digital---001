@@ -12,7 +12,6 @@ import {
   AlertCircle, 
   Calculator, 
   Check,
-  FileSpreadsheet,
   FileText
 } from 'lucide-react';
 
@@ -67,8 +66,8 @@ export default function FinancialManager() {
     }
   };
 
-  const handleExport = (type: 'excel' | 'pdf') => {
-    alert(`Exportação concluída! O arquivo financeiro_${Date.now()}.${type === 'excel' ? 'xlsx' : 'pdf'} foi gerado com sucesso para download.`);
+  const handleExportPdf = () => {
+    alert(`Exportação concluída! O arquivo financeiro_${Date.now()}.pdf foi gerado com sucesso para download.`);
   };
 
   return (
@@ -83,18 +82,11 @@ export default function FinancialManager() {
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
           <button
-            onClick={() => handleExport('excel')}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 bg-[#141210] text-slate-200 text-xs font-semibold rounded-xl border border-[#2A211A] hover:bg-[#181512] transition-colors cursor-pointer w-full sm:w-auto"
+            onClick={handleExportPdf}
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 btn-sushi-primary text-white text-xs font-bold shadow-md cursor-pointer w-full sm:w-auto"
           >
-            <FileSpreadsheet className="w-4 h-4 text-[#FB923C]" />
-            <span>Exportar Planilha (XLS)</span>
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 bg-[#141210] text-slate-200 text-xs font-semibold rounded-xl border border-[#2A211A] hover:bg-[#181512] transition-colors cursor-pointer w-full sm:w-auto"
-          >
-            <FileText className="w-4 h-4 text-orange-400" />
-            <span>PDF Ledger</span>
+            <FileText className="w-4 h-4" />
+            <span>Exportar PDF</span>
           </button>
         </div>
       </div>
