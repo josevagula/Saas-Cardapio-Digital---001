@@ -8,13 +8,19 @@ export default function PlanRenewalOverlay() {
   const { renewPlan, setLoggedIn, setCurrentView } = useApp();
   const { logout } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleRenew = () => {
+  const handleRenew = async () => {
+    setError('');
     setLoading(true);
-    setTimeout(() => {
+    try {
+      // Redirects the browser to Stripe Checkout — loading only matters until
+      // that navigation happens, or an error comes back instead.
+      await renewPlan();
+    } catch (err: any) {
       setLoading(false);
-      renewPlan();
-    }, 1200);
+      setError(err.message || 'Não foi possível abrir o pagamento agora. Tente novamente.');
+    }
   };
 
   return (
@@ -55,6 +61,11 @@ export default function PlanRenewalOverlay() {
         </div>
 
         <div className="p-5 border-t border-[#2A211A] bg-[#1A1613] space-y-2">
+          {error && (
+            <div className="bg-red-950/40 border border-red-500/40 rounded-lg px-3 py-2.5">
+              <p className="text-[11px] text-red-400 font-medium">{error}</p>
+            </div>
+          )}
           <button
             disabled={loading}
             onClick={handleRenew}

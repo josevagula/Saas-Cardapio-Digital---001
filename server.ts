@@ -2,12 +2,141 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+// ==================== STRIPE SETUP ====================
+
+let stripeClient: Stripe | null = null;
+function getStripeClient(): Stripe | null {
+  if (!stripeClient) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      console.warn("STRIPE_SECRET_KEY is not defined. Billing routes will return an error.");
+      return null;
+    }
+    stripeClient = new Stripe(secretKey);
+  }
+  return stripeClient;
+}
+
+// Server-only Supabase client using the service role key, which bypasses
+// Row Level Security — required so the Stripe webhook (which has no signed-in
+// user session) can write subscription status onto the right account's
+// profile row. Never expose this key to the client bundle (no VITE_ prefix).
+// Typed `any` deliberately: this project has no generated Database schema
+// (see src/lib/supabase.ts), and supabase-js's .update()/.insert() overloads
+// resolve to `never` without one — matching the same untyped-table style
+// already used throughout src/lib/workspaceRepo.ts.
+let supabaseAdmin: any | null = null;
+function getSupabaseAdmin(): any | null {
+  if (!supabaseAdmin) {
+    const url = process.env.VITE_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceRoleKey) {
+      console.warn("VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not defined. Billing routes will return an error.");
+      return null;
+    }
+    supabaseAdmin = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  }
+  return supabaseAdmin;
+}
+
+// Resolves the signed-in Supabase user from the "Authorization: Bearer <access_token>"
+// header sent by the frontend, using the service-role admin client to validate the token.
+async function getUserFromAuthHeader(req: express.Request) {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!token) return null;
+  const admin = getSupabaseAdmin();
+  if (!admin) return null;
+  const { data, error } = await admin.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user;
+}
+
+// Stripe webhook — MUST be registered before express.json() below and use the
+// raw body parser, since Stripe's signature verification needs the exact raw
+// request bytes. Once express.json() has parsed the body, verification fails.
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  const stripe = getStripeClient();
+  const admin = getSupabaseAdmin();
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!stripe || !admin || !webhookSecret) {
+    console.error("Stripe webhook received but Stripe/Supabase admin/webhook secret isn't configured.");
+    return res.status(500).send("Webhook not configured");
+  }
+
+  const signature = req.headers["stripe-signature"];
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, signature as string, webhookSecret);
+  } catch (err: any) {
+    console.error("Stripe webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  async function upsertSubscriptionByCustomerId(customerId: string, fields: Record<string, any>) {
+    const { error } = await admin!.from("profiles").update(fields).eq("stripe_customer_id", customerId);
+    if (error) console.error("Failed to update profile subscription fields:", error.message);
+  }
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.mode === "subscription" && session.subscription) {
+          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+          const supabaseUserId = session.client_reference_id;
+          const fields = {
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: subscription.id,
+            subscription_status: subscription.status,
+            subscription_price_id: subscription.items.data[0]?.price.id ?? null,
+            subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString()
+          };
+          if (supabaseUserId) {
+            const { error } = await admin.from("profiles").update(fields).eq("id", supabaseUserId);
+            if (error) console.error("Failed to update profile after checkout:", error.message);
+          } else {
+            await upsertSubscriptionByCustomerId(session.customer as string, fields);
+          }
+        }
+        break;
+      }
+      case "customer.subscription.updated":
+      case "customer.subscription.created": {
+        const subscription = event.data.object as Stripe.Subscription;
+        await upsertSubscriptionByCustomerId(subscription.customer as string, {
+          stripe_subscription_id: subscription.id,
+          subscription_status: subscription.status,
+          subscription_price_id: subscription.items.data[0]?.price.id ?? null,
+          subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString()
+        });
+        break;
+      }
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        await upsertSubscriptionByCustomerId(subscription.customer as string, {
+          subscription_status: "canceled"
+        });
+        break;
+      }
+      default:
+        break;
+    }
+    return res.json({ received: true });
+  } catch (err: any) {
+    console.error("Error handling Stripe webhook event:", err);
+    return res.status(500).send("Webhook handler error");
+  }
+});
 
 app.use(express.json());
 
@@ -38,6 +167,91 @@ function getAIClient() {
 // Health Check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
+});
+
+// Creates a Stripe Checkout Session for the signed-in account's subscription
+// and returns its URL — the frontend redirects the browser there. Used both
+// to start paying for the first time and to renew a cancelled plan.
+app.post("/api/stripe/create-checkout-session", async (req, res) => {
+  const stripe = getStripeClient();
+  const admin = getSupabaseAdmin();
+  const priceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
+  if (!stripe || !admin || !priceId) {
+    return res.status(500).json({ error: "Cobrança não configurada no servidor." });
+  }
+
+  const user = await getUserFromAuthHeader(req);
+  if (!user) {
+    return res.status(401).json({ error: "Sessão inválida. Faça login novamente." });
+  }
+
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profileError) {
+    return res.status(500).json({ error: "Falha ao carregar dados da conta." });
+  }
+
+  let customerId = profile?.stripe_customer_id as string | undefined;
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      email: user.email ?? undefined,
+      metadata: { supabase_user_id: user.id }
+    });
+    customerId = customer.id;
+    const { error: updateError } = await admin
+      .from("profiles")
+      .update({ stripe_customer_id: customerId })
+      .eq("id", user.id);
+    if (updateError) console.error("Failed to save stripe_customer_id:", updateError.message);
+  }
+
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    client_reference_id: user.id,
+    line_items: [{ price: priceId, quantity: 1 }],
+    subscription_data: { metadata: { supabase_user_id: user.id } },
+    success_url: `${origin}/?checkout=success`,
+    cancel_url: `${origin}/?checkout=cancel`
+  });
+
+  return res.json({ url: session.url });
+});
+
+// Creates a Stripe Billing Portal session so a signed-in account can manage
+// or cancel their subscription through Stripe's own hosted UI.
+app.post("/api/stripe/create-portal-session", async (req, res) => {
+  const stripe = getStripeClient();
+  const admin = getSupabaseAdmin();
+  if (!stripe || !admin) {
+    return res.status(500).json({ error: "Cobrança não configurada no servidor." });
+  }
+
+  const user = await getUserFromAuthHeader(req);
+  if (!user) {
+    return res.status(401).json({ error: "Sessão inválida. Faça login novamente." });
+  }
+
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profileError || !profile?.stripe_customer_id) {
+    return res.status(400).json({ error: "Esta conta ainda não tem uma assinatura Stripe." });
+  }
+
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const portalSession = await stripe.billingPortal.sessions.create({
+    customer: profile.stripe_customer_id as string,
+    return_url: `${origin}/?billing=return`
+  });
+
+  return res.json({ url: portalSession.url });
 });
 
 // AI 1: Product Description Generator

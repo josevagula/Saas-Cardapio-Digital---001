@@ -14,6 +14,7 @@ import {
 import { useAuth } from './AuthContext';
 import {
   fetchWorkspace,
+  fetchSubscriptionStatus,
   fetchPublicMenuBySlug,
   insertPublicOrder,
   incrementProductSales,
@@ -26,8 +27,15 @@ import {
   syncVisualConfig,
   syncAnalytics
 } from '../lib/workspaceRepo';
+import { startCheckout, openBillingPortal } from '../lib/billing';
 import { retryUntilSuccess } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
+
+// Maps a raw Stripe subscription_status value (trialing, active, past_due,
+// canceled, unpaid, incomplete, incomplete_expired…) onto the simple
+// active/cancelled flag the dashboard UI locks/unlocks on.
+const mapSubscriptionStatus = (status: string): 'active' | 'cancelled' =>
+  status === 'trialing' || status === 'active' ? 'active' : 'cancelled';
 
 interface AppContextType {
   visualConfig: VisualConfig;
@@ -57,8 +65,8 @@ interface AppContextType {
   // Billing status of the current account's subscription (mock only — no real payment gateway yet).
   // When 'cancelled', the admin dashboard renders blurred with a renewal prompt until renewPlan() is called.
   planStatus: 'active' | 'cancelled';
-  cancelPlan: () => void;
-  renewPlan: () => void;
+  cancelPlan: () => Promise<void>;
+  renewPlan: () => Promise<void>;
   // Public (logged-out) marketing screens: landing, login, trial signup
   publicView: 'landing' | 'login' | 'trial';
   setPublicView: (view: 'landing' | 'login' | 'trial') => void;
@@ -333,12 +341,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCoupons(data.coupons);
           setCustomers(data.customers);
           setAnalytics(data.analytics ?? BLANK_ANALYTICS);
+          setPlanStatus(mapSubscriptionStatus(data.subscriptionStatus));
           setWorkspaceReady(true);
         })
       );
     }
     setWorkspaceReady(true);
   }, [userId, authLoading, publicMenuSlug]);
+
+  // The browser lands back here with ?checkout=... after Stripe Checkout, or
+  // ?billing=return after the Billing Portal — re-check the real subscription
+  // status right away instead of waiting for the next full reload, then strip
+  // the marker so a page refresh doesn't re-trigger this.
+  useEffect(() => {
+    if (!userId || !workspaceReady) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('checkout') && !params.has('billing')) return;
+
+    fetchSubscriptionStatus(userId)
+      .then(status => setPlanStatus(mapSubscriptionStatus(status)))
+      .catch(err => console.error('Falha ao atualizar status da assinatura:', err));
+
+    params.delete('checkout');
+    params.delete('billing');
+    const newSearch = params.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`);
+  }, [userId, workspaceReady]);
 
   // Sync state to Supabase (or, for anonymous/no-account browsing, to the
   // old flat localStorage keys) on modification — skipped until the
@@ -779,11 +807,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentView('dashboard');
   };
 
-  // Mock billing actions (no real payment gateway yet). Cancelling keeps the account
-  // logged in but locks the dashboard behind a blurred renewal prompt (see App.tsx);
-  // renewing clears that lock and restores full access, including o Cardápio Digital.
-  const cancelPlan = () => setPlanStatus('cancelled');
-  const renewPlan = () => setPlanStatus('active');
+  // Real Stripe billing actions. renewPlan redirects to a Stripe Checkout page
+  // to start/resume paying; cancelPlan redirects to Stripe's Billing Portal,
+  // where the account actually cancels. Neither flips planStatus locally —
+  // the Stripe webhook updates the real status in Supabase, and the effect
+  // above re-reads it once the browser comes back from Stripe.
+  const cancelPlan = () => openBillingPortal();
+  const renewPlan = () => startCheckout();
 
   // Enters the admin dashboard for an already-authenticated Supabase user.
   // Workspace data isn't reset here — it's loaded automatically by the

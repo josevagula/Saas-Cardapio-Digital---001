@@ -215,8 +215,10 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
         {planStatus === 'active' ? (
           <button
             onClick={() => {
-              if (window.confirm('Cancelar sua assinatura? O painel e o Cardápio Digital ficarão bloqueados até você renovar o plano.')) {
-                cancelPlan();
+              if (window.confirm('Isso vai te levar até a página segura da Stripe para gerenciar ou cancelar sua assinatura. Continuar?')) {
+                cancelPlan().catch((err: any) => {
+                  window.alert(err.message || 'Não foi possível abrir o gerenciamento da assinatura agora. Tente novamente.');
+                });
               }
             }}
             className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-[#6B655C] hover:text-red-400 transition-all font-semibold cursor-pointer"
