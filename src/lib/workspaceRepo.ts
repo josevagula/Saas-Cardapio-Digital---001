@@ -239,15 +239,17 @@ export async function fetchWorkspace(userId: string): Promise<{
   coupons: Coupon[];
   customers: CustomerInfo[];
   analytics: SalesAnalytics | null;
+  subscriptionStatus: string;
 }> {
-  const [categoriesRes, productsRes, ordersRes, couponsRes, customersRes, visualConfigRes, analyticsRes] = await Promise.all([
+  const [categoriesRes, productsRes, ordersRes, couponsRes, customersRes, visualConfigRes, analyticsRes, profileRes] = await Promise.all([
     supabase.from('categories').select('*').eq('user_id', userId),
     supabase.from('products').select('*').eq('user_id', userId),
     supabase.from('orders').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     supabase.from('coupons').select('*').eq('user_id', userId),
     supabase.from('customers').select('*').eq('user_id', userId),
     supabase.from('visual_configs').select('*').eq('user_id', userId).maybeSingle(),
-    supabase.from('analytics_snapshots').select('*').eq('user_id', userId).maybeSingle()
+    supabase.from('analytics_snapshots').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('profiles').select('subscription_status').eq('id', userId).maybeSingle()
   ]);
 
   // A failed read must never be treated as "this account has no data" — the
@@ -264,6 +266,7 @@ export async function fetchWorkspace(userId: string): Promise<{
   if (customersRes.error) failures.push(`clientes: ${customersRes.error.message}`);
   if (visualConfigRes.error) failures.push(`configuração visual: ${visualConfigRes.error.message}`);
   if (analyticsRes.error) failures.push(`análises: ${analyticsRes.error.message}`);
+  if (profileRes.error) failures.push(`assinatura: ${profileRes.error.message}`);
 
   if (failures.length > 0) {
     throw new Error(`Falha ao carregar dados da conta do Supabase: ${failures.join('; ')}`);
@@ -276,8 +279,18 @@ export async function fetchWorkspace(userId: string): Promise<{
     orders: (ordersRes.data || []).map(rowToOrder),
     coupons: (couponsRes.data || []).map(rowToCoupon),
     customers: (customersRes.data || []).map(rowToCustomer),
-    analytics: analyticsRes.data ? (analyticsRes.data.data as SalesAnalytics) : null
+    analytics: analyticsRes.data ? (analyticsRes.data.data as SalesAnalytics) : null,
+    subscriptionStatus: (profileRes.data?.subscription_status as string | undefined) ?? 'trialing'
   };
+}
+
+// Re-checks just the billing status, used after the browser returns from a
+// Stripe Checkout or Billing Portal redirect so the dashboard unlocks/locks
+// immediately instead of waiting for the next full page load.
+export async function fetchSubscriptionStatus(userId: string): Promise<string> {
+  const { data, error } = await supabase.from('profiles').select('subscription_status').eq('id', userId).maybeSingle();
+  if (error) throw new Error(`Falha ao verificar status da assinatura: ${error.message}`);
+  return (data?.subscription_status as string | undefined) ?? 'trialing';
 }
 
 export const syncCategories = (userId: string, categories: Category[]) =>
@@ -286,8 +299,18 @@ export const syncCategories = (userId: string, categories: Category[]) =>
 export const syncProducts = (userId: string, products: Product[]) =>
   syncRows('products', userId, products.map(p => productToRow(p, userId)), 'id', 'id');
 
-export const syncOrders = (userId: string, orders: Order[]) =>
-  syncRows('orders', userId, orders.map(o => orderToRow(o, userId)), 'id', 'id');
+// Orders are append/update only — deliberately not routed through syncRows
+// above, which deletes any remote row missing from the local list. Order
+// history is a permanent record: it must survive a stale browser cache, a
+// failed fetch, or a bug in local state, none of which should ever be able
+// to erase a real past sale. The database enforces this too — see
+// supabase/migrations/20260807140000_orders_append_only.sql, which removes
+// the DELETE policy/grant on public.orders entirely.
+export async function syncOrders(userId: string, orders: Order[]) {
+  if (orders.length === 0) return;
+  const { error } = await supabase.from('orders').upsert(orders.map(o => orderToRow(o, userId)), { onConflict: 'id' });
+  if (error) throw new Error(`Failed to save orders to Supabase: ${error.message}`);
+}
 
 export const syncCoupons = (userId: string, coupons: Coupon[]) =>
   syncRows('coupons', userId, coupons.map(c => couponToRow(c, userId)), 'user_id,code', 'code');
