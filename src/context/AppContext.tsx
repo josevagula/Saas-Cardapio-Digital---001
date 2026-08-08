@@ -491,7 +491,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // account-scoped workspace above has finished loading, so we never
   // overwrite a saved account's data with another account's stale state.
   useEffect(() => {
-    if (!workspaceReady || isDemoMode) return;
+    // publicMenuSlug guard: while viewing ANY public menu (?menu=slug —
+    // including the signed-in owner's own, e.g. testing their link in a
+    // second tab of the same logged-in browser), `products`/`categories`/etc.
+    // hold that *visited* restaurant's data, fetched anonymously. Without
+    // this guard, a still-active session's userId made these effects mirror
+    // that fetched data back to Supabase under the visitor's own account —
+    // corrupting the visited restaurant's rows, and for products specifically,
+    // double-counting sales_count alongside createOrder's own
+    // incrementProductSales RPC call below.
+    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
     let cleanup: (() => void) | undefined;
     if (userId) {
       cleanup = retryUntilSuccess(() => syncVisualConfig(userId, visualConfig));
@@ -509,55 +518,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       document.title = 'Zushy';
     }
     return cleanup;
-  }, [visualConfig, workspaceReady, userId, isDemoMode, loggedIn]);
+  }, [visualConfig, workspaceReady, userId, isDemoMode, loggedIn, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode) return;
+    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncCategories(userId, categories));
     }
     safeSetLocalStorage(scopedKey('categories'), categories);
-  }, [categories, workspaceReady, userId, isDemoMode]);
+  }, [categories, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode) return;
+    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncProducts(userId, products));
     }
     safeSetLocalStorage(scopedKey('products'), products);
-  }, [products, workspaceReady, userId, isDemoMode]);
+  }, [products, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode) return;
+    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncOrders(userId, orders));
     }
     safeSetLocalStorage(scopedKey('orders'), orders);
-  }, [orders, workspaceReady, userId, isDemoMode]);
+  }, [orders, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode) return;
+    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncCoupons(userId, coupons));
     }
     safeSetLocalStorage(scopedKey('coupons'), coupons);
-  }, [coupons, workspaceReady, userId, isDemoMode]);
+  }, [coupons, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode) return;
+    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncCustomers(userId, customers));
     }
     safeSetLocalStorage(scopedKey('customers'), customers);
-  }, [customers, workspaceReady, userId, isDemoMode]);
+  }, [customers, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode) return;
+    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncAnalytics(userId, analytics));
     }
     safeSetLocalStorage(scopedKey('analytics'), analytics);
-  }, [analytics, workspaceReady, userId, isDemoMode]);
+  }, [analytics, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
     safeSetLocalStorage('sushi_plan_status', planStatus);

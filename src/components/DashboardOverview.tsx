@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { Product } from '../types';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar
@@ -17,6 +18,13 @@ import {
   Lightbulb,
   FileDown
 } from 'lucide-react';
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  pix: 'Pix',
+  credit_card: 'Cartão de Crédito',
+  debit_card: 'Cartão de Débito',
+  cash: 'Dinheiro'
+};
 
 export default function DashboardOverview() {
   const { analytics, products, orders, analyzeAISales, visualConfig, isDemoMode } = useApp();
@@ -135,6 +143,62 @@ export default function DashboardOverview() {
     displayedTotal = Math.round(days.reduce((s, d) => s + d.amount, 0) * 100) / 100;
   }
 
+  // Real orders placed within the currently selected period (same window as
+  // the revenue chart above) — used to build the payment-method split below
+  // from what was actually paid, instead of a fixed mock percentage split.
+  const getPeriodOrders = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let periodStart: Date;
+    let periodEnd = today;
+    if (chartView === 'semanal') {
+      periodStart = new Date(today);
+      periodStart.setDate(today.getDate() - 6);
+    } else if (chartView === 'mensal') {
+      periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else {
+      periodStart = new Date(startDate);
+      periodEnd = new Date(endDate);
+    }
+    const exclusiveEnd = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate() + 1);
+    return orders.filter(o => {
+      const created = new Date(o.createdAt);
+      return created >= periodStart && created < exclusiveEnd;
+    });
+  };
+
+  // Only ever built from orders that were actually placed and paid — a
+  // payment method with zero real orders in the period simply doesn't
+  // appear, instead of a fixed 4-way mock split.
+  const paymentDistribution = isDemoMode ? analytics.paymentDistribution : (() => {
+    const totals: Record<string, number> = {};
+    getPeriodOrders().forEach(o => {
+      totals[o.paymentMethod] = (totals[o.paymentMethod] || 0) + o.total;
+    });
+    const sum = Object.values(totals).reduce((a, b) => a + b, 0);
+    if (sum <= 0) return [];
+    return Object.entries(totals).map(([method, amount]) => ({
+      name: PAYMENT_METHOD_LABELS[method] || method,
+      value: Math.round((amount / sum) * 100)
+    }));
+  })();
+
+  // Real units sold per product, counted straight from every order's line
+  // items — the product record's own salesCount can drift (e.g. a customer
+  // testing checkout on the owner's own public menu link in a logged-in
+  // browser used to double-count it; fixed above, but this sidesteps that
+  // counter entirely and is always exactly what was ordered).
+  const realUnitsSoldByProductId = useMemo(() => {
+    const counts: Record<string, number> = {};
+    orders.forEach(o => {
+      o.items.forEach(item => {
+        counts[item.product.id] = (counts[item.product.id] || 0) + item.quantity;
+      });
+    });
+    return counts;
+  }, [orders]);
+  const unitsSoldFor = (p: Product) => isDemoMode ? p.salesCount : (realUnitsSoldByProductId[p.id] || 0);
+
   // Track initial load & date filter changes to trigger chart rise animation
   const [animKey, setAnimKey] = useState<number>(0);
   const [shouldAnimate, setShouldAnimate] = useState<boolean>(false);
@@ -181,7 +245,7 @@ export default function DashboardOverview() {
   const COLORS = ['#F97316', '#EA580C', '#FB923C', '#F59E0B'];
 
   // Identify Top and Bottom performing items for UI display
-  const sortedProducts = [...products].sort((a, b) => b.salesCount - a.salesCount);
+  const sortedProducts = [...products].sort((a, b) => unitsSoldFor(b) - unitsSoldFor(a));
   const topProducts = sortedProducts.slice(0, 3);
   const lowProducts = sortedProducts.filter(p => p.isAvailable).slice(-3).reverse();
 
@@ -517,7 +581,7 @@ export default function DashboardOverview() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={analytics.paymentDistribution}
+                  data={paymentDistribution}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -525,7 +589,7 @@ export default function DashboardOverview() {
                   paddingAngle={4}
                   dataKey="value"
                 >
-                  {analytics.paymentDistribution.map((entry, index) => (
+                  {paymentDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -543,7 +607,7 @@ export default function DashboardOverview() {
 
           {/* Breakdown Legend */}
           <div className="space-y-2 mt-1 border-t border-[#2A211A] pt-3">
-            {analytics.paymentDistribution.map((item, idx) => (
+            {paymentDistribution.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between text-xs gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
@@ -582,7 +646,7 @@ export default function DashboardOverview() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xs sm:text-sm font-bold text-[#F5F0EA] font-mono">{prod.salesCount} un.</p>
+                  <p className="text-xs sm:text-sm font-bold text-[#F5F0EA] font-mono">{unitsSoldFor(prod)} un.</p>
                   <span className="text-[10px] bg-[#1F1209] text-[#FB923C] border border-[#4A2A10] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider inline-block">Alta Demanda</span>
                 </div>
               </div>
@@ -611,7 +675,7 @@ export default function DashboardOverview() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xs sm:text-sm font-bold text-[#F5F0EA] font-mono">{prod.salesCount} un.</p>
+                  <p className="text-xs sm:text-sm font-bold text-[#F5F0EA] font-mono">{unitsSoldFor(prod)} un.</p>
                   <span className="text-[10px] bg-amber-950/40 text-amber-300 border border-amber-800/40 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider inline-block">Sugestão Combo IA</span>
                 </div>
               </div>
