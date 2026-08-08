@@ -62,18 +62,20 @@ interface AppContextType {
   setLoggedIn: (loggedIn: boolean) => void;
   currentPlan: 'basic' | 'pro' | 'premium';
   setCurrentPlan: (plan: 'basic' | 'pro' | 'premium') => void;
-  // Billing status of the current account's subscription (mock only — no real payment gateway yet).
-  // When 'cancelled', the admin dashboard renders blurred with a renewal prompt until renewPlan() is called.
+  // Billing status of the current account's real Stripe subscription, mapped
+  // down to a simple lock/unlock flag. When 'cancelled', the admin dashboard
+  // renders blurred with a renewal prompt until renewPlan() is called.
   planStatus: 'active' | 'cancelled';
+  // The raw profiles.subscription_status value straight from Stripe/Supabase
+  // (e.g. 'trialing', 'incomplete', 'canceled'…) — lets PlanRenewalOverlay
+  // tell "never subscribed yet" (incomplete) apart from "was active, now
+  // cancelled" and show the right copy for each.
+  subscriptionStatusRaw: string;
   cancelPlan: () => Promise<void>;
   renewPlan: () => Promise<void>;
   // Public (logged-out) marketing screens: landing, login, trial signup
   publicView: 'landing' | 'login' | 'trial';
   setPublicView: (view: 'landing' | 'login' | 'trial') => void;
-  // Resets the workspace to a blank slate (no demo data) and enters the admin
-  // dashboard. Called after a real Supabase signUp() succeeds — auth/credentials
-  // are handled entirely by Supabase now, this only resets app-local state.
-  resetToBlankWorkspace: () => void;
   // Enters the admin dashboard for an already-authenticated Supabase user
   // (called after a successful signInWithPassword()).
   enterAdminDashboard: () => void;
@@ -254,6 +256,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [planStatus, setPlanStatus] = useState<'active' | 'cancelled'>(() => {
     return localStorage.getItem('sushi_plan_status') === 'cancelled' ? 'cancelled' : 'active';
   });
+  const [subscriptionStatusRaw, setSubscriptionStatusRaw] = useState<string>('active');
   const [publicView, setPublicView] = useState<'landing' | 'login' | 'trial'>('landing');
 
   // Shopping Cart State
@@ -342,6 +345,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCustomers(data.customers);
           setAnalytics(data.analytics ?? BLANK_ANALYTICS);
           setPlanStatus(mapSubscriptionStatus(data.subscriptionStatus));
+          setSubscriptionStatusRaw(data.subscriptionStatus);
           setWorkspaceReady(true);
         })
       );
@@ -359,7 +363,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!params.has('checkout') && !params.has('billing')) return;
 
     fetchSubscriptionStatus(userId)
-      .then(status => setPlanStatus(mapSubscriptionStatus(status)))
+      .then(status => {
+        setPlanStatus(mapSubscriptionStatus(status));
+        setSubscriptionStatusRaw(status);
+      })
       .catch(err => console.error('Falha ao atualizar status da assinatura:', err));
 
     params.delete('checkout');
@@ -786,27 +793,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCategories(prev => prev.filter(c => c.id !== id));
   };
 
-  // First-time trial signup: start from a completely blank workspace
-  // (no demo products/orders/customers) so the client builds their own menu.
-  // Auth already happened via supabase.auth.signUp() before this is called —
-  // this only resets app-local state and enters the dashboard.
-  const resetToBlankWorkspace = () => {
-    setIsDemoMode(false);
-    setVisualConfig(BLANK_VISUAL_CONFIG);
-    setCategories([]);
-    setProducts([]);
-    setOrders([]);
-    setCoupons([]);
-    setCustomers([]);
-    setAnalytics(BLANK_ANALYTICS);
-    setCart([]);
-    setAppliedCoupon(null);
-    setPlanStatus('active');
-    setIsAdmin(true);
-    setLoggedIn(true);
-    setCurrentView('dashboard');
-  };
-
   // Real Stripe billing actions. renewPlan redirects to a Stripe Checkout page
   // to start/resume paying; cancelPlan redirects to Stripe's Billing Portal,
   // where the account actually cancels. Neither flips planStatus locally —
@@ -818,9 +804,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Enters the admin dashboard for an already-authenticated Supabase user.
   // Workspace data isn't reset here — it's loaded automatically by the
   // account-scoped effect above, keyed to this specific account's id, so it
-  // shows that account's own saved data (or a blank slate if it has none)
-  // rather than resetToBlankWorkspace's forced wipe, used only for brand-new
-  // trial signups.
+  // shows that account's own saved data (or a blank slate if it has none).
   const enterAdminDashboard = () => {
     setIsDemoMode(false);
     setIsAdmin(true);
@@ -874,11 +858,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       currentPlan,
       setCurrentPlan,
       planStatus,
+      subscriptionStatusRaw,
       cancelPlan,
       renewPlan,
       publicView,
       setPublicView,
-      resetToBlankWorkspace,
       enterAdminDashboard,
       enterDemoMode,
       cart,

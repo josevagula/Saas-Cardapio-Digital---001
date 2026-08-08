@@ -5,10 +5,16 @@ import { useAuth } from '../context/AuthContext';
 import { SushiLogoEmblem } from './SushiIcons';
 
 export default function PlanRenewalOverlay() {
-  const { renewPlan, setLoggedIn, setCurrentView } = useApp();
+  const { renewPlan, setLoggedIn, setCurrentView, subscriptionStatusRaw } = useApp();
   const { logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // 'incomplete' is the default for a brand-new account that signed up but
+  // never finished Stripe Checkout (or whose card failed on the very first
+  // attempt) — it has no subscription to "renew", so the copy below is
+  // tailored differently from an account that was active and got cancelled.
+  const neverSubscribed = subscriptionStatusRaw === 'incomplete';
 
   const handleRenew = async () => {
     setError('');
@@ -33,24 +39,35 @@ export default function PlanRenewalOverlay() {
           </div>
 
           <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-2">
-            Assinatura Cancelada
+            {neverSubscribed ? 'Pagamento Pendente' : 'Assinatura Cancelada'}
           </span>
 
           <div className="flex items-center justify-center gap-2 mb-1">
             <SushiLogoEmblem size={20} />
-            <h2 className="text-lg font-black text-[#F5F0EA] font-display">Seu plano precisa ser renovado</h2>
+            <h2 className="text-lg font-black text-[#F5F0EA] font-display">
+              {neverSubscribed ? 'Finalize sua assinatura para começar' : 'Seu plano precisa ser renovado'}
+            </h2>
           </div>
           <p className="text-xs text-[#A8A29A] mt-1">
-            O acesso ao painel e ao seu Cardápio Digital fica bloqueado enquanto a assinatura estiver cancelada. Renove agora para liberar tudo de novo.
+            {neverSubscribed
+              ? 'Seu cadastro foi criado, mas o pagamento não foi concluído. Adicione um cartão para liberar os 7 dias grátis e o acesso ao painel.'
+              : 'O acesso ao painel e ao seu Cardápio Digital fica bloqueado enquanto a assinatura estiver cancelada. Renove agora para liberar tudo de novo.'}
           </p>
         </div>
 
         <div className="p-6 space-y-2.5">
-          {[
-            'Cardápio Digital voltará a ficar visível para seus clientes',
-            'Pedidos, financeiro e personalização liberados imediatamente',
-            'Sem perda de dados: tudo que você configurou continua salvo'
-          ].map((benefit, idx) => (
+          {(neverSubscribed
+            ? [
+                '7 dias grátis a partir da confirmação do cartão',
+                'Cardápio Digital, pedidos e painel liberados na hora',
+                'Cancele quando quiser, sem compromisso'
+              ]
+            : [
+                'Cardápio Digital voltará a ficar visível para seus clientes',
+                'Pedidos, financeiro e personalização liberados imediatamente',
+                'Sem perda de dados: tudo que você configurou continua salvo'
+              ]
+          ).map((benefit, idx) => (
             <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-200">
               <div className="w-5 h-5 rounded-full bg-[#1F1209] text-[#FB923C] border border-[#4A2A10] flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-3 h-3 text-[#F97316]" />
@@ -76,7 +93,7 @@ export default function PlanRenewalOverlay() {
             ) : (
               <>
                 <RefreshCw className="w-4 h-4" />
-                <span>Renovar Plano Agora</span>
+                <span>{neverSubscribed ? 'Assinar Agora' : 'Renovar Plano Agora'}</span>
               </>
             )}
           </button>

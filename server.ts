@@ -214,7 +214,10 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
     customer: customerId,
     client_reference_id: user.id,
     line_items: [{ price: priceId, quantity: 1 }],
-    subscription_data: { metadata: { supabase_user_id: user.id } },
+    // 7-day free trial, card required upfront — Stripe won't charge until
+    // the trial ends, matching the "7 dias grátis" promise on the signup
+    // page, but a real payment method must be on file to start it.
+    subscription_data: { trial_period_days: 7, metadata: { supabase_user_id: user.id } },
     success_url: `${origin}/?checkout=success`,
     cancel_url: `${origin}/?checkout=cancel`
   });

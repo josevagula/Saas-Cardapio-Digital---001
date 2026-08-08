@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
+import { startCheckout } from '../lib/billing';
 import { SushiLogoEmblem } from './SushiIcons';
 import { ArrowLeft, User, Phone, Mail, Lock } from 'lucide-react';
 
@@ -23,7 +24,7 @@ function formatBRPhone(value: string) {
 }
 
 export default function TrialSignupPage() {
-  const { setPublicView, resetToBlankWorkspace } = useApp();
+  const { setPublicView } = useApp();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -48,9 +49,6 @@ export default function TrialSignupPage() {
     setFormError('');
     if (!validate()) return;
 
-    // NOTE: os campos de cartão abaixo continuam apenas visuais (layout) nesta
-    // etapa — a integração real com gateway de pagamento (Stripe) fica para
-    // quando for pedida explicitamente. Nunca enviamos/armazenamos esses dados.
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -76,12 +74,25 @@ export default function TrialSignupPage() {
       }
     }
 
-    setLoading(false);
+    // Sem sessão ativa aqui significa que a confirmação de e-mail está ligada
+    // no projeto Supabase — não há como abrir o Checkout (que exige um token
+    // de acesso) até o e-mail ser confirmado e a pessoa logar.
+    if (!data.session) {
+      setLoading(false);
+      setFormError('Conta criada! Confirme seu e-mail e depois faça login para concluir a assinatura.');
+      return;
+    }
 
-    // Novo cliente entra com o workspace zerado (sem produtos/pedidos de exemplo)
-    // para montar o cardápio do jeito dele. A autenticação em si já é 100% real,
-    // via Supabase Auth.
-    resetToBlankWorkspace();
+    // Conta criada e autenticada — vai direto para o Checkout do Stripe para
+    // capturar o cartão e iniciar os 7 dias grátis. O painel só é liberado
+    // depois que o webhook do Stripe confirmar a assinatura (ver
+    // PlanRenewalOverlay e a coluna profiles.subscription_status).
+    try {
+      await startCheckout();
+    } catch (err: any) {
+      setLoading(false);
+      setFormError(err.message || 'Conta criada, mas não foi possível abrir o pagamento agora. Faça login para tentar de novo.');
+    }
   };
 
   return (
@@ -109,6 +120,7 @@ export default function TrialSignupPage() {
             <div className="space-y-1.5 text-center">
               <h1 className="text-2xl font-display font-extrabold text-[#F5F0EA]">Comece seu teste grátis</h1>
               <p className="text-xs text-[#A8A29A]">7 dias grátis, sem compromisso. Cancele quando quiser.</p>
+              <p className="text-[11px] text-[#A8A29A]">Cartão necessário para iniciar — você só é cobrado após os 7 dias.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -188,7 +200,7 @@ export default function TrialSignupPage() {
                 disabled={loading}
                 className="w-full py-3 btn-sushi-primary text-white text-sm font-bold cursor-pointer hover:scale-[1.02] transition-transform disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                {loading ? 'Criando conta...' : 'Começar teste grátis'}
+                {loading ? 'Abrindo pagamento...' : 'Continuar para o pagamento'}
               </button>
             </form>
 
