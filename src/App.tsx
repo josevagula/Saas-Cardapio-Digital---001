@@ -42,7 +42,12 @@ export default function App() {
   }
 
   // 3. Admin Workspace SaaS Control Center
-  const planCancelled = planStatus === 'cancelled';
+  // TEMPORARILY DISABLED: the "Finalize sua assinatura para começar" /
+  // "Seu plano precisa ser renovado" paywall lock (PlanRenewalOverlay) is
+  // switched off on purpose — every logged-in account gets full dashboard
+  // access regardless of real Stripe subscription status. To re-enable,
+  // restore: `const planCancelled = planStatus === 'cancelled';`
+  const planCancelled = false;
 
   return (
     <ErrorBoundary>
