@@ -37,23 +37,23 @@ import { buildFallbackPromoReport } from '../lib/promoFallback';
 const mapSubscriptionStatus = (status: string): 'active' | 'cancelled' =>
   status === 'trialing' || status === 'active' ? 'active' : 'cancelled';
 
-// Maps each admin dashboard currentView onto a hash-based URL (works on
-// GitHub Pages' static hosting with zero server config — no SPA fallback
-// needed, unlike real path-based routes) so the address bar and the
-// browser's back/forward buttons reflect which section is open. Purely a
-// URL/history concern: it doesn't change what's rendered, only what's
-// synced to/from window.location.hash.
-const VIEW_TO_HASH: Record<string, string> = {
-  dashboard: '#/dashboard',
-  orders: '#/dashboard/pedidos',
-  menu_manager: '#/dashboard/cardapio',
-  customers: '#/dashboard/clientes-fidelidade',
-  financial: '#/dashboard/financeiro-cupons',
-  customizer: '#/dashboard/personalizacao',
-  ai_assistant: '#/dashboard/ai-studio'
+// Maps each admin dashboard currentView onto a real URL path, so the address
+// bar and the browser's back/forward buttons reflect which section is open.
+// Purely a URL/history concern: it doesn't change what's rendered, only
+// what's synced to/from window.location.pathname (via history.pushState).
+// Deep links/refreshes on these paths work on GitHub Pages' static hosting
+// thanks to the public/404.html + index.html redirect pair (see those files).
+const VIEW_TO_PATH: Record<string, string> = {
+  dashboard: '/dashboard',
+  orders: '/dashboard/pedidos',
+  menu_manager: '/dashboard/cardapio',
+  customers: '/dashboard/clientes-fidelidade',
+  financial: '/dashboard/financeiro-cupons',
+  customizer: '/dashboard/personalizacao',
+  ai_assistant: '/dashboard/ai-studio'
 };
-const HASH_TO_VIEW: Record<string, string> = Object.fromEntries(
-  Object.entries(VIEW_TO_HASH).map(([view, hash]) => [hash, view])
+const PATH_TO_VIEW: Record<string, string> = Object.fromEntries(
+  Object.entries(VIEW_TO_PATH).map(([view, path]) => [path, view])
 );
 
 interface AppContextType {
@@ -266,10 +266,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentView, setCurrentView] = useState<string>(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('menu')) return 'public_menu';
-    // A dashboard hash on load (reload, or a direct/bookmarked link) opens
+    // A dashboard path on load (reload, or a direct/bookmarked link) opens
     // straight into that section instead of always defaulting to 'dashboard'.
-    const viewFromHash = HASH_TO_VIEW[window.location.hash];
-    return viewFromHash ?? 'home';
+    const viewFromPath = PATH_TO_VIEW[window.location.pathname];
+    return viewFromPath ?? 'home';
   });
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -402,35 +402,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.history.replaceState({}, '', `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`);
   }, [userId, workspaceReady]);
 
-  // Reflect the open admin dashboard section into the URL hash, so the
+  // Reflect the open admin dashboard section into the URL path, so the
   // address bar and the browser's back/forward buttons match what's on
   // screen. Only touches window.location — never affects what's rendered
   // (currentView stays the single source of truth for that).
   useEffect(() => {
     // Skip while the session is still resolving: loggedIn briefly defaults
     // to false before a persisted Supabase session is confirmed, and we
-    // don't want that transient state to wipe a deep-linked dashboard hash.
+    // don't want that transient state to wipe a deep-linked dashboard path.
     if (authLoading) return;
-    const targetHash = (loggedIn && isAdmin) ? (VIEW_TO_HASH[currentView] ?? '') : '';
-    if (window.location.hash === targetHash) return;
-    if (targetHash) {
-      window.location.hash = targetHash;
-    } else if (window.location.hash) {
+    const targetPath = (loggedIn && isAdmin) ? (VIEW_TO_PATH[currentView] ?? '') : '';
+    if (window.location.pathname === targetPath) return;
+    if (targetPath) {
+      window.history.pushState(null, '', targetPath + window.location.search);
+    } else if (window.location.pathname !== '/') {
       // Leaving the admin dashboard (logout, public menu, landing…): drop a
-      // stale #/dashboard/... hash instead of leaving it stuck in the URL.
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      // stale /dashboard/... path instead of leaving it stuck in the URL.
+      window.history.replaceState(null, '', '/' + window.location.search);
     }
   }, [currentView, isAdmin, loggedIn, authLoading]);
 
-  // Picks up the browser's back/forward buttons: when the hash changes to a
+  // Picks up the browser's back/forward buttons: when the path changes to a
   // known dashboard section, switch currentView to match.
   useEffect(() => {
-    const handleHashChange = () => {
-      const view = HASH_TO_VIEW[window.location.hash];
+    const handlePopState = () => {
+      const view = PATH_TO_VIEW[window.location.pathname];
       if (view) setCurrentView(view);
     };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   // Sync state to Supabase (or, for anonymous/no-account browsing, to the
