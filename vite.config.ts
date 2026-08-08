@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/Saas-Cardapio-Digital---001/',
+    base: '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
