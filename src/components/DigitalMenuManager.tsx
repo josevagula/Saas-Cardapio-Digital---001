@@ -112,7 +112,7 @@ export default function DigitalMenuManager() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [promoPrice, setPromoPrice] = useState('');
-  const [categoryId, setCategoryId] = useState('');
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState('');
   const [ingredients, setIngredients] = useState('');
   const [tags, setTags] = useState('');
@@ -141,7 +141,7 @@ export default function DigitalMenuManager() {
     setDescription('');
     setPrice('');
     setPromoPrice('');
-    setCategoryId(categories[0]?.id || '');
+    setCategoryIds(categories[0] ? [categories[0].id] : []);
     setImageUrl('https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500&h=400&fit=crop&q=80');
     setIngredients('');
     setTags('');
@@ -151,6 +151,12 @@ export default function DigitalMenuManager() {
     setNewExtraName('');
     setNewExtraPrice('');
     setNewExtraMaxQty('1');
+  };
+
+  const toggleFormCategory = (catId: string) => {
+    setCategoryIds(prev =>
+      prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]
+    );
   };
 
   const handleOpenAdd = () => {
@@ -164,7 +170,7 @@ export default function DigitalMenuManager() {
     setDescription(p.description);
     setPrice(p.price.toString());
     setPromoPrice(p.promoPrice ? p.promoPrice.toString() : '');
-    setCategoryId(p.categoryId);
+    setCategoryIds(p.categoryIds || []);
     setImageUrl(p.imageUrl);
     setIngredients(p.ingredients.join(', '));
     setTags(p.tags ? p.tags.join(', ') : '');
@@ -193,7 +199,7 @@ export default function DigitalMenuManager() {
 
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price || !categoryId) return;
+    if (!name || !price || categoryIds.length === 0) return;
 
     const parsedIngredients = ingredients.split(',').map(i => i.trim()).filter(Boolean);
     const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
@@ -207,7 +213,7 @@ export default function DigitalMenuManager() {
         description,
         price: numPrice,
         promoPrice: numPromoPrice && numPromoPrice > 0 ? numPromoPrice : undefined,
-        categoryId,
+        categoryIds,
         imageUrl,
         isAvailable,
         ingredients: parsedIngredients,
@@ -221,7 +227,7 @@ export default function DigitalMenuManager() {
         description,
         price: numPrice,
         promoPrice: numPromoPrice && numPromoPrice > 0 ? numPromoPrice : undefined,
-        categoryId,
+        categoryIds,
         imageUrl,
         isAvailable,
         ingredients: parsedIngredients,
@@ -253,7 +259,7 @@ export default function DigitalMenuManager() {
   };
 
   const handleDeleteCat = (cat: Category) => {
-    const prodCount = products.filter(p => p.categoryId === cat.id).length;
+    const prodCount = products.filter(p => p.categoryIds.includes(cat.id)).length;
     if (prodCount > 0) {
       if (!confirm(`A categoria "${cat.name}" possui ${prodCount} produto(s) associado(s). Deseja realmente excluí-la?`)) {
         return;
@@ -272,7 +278,7 @@ export default function DigitalMenuManager() {
     }
     setGeneratingAI(true);
     try {
-      const cat = categories.find(c => c.id === categoryId)?.name || "Comida";
+      const cat = categories.find(c => c.id === categoryIds[0])?.name || "Comida";
       const ingList = ingredients.split(',').map(i => i.trim()).filter(Boolean);
       const data = await generateAIDescription(name, cat, ingList);
       setAiResult(data);
@@ -295,7 +301,7 @@ export default function DigitalMenuManager() {
   const filteredProducts = products.filter(p => {
     const matchesQuery = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || p.categoryId === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || p.categoryIds.includes(selectedCategory);
     return matchesQuery && matchesCategory;
   });
 
@@ -354,7 +360,7 @@ export default function DigitalMenuManager() {
             Todos ({products.length})
           </button>
           {categories.map(cat => {
-            const count = products.filter(p => p.categoryId === cat.id).length;
+            const count = products.filter(p => p.categoryIds.includes(cat.id)).length;
             return (
               <button
                 key={cat.id}
@@ -388,7 +394,9 @@ export default function DigitalMenuManager() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.map(prod => {
-            const catName = categories.find(c => c.id === prod.categoryId)?.name || 'Outros';
+            const catNames = prod.categoryIds
+              .map(id => categories.find(c => c.id === id)?.name)
+              .filter((n): n is string => Boolean(n));
             return (
               <div 
                 key={prod.id} 
@@ -404,10 +412,12 @@ export default function DigitalMenuManager() {
                       alt={prod.name} 
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                      <span className="bg-[#0C0A08]/80 text-white text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-sm border border-[#2A211A]">
-                        {catName}
-                      </span>
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[calc(100%-2rem)]">
+                      {(catNames.length > 0 ? catNames : ['Outros']).map((cn, idx) => (
+                        <span key={idx} className="bg-[#0C0A08]/80 text-white text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-sm border border-[#2A211A]">
+                          {cn}
+                        </span>
+                      ))}
                       {prod.promoPrice && (
                         <span className="bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-xs">
                           Promoção
@@ -528,31 +538,42 @@ export default function DigitalMenuManager() {
             <form onSubmit={handleSaveProduct} className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Product Information Form */}
               <div className="lg:col-span-7 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Nome do Prato*</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: Combo Hot Roll Salmon"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full px-3.5 py-2 text-sm input-sushi focus:outline-none transition-all"
-                    />
-                  </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Nome do Prato*</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Combo Hot Roll Salmon"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3.5 py-2 text-sm input-sushi focus:outline-none transition-all"
+                  />
+                </div>
 
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Categoria*</label>
-                    <select
-                      value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      className="w-full px-3.5 py-2 text-sm input-sushi focus:outline-none transition-all"
-                    >
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id} className="bg-[#141210] text-white">{c.name}</option>
-                      ))}
-                    </select>
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Categorias* (selecione uma ou mais)</label>
+                  <div className="flex flex-wrap gap-1.5 p-2.5 bg-[#181512] border border-[#2A211A] rounded-lg">
+                    {categories.map(c => {
+                      const isSelected = categoryIds.includes(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => toggleFormCategory(c.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white border-[#F97316]'
+                              : 'bg-[#141210] text-slate-300 border-[#2A211A] hover:border-[#3A2E24]'
+                          }`}
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {categoryIds.length === 0 && (
+                    <p className="text-[10px] text-amber-400 mt-1">Selecione ao menos uma categoria.</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -912,7 +933,7 @@ export default function DigitalMenuManager() {
 
                 <div className="space-y-2">
                   {categories.map((cat) => {
-                    const prodCount = products.filter(p => p.categoryId === cat.id).length;
+                    const prodCount = products.filter(p => p.categoryIds.includes(cat.id)).length;
                     const isEditing = editingCatId === cat.id;
 
                     return (

@@ -63,7 +63,9 @@ export interface Product {
   description: string;
   price: number;
   promoPrice?: number;
-  categoryId: string;
+  // A product can belong to more than one category at once (e.g. a combo
+  // that's both in "Combos" and "Destaques"). Always has at least one entry.
+  categoryIds: string[];
   imageUrl: string;
   isAvailable: boolean;
   ingredients: string[];

@@ -254,7 +254,7 @@ export default function PublicMenuPage() {
   const filteredProducts = products.filter(p => {
     const matchQ = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                    p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchC = activeCategory === 'all' || p.categoryId === activeCategory;
+    const matchC = activeCategory === 'all' || p.categoryIds.includes(activeCategory);
     return matchQ && matchC && p.isAvailable;
   });
 
@@ -670,6 +670,13 @@ export default function PublicMenuPage() {
         // No ingredients typed in for this product = nothing to offer removing
         // — no longer guessed from the description text.
         const availableIngredients = selectedProduct.ingredients || [];
+        // A product can be in multiple categories — prefer whichever
+        // category tab the customer is currently browsing, falling back to
+        // the product's first category.
+        const displayCategoryId = selectedProduct.categoryIds.includes(activeCategory)
+          ? activeCategory
+          : selectedProduct.categoryIds[0];
+        const displayCategoryName = categories.find(c => c.id === displayCategoryId)?.name;
 
         return (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-in fade-in duration-200">
@@ -694,11 +701,11 @@ export default function PublicMenuPage() {
                     className="px-3 py-1 rounded-lg bg-black/70 hover:bg-black text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-lg backdrop-blur-xs transition-transform active:scale-95 border border-white/10"
                   >
                     <ArrowLeft className="w-3.5 h-3.5 text-[#FF6A00]" />
-                    <span>Voltar ({categories.find(c => c.id === selectedProduct.categoryId)?.name || 'Categoria'})</span>
+                    <span>Voltar ({displayCategoryName || 'Categoria'})</span>
                   </button>
 
                   <span className="bg-[#FF5200]/20 border border-[#FF5200]/50 text-[#FF5200] font-extrabold text-[10px] px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-md hidden sm:inline-block">
-                    {selectedProduct.tags?.includes('Destaque') ? 'DESTAQUES' : (categories.find(c => c.id === selectedProduct.categoryId)?.name || 'DESTAQUES')}
+                    {selectedProduct.tags?.includes('Destaque') ? 'DESTAQUES' : (displayCategoryName || 'DESTAQUES')}
                   </span>
                 </div>
 

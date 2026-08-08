@@ -31,7 +31,10 @@ const rowToCategory = (r: any): Category => ({
 const productToRow = (p: Product, userId: string) => ({
   id: p.id,
   user_id: userId,
-  category_id: p.categoryId || null,
+  // category_id (singular) is kept in sync as the first category, purely as
+  // a legacy/safety-net column — category_ids is what the app actually reads.
+  category_id: p.categoryIds?.[0] || null,
+  category_ids: p.categoryIds || [],
   name: p.name,
   description: p.description,
   price: p.price,
@@ -51,7 +54,7 @@ const productToRow = (p: Product, userId: string) => ({
 
 const rowToProduct = (r: any): Product => ({
   id: r.id,
-  categoryId: r.category_id || '',
+  categoryIds: r.category_ids && r.category_ids.length > 0 ? r.category_ids : (r.category_id ? [r.category_id] : []),
   name: r.name,
   description: r.description,
   price: Number(r.price) || 0,
