@@ -651,12 +651,9 @@ export default function PublicMenuPage() {
 
       {/* ==================== 5. PRODUCT DETAIL MODAL ==================== */}
       {selectedProduct && (() => {
-        const availableIngredients = selectedProduct.ingredients && selectedProduct.ingredients.length > 0
-          ? selectedProduct.ingredients
-          : selectedProduct.description
-              .split(/,\s*|\se\s+/)
-              .map(i => i.trim())
-              .filter(i => i.length > 1);
+        // No ingredients typed in for this product = nothing to offer removing
+        // — no longer guessed from the description text.
+        const availableIngredients = selectedProduct.ingredients || [];
 
         return (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-in fade-in duration-200">
