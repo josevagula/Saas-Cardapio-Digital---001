@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Coupon } from '../types';
 import { safeNumber, formatCurrency } from '../utils/formatters';
+import { computeRealSalesSummary, PAYMENT_METHOD_LABELS } from '../utils/salesStats';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function FinancialManager() {
-  const { coupons, addCoupon, setCoupons, analytics } = useApp();
+  const { coupons, addCoupon, setCoupons, analytics, orders, isDemoMode } = useApp();
 
   // Form Coupon states
   const [code, setCode] = useState('');
@@ -28,9 +29,36 @@ export default function FinancialManager() {
   // Profit Margin Calculator (Cost of Goods Sold - COGS)
   const [cogsPercent, setCogsPercent] = useState('35'); // standard restaurant food cost is ~35%
 
-  const revenue = analytics.monthlyRevenue;
+  // The demo dataset keeps its mock figures; every real account is
+  // calculated strictly off its own real orders, never the
+  // separately-persisted analytics snapshot (which can go stale).
+  const realSummary = useMemo(() => computeRealSalesSummary(orders), [orders]);
+  const revenue = isDemoMode ? analytics.monthlyRevenue : realSummary.monthlyRevenue;
+  const ticketAverage = isDemoMode ? analytics.ticketAverage : realSummary.ticketAverage;
   const cogs = (revenue * parseFloat(cogsPercent)) / 100;
   const estimatedProfit = revenue - cogs;
+
+  // Most-used real payment method by revenue share — no mock fallback text,
+  // since an account with no orders yet simply has no champion.
+  const championPaymentMethod = useMemo(() => {
+    if (isDemoMode) return 'PIX (55%)';
+    const totals: Record<string, number> = {};
+    orders.forEach(o => {
+      totals[o.paymentMethod] = (totals[o.paymentMethod] || 0) + o.total;
+    });
+    const entries = Object.entries(totals);
+    if (entries.length === 0) return 'Sem pedidos ainda';
+    entries.sort((a, b) => b[1] - a[1]);
+    const [method, amount] = entries[0];
+    const total = entries.reduce((sum, [, v]) => sum + v, 0);
+    const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+    return `${PAYMENT_METHOD_LABELS[method] || method} (${pct}%)`;
+  }, [isDemoMode, orders]);
+
+  // Real count of orders that actually used a coupon code — not a fixed
+  // mock number, since there's no separate "redemptions" counter kept
+  // anywhere else in the app.
+  const redeemedCouponsCount = isDemoMode ? 42 : orders.filter(o => !!o.couponCode).length;
 
   const handleCreateCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,15 +181,15 @@ export default function FinancialManager() {
           <div className="space-y-2 border-t border-[#2A211A] pt-4 mt-6 text-xs">
             <div className="flex justify-between text-slate-300">
               <span>Método Campeão:</span>
-              <span className="text-white font-mono font-bold">PIX (55%)</span>
+              <span className="text-white font-mono font-bold">{championPaymentMethod}</span>
             </div>
             <div className="flex justify-between text-slate-300">
               <span>Ticket Médio Geral:</span>
-              <span className="text-white font-mono font-bold">R$ {formatCurrency(analytics?.ticketAverage)}</span>
+              <span className="text-white font-mono font-bold">R$ {formatCurrency(ticketAverage)}</span>
             </div>
             <div className="flex justify-between text-slate-300">
               <span>Cupons Resgatados:</span>
-              <span className="text-white font-mono font-bold">42 resgates</span>
+              <span className="text-white font-mono font-bold">{redeemedCouponsCount} resgates</span>
             </div>
           </div>
         </div>

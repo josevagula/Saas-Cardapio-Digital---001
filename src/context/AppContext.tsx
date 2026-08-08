@@ -30,6 +30,7 @@ import {
 import { startCheckout, openBillingPortal } from '../lib/billing';
 import { retryUntilSuccess } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
+import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
 
 // Maps a raw Stripe subscription_status value (trialing, active, past_due,
 // canceled, unpaid, incomplete, incomplete_expired…) onto the simple
@@ -830,25 +831,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const analyzeAISales = async () => {
-    const sorted = [...products].sort((a, b) => b.salesCount - a.salesCount);
-    const topProducts = sorted.slice(0, 2).map(p => ({ name: p.name, sales: p.salesCount }));
-    const lowPerformingProducts = sorted.slice(-2).map(p => ({ name: p.name, sales: p.salesCount }));
+    // Same rule as the dashboard: the demo dataset keeps its mock figures,
+    // every real account is analyzed strictly off its own real orders — never
+    // the separately-persisted analytics snapshot, which can go stale.
+    let topProducts: { name: string; sales: number }[];
+    let lowPerformingProducts: { name: string; sales: number }[];
+    let salesSummary: { daily: number; weekly: number; monthly: number; totalOrders: number; ticketAverage: number };
+
+    if (isDemoMode) {
+      const sorted = [...products].sort((a, b) => b.salesCount - a.salesCount);
+      topProducts = sorted.slice(0, 2).map(p => ({ name: p.name, sales: p.salesCount }));
+      lowPerformingProducts = sorted.slice(-2).map(p => ({ name: p.name, sales: p.salesCount }));
+      salesSummary = {
+        daily: analytics.dailyRevenue,
+        weekly: analytics.weeklyRevenue,
+        monthly: analytics.monthlyRevenue,
+        totalOrders: analytics.totalOrders,
+        ticketAverage: analytics.ticketAverage
+      };
+    } else {
+      const unitsSoldByProductId = computeRealUnitsSoldByProductId(orders);
+      const sorted = [...products].sort((a, b) => (unitsSoldByProductId[b.id] || 0) - (unitsSoldByProductId[a.id] || 0));
+      topProducts = sorted.slice(0, 2).map(p => ({ name: p.name, sales: unitsSoldByProductId[p.id] || 0 }));
+      lowPerformingProducts = sorted.slice(-2).map(p => ({ name: p.name, sales: unitsSoldByProductId[p.id] || 0 }));
+      const real = computeRealSalesSummary(orders);
+      salesSummary = {
+        daily: real.dailyRevenue,
+        weekly: real.weeklyRevenue,
+        monthly: real.monthlyRevenue,
+        totalOrders: real.totalOrders,
+        ticketAverage: real.ticketAverage
+      };
+    }
 
     try {
       const response = await fetch('/api/gemini/analyze-sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          salesSummary: {
-            daily: analytics.dailyRevenue,
-            weekly: analytics.weeklyRevenue,
-            monthly: analytics.monthlyRevenue,
-            totalOrders: analytics.totalOrders,
-            ticketAverage: analytics.ticketAverage
-          },
-          topProducts,
-          lowPerformingProducts
-        })
+        body: JSON.stringify({ salesSummary, topProducts, lowPerformingProducts })
       });
       if (!response.ok) throw new Error("Erro ao analisar vendas por IA");
       return await response.json();

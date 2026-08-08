@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product } from '../types';
+import { computeRealSalesSummary, computeRealUnitsSoldByProductId, ordersInRange, revenueHistoryByDay, PAYMENT_METHOD_LABELS } from '../utils/salesStats';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar
@@ -19,13 +20,6 @@ import {
   FileDown
 } from 'lucide-react';
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  pix: 'Pix',
-  credit_card: 'Cartão de Crédito',
-  debit_card: 'Cartão de Débito',
-  cash: 'Dinheiro'
-};
-
 export default function DashboardOverview() {
   const { analytics, products, orders, analyzeAISales, visualConfig, isDemoMode } = useApp();
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
@@ -41,52 +35,12 @@ export default function DashboardOverview() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
-  // Sums this account's real orders per day across [start, end] (inclusive).
-  // Used for every non-demo chart/KPI below so a real account with zero
-  // orders always shows zero instead of placeholder/mock figures.
-  const sumOrdersByDay = (start: Date, end: Date) => {
-    const dayCount = Math.min(366, Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1));
-    const days: { date: string; amount: number }[] = [];
-    for (let i = 0; i < dayCount; i++) {
-      const current = new Date(start);
-      current.setDate(start.getDate() + i);
-      const dayTotal = orders
-        .filter(o => new Date(o.createdAt).toDateString() === current.toDateString())
-        .reduce((sum, o) => sum + o.total, 0);
-      days.push({ date: current.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), amount: Math.round(dayTotal * 100) / 100 });
-    }
-    return days;
-  };
-
   // Real revenue/order figures derived directly from this account's actual
   // orders — never from the (separately-persisted, easily stale) analytics
-  // snapshot — so the dashboard only ever counts what was really sold.
-  const realStats = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - 6);
-    const weeklyHistory = sumOrdersByDay(weekStart, today);
-    const weeklyRevenue = Math.round(weeklyHistory.reduce((s, d) => s + d.amount, 0) * 100) / 100;
-
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthlyHistory = sumOrdersByDay(monthStart, today);
-    const monthlyRevenue = Math.round(monthlyHistory.reduce((s, d) => s + d.amount, 0) * 100) / 100;
-
-    const dailyRevenue = Math.round(
-      orders
-        .filter(o => new Date(o.createdAt).toDateString() === today.toDateString())
-        .reduce((sum, o) => sum + o.total, 0) * 100
-    ) / 100;
-
-    const totalOrders = orders.length;
-    const totalRevenueAllTime = orders.reduce((sum, o) => sum + o.total, 0);
-    const ticketAverage = totalOrders > 0 ? Math.round((totalRevenueAllTime / totalOrders) * 100) / 100 : 0;
-
-    return { weeklyHistory, weeklyRevenue, monthlyHistory, monthlyRevenue, dailyRevenue, totalOrders, ticketAverage };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders]);
+  // snapshot — so the dashboard only ever counts what was really sold. Shared
+  // with the Sushy AI sales analysis (see AppContext's analyzeAISales) so
+  // both always agree on what "real" means.
+  const realStats = useMemo(() => computeRealSalesSummary(orders), [orders]);
 
   // KPI figures: the demo dataset keeps its intentionally impressive mock
   // numbers, every real account only ever shows what it actually sold.
@@ -136,9 +90,7 @@ export default function DashboardOverview() {
     displayedTotal = sum;
   } else {
     // Custom date range: real orders placed within the selected window.
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const days = sumOrdersByDay(start, end);
+    const days = revenueHistoryByDay(orders, new Date(startDate), new Date(endDate));
     displayedChartData = days;
     displayedTotal = Math.round(days.reduce((s, d) => s + d.amount, 0) * 100) / 100;
   }
@@ -149,22 +101,16 @@ export default function DashboardOverview() {
   const getPeriodOrders = () => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    let periodStart: Date;
-    let periodEnd = today;
     if (chartView === 'semanal') {
-      periodStart = new Date(today);
+      const periodStart = new Date(today);
       periodStart.setDate(today.getDate() - 6);
-    } else if (chartView === 'mensal') {
-      periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    } else {
-      periodStart = new Date(startDate);
-      periodEnd = new Date(endDate);
+      return ordersInRange(orders, periodStart, today);
     }
-    const exclusiveEnd = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate() + 1);
-    return orders.filter(o => {
-      const created = new Date(o.createdAt);
-      return created >= periodStart && created < exclusiveEnd;
-    });
+    if (chartView === 'mensal') {
+      const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      return ordersInRange(orders, periodStart, today);
+    }
+    return ordersInRange(orders, new Date(startDate), new Date(endDate));
   };
 
   // Only ever built from orders that were actually placed and paid — a
@@ -188,15 +134,7 @@ export default function DashboardOverview() {
   // testing checkout on the owner's own public menu link in a logged-in
   // browser used to double-count it; fixed above, but this sidesteps that
   // counter entirely and is always exactly what was ordered).
-  const realUnitsSoldByProductId = useMemo(() => {
-    const counts: Record<string, number> = {};
-    orders.forEach(o => {
-      o.items.forEach(item => {
-        counts[item.product.id] = (counts[item.product.id] || 0) + item.quantity;
-      });
-    });
-    return counts;
-  }, [orders]);
+  const realUnitsSoldByProductId = useMemo(() => computeRealUnitsSoldByProductId(orders), [orders]);
   const unitsSoldFor = (p: Product) => isDemoMode ? p.salesCount : (realUnitsSoldByProductId[p.id] || 0);
 
   // Track initial load & date filter changes to trigger chart rise animation
