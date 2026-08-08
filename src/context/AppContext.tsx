@@ -138,6 +138,9 @@ interface AppContextType {
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  // Permanently removes an order — used to cancel/erase an order that
+  // shouldn't count anymore (mistaken entry, customer cancellation, etc.).
+  deleteOrder: (orderId: string) => void;
   addCoupon: (coupon: Coupon) => void;
   addCategory: (category: Omit<Category, 'id'>) => void;
   updateCategory: (category: Category) => void;
@@ -876,9 +879,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders(prev => prev.map(order => 
+    setOrders(prev => prev.map(order =>
       order.id === orderId ? { ...order, status } : order
     ));
+  };
+
+  // Removing it from local state is enough — the syncOrders effect above
+  // upserts the current order list and prunes any row no longer present in
+  // it, so this also deletes the order from Supabase on the next sync.
+  const deleteOrder = (orderId: string) => {
+    setOrders(prev => prev.filter(order => order.id !== orderId));
   };
 
   const addCoupon = (newCoupon: Coupon) => {
@@ -990,6 +1000,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateProduct,
       deleteProduct,
       updateOrderStatus,
+      deleteOrder,
       addCoupon,
       addCategory,
       updateCategory,

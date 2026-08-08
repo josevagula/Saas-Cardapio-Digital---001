@@ -13,11 +13,12 @@ import {
   Phone, 
   AlertCircle,
   TrendingUp,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 
 export default function OrdersManager() {
-  const { orders, updateOrderStatus, visualConfig } = useApp();
+  const { orders, updateOrderStatus, deleteOrder, visualConfig } = useApp();
   const [activeTab, setActiveTab] = useState<OrderStatus>('received');
   
   // Simulated WhatsApp State
@@ -234,6 +235,18 @@ export default function OrdersManager() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Apagar o pedido ${order.id} permanentemente? Use isso para cancelar um pedido — a ação não pode ser desfeita.`)) {
+                          deleteOrder(order.id);
+                        }
+                      }}
+                      className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
+                      title="Cancelar / Apagar Pedido"
+                    >
+                      <Trash2 className="w-4.5 h-4.5" />
+                    </button>
+
                     <button
                       onClick={() => triggerWhatsAppSimulator(order)}
                       className="p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer"
