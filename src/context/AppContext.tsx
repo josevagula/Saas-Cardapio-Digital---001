@@ -56,6 +56,16 @@ const PATH_TO_VIEW: Record<string, string> = Object.fromEntries(
   Object.entries(VIEW_TO_PATH).map(([view, path]) => [path, view])
 );
 
+// Same idea for the logged-out public screens. 'landing' has no dedicated
+// path (root '/' is landing's implicit path).
+const PUBLIC_VIEW_TO_PATH: Record<string, string> = {
+  login: '/login',
+  trial: '/cadastro'
+};
+const PATH_TO_PUBLIC_VIEW: Record<string, string> = Object.fromEntries(
+  Object.entries(PUBLIC_VIEW_TO_PATH).map(([view, path]) => [path, view])
+);
+
 interface AppContextType {
   visualConfig: VisualConfig;
   setVisualConfig: React.Dispatch<React.SetStateAction<VisualConfig>>;
@@ -284,7 +294,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('sushi_plan_status') === 'cancelled' ? 'cancelled' : 'active';
   });
   const [subscriptionStatusRaw, setSubscriptionStatusRaw] = useState<string>('active');
-  const [publicView, setPublicView] = useState<'landing' | 'login' | 'trial'>('landing');
+  const [publicView, setPublicView] = useState<'landing' | 'login' | 'trial'>(() => {
+    const pathname = window.location.pathname;
+    const viewFromPath = PATH_TO_PUBLIC_VIEW[pathname];
+    if (viewFromPath) return viewFromPath as 'login' | 'trial';
+    // A dashboard link opened while logged out (or before the session is
+    // confirmed) goes straight to the login screen instead of the landing
+    // page — if a session turns out to be active after all, the loggedIn
+    // check in App.tsx skips these public screens entirely anyway.
+    if (PATH_TO_VIEW[pathname]) return 'login';
+    return 'landing';
+  });
 
   // Shopping Cart State
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -405,33 +425,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Reflect the open admin dashboard section into the URL path, so the
   // address bar and the browser's back/forward buttons match what's on
   // screen. Only touches window.location — never affects what's rendered
-  // (currentView stays the single source of truth for that).
+  // (currentView stays the single source of truth for that). Only active
+  // while actually logged in — the public-view effect below owns the URL
+  // for the logged-out screens (landing/login/cadastro).
   useEffect(() => {
-    // Skip while the session is still resolving: loggedIn briefly defaults
-    // to false before a persisted Supabase session is confirmed, and we
-    // don't want that transient state to wipe a deep-linked dashboard path.
-    if (authLoading) return;
-    const targetPath = (loggedIn && isAdmin) ? (VIEW_TO_PATH[currentView] ?? '') : '';
+    if (authLoading || !loggedIn) return;
+    const targetPath = isAdmin ? (VIEW_TO_PATH[currentView] ?? '') : '';
     if (window.location.pathname === targetPath) return;
     if (targetPath) {
       window.history.pushState(null, '', targetPath + window.location.search);
     } else if (window.location.pathname !== '/') {
-      // Leaving the admin dashboard (logout, public menu, landing…): drop a
-      // stale /dashboard/... path instead of leaving it stuck in the URL.
+      // Logged in but not showing a mapped dashboard section (e.g. "Visualizar
+      // Cardápio" preview): drop a stale /dashboard/... path from the URL.
       window.history.replaceState(null, '', '/' + window.location.search);
     }
   }, [currentView, isAdmin, loggedIn, authLoading]);
 
-  // Picks up the browser's back/forward buttons: when the path changes to a
-  // known dashboard section, switch currentView to match.
+  // Reflect the logged-out public screen (landing/login/cadastro) into the
+  // URL path. Skipped once a real session is confirmed (`userId` set) even
+  // before the `loggedIn` state has caught up, so a logged-in visitor
+  // reloading a deep dashboard link never has the URL bounce to /login and
+  // back — the effect above takes over as soon as loggedIn flips true.
+  useEffect(() => {
+    if (authLoading || userId) return;
+    const targetPath = PUBLIC_VIEW_TO_PATH[publicView] ?? '/';
+    if (window.location.pathname === targetPath) return;
+    if (targetPath === '/') {
+      window.history.replaceState(null, '', '/' + window.location.search);
+    } else {
+      window.history.pushState(null, '', targetPath + window.location.search);
+    }
+  }, [publicView, userId, authLoading]);
+
+  // Picks up the browser's back/forward buttons: switches currentView or
+  // publicView to match wherever the URL landed. A dashboard path visited
+  // while logged out routes to the login screen instead.
   useEffect(() => {
     const handlePopState = () => {
-      const view = PATH_TO_VIEW[window.location.pathname];
-      if (view) setCurrentView(view);
+      const pathname = window.location.pathname;
+      const dashView = PATH_TO_VIEW[pathname];
+      if (dashView) {
+        if (!loggedIn) {
+          setPublicView('login');
+        } else {
+          setCurrentView(dashView);
+        }
+        return;
+      }
+      const pubView = PATH_TO_PUBLIC_VIEW[pathname];
+      if (pubView) {
+        setPublicView(pubView as 'login' | 'trial');
+        return;
+      }
+      if (pathname === '/') setPublicView('landing');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [loggedIn]);
 
   // Sync state to Supabase (or, for anonymous/no-account browsing, to the
   // old flat localStorage keys) on modification — skipped until the
