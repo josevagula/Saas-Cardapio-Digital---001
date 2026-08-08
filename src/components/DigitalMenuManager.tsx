@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Product, Category } from '../types';
+import { Product, Category, ProductExtra } from '../types';
 import { safeNumber, formatCurrency } from '../utils/formatters';
 import { compressImage } from '../utils/imageUtils';
 import { 
@@ -118,6 +118,12 @@ export default function DigitalMenuManager() {
   const [tags, setTags] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
 
+  // Extras (paid add-ons) for the product being added/edited
+  const [extras, setExtras] = useState<ProductExtra[]>([]);
+  const [newExtraName, setNewExtraName] = useState('');
+  const [newExtraPrice, setNewExtraPrice] = useState('');
+  const [newExtraMaxQty, setNewExtraMaxQty] = useState('1');
+
   // Category Fields
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('Utensils');
@@ -141,6 +147,10 @@ export default function DigitalMenuManager() {
     setTags('');
     setIsAvailable(true);
     setAiResult(null);
+    setExtras([]);
+    setNewExtraName('');
+    setNewExtraPrice('');
+    setNewExtraMaxQty('1');
   };
 
   const handleOpenAdd = () => {
@@ -160,6 +170,25 @@ export default function DigitalMenuManager() {
     setTags(p.tags ? p.tags.join(', ') : '');
     setIsAvailable(p.isAvailable);
     setAiResult(null);
+    setExtras(p.extras || []);
+    setNewExtraName('');
+    setNewExtraPrice('');
+    setNewExtraMaxQty('1');
+  };
+
+  const handleAddExtra = () => {
+    const trimmedName = newExtraName.trim();
+    const numPrice = safeNumber(newExtraPrice);
+    const numMaxQty = Math.floor(safeNumber(newExtraMaxQty));
+    if (!trimmedName || numPrice <= 0 || numMaxQty <= 0) return;
+    setExtras(prev => [...prev, { id: `extra-${Date.now()}-${Math.floor(Math.random() * 1000)}`, name: trimmedName, price: numPrice, maxQuantity: numMaxQty }]);
+    setNewExtraName('');
+    setNewExtraPrice('');
+    setNewExtraMaxQty('1');
+  };
+
+  const handleRemoveExtra = (id: string) => {
+    setExtras(prev => prev.filter(ex => ex.id !== id));
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
@@ -182,7 +211,8 @@ export default function DigitalMenuManager() {
         imageUrl,
         isAvailable,
         ingredients: parsedIngredients,
-        tags: parsedTags
+        tags: parsedTags,
+        extras
       });
       setEditingProduct(null);
     } else {
@@ -195,7 +225,8 @@ export default function DigitalMenuManager() {
         imageUrl,
         isAvailable,
         ingredients: parsedIngredients,
-        tags: parsedTags
+        tags: parsedTags,
+        extras
       });
       setIsAddingProduct(false);
     }
@@ -594,6 +625,67 @@ export default function DigitalMenuManager() {
                     onChange={(e) => setIngredients(e.target.value)}
                     className="w-full px-3.5 py-2 text-sm input-sushi focus:outline-none transition-all"
                   />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Produtos Adicionais (Opcional)</label>
+                  <p className="text-[10px] text-[#A8A29A] mb-2">Itens extras que o cliente pode adicionar a este produto no cardápio público, com quantidade máxima e preço próprios. Deixe sem nenhum adicional se este produto não tiver opção de adicionar itens.</p>
+
+                  {extras.length > 0 && (
+                    <div className="space-y-1.5 mb-2.5">
+                      {extras.map(ex => (
+                        <div key={ex.id} className="flex items-center justify-between gap-2 bg-[#181512] border border-[#2A211A] rounded-lg px-3 py-2">
+                          <div className="min-w-0 flex-1 text-xs">
+                            <span className="font-semibold text-[#F5F0EA]">{ex.name}</span>
+                            <span className="text-[#A8A29A] font-mono ml-2">R$ {ex.price.toFixed(2)} · até {ex.maxQuantity}x</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExtra(ex.id)}
+                            className="text-[#A8A29A] hover:text-red-400 p-1 rounded-md hover:bg-[#141210] transition-colors cursor-pointer shrink-0"
+                            title="Remover adicional"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-1.5">
+                    <input
+                      type="text"
+                      placeholder="Nome (Ex: Cream Cheese Extra)"
+                      value={newExtraName}
+                      onChange={(e) => setNewExtraName(e.target.value)}
+                      className="flex-1 min-w-0 px-3 py-2 text-xs input-sushi focus:outline-none transition-all"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Preço R$"
+                      value={newExtraPrice}
+                      onChange={(e) => setNewExtraPrice(e.target.value)}
+                      className="w-full sm:w-24 px-3 py-2 text-xs input-sushi focus:outline-none transition-all font-mono"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="Qtd. Máx"
+                      value={newExtraMaxQty}
+                      onChange={(e) => setNewExtraMaxQty(e.target.value)}
+                      className="w-full sm:w-20 px-3 py-2 text-xs input-sushi focus:outline-none transition-all font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddExtra}
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-[#1F1209] text-[#FB923C] border border-[#4A2A10] hover:bg-[#2A180C] rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Adicionar</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div>

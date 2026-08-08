@@ -45,7 +45,8 @@ const productToRow = (p: Product, userId: string) => ({
   is_combo_builder: p.isComboBuilder ?? null,
   total_pieces: p.totalPieces ?? null,
   supports_half_and_half: p.supportsHalfAndHalf ?? null,
-  half_and_half_flavors: p.halfAndHalfFlavors ?? null
+  half_and_half_flavors: p.halfAndHalfFlavors ?? null,
+  extras: p.extras ?? []
 });
 
 const rowToProduct = (r: any): Product => ({
@@ -64,7 +65,8 @@ const rowToProduct = (r: any): Product => ({
   isComboBuilder: r.is_combo_builder ?? undefined,
   totalPieces: r.total_pieces ?? undefined,
   supportsHalfAndHalf: r.supports_half_and_half ?? undefined,
-  halfAndHalfFlavors: r.half_and_half_flavors ?? undefined
+  halfAndHalfFlavors: r.half_and_half_flavors ?? undefined,
+  extras: r.extras ?? []
 });
 
 const orderToRow = (o: Order, userId: string) => ({

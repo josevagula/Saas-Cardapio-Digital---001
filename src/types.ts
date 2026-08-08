@@ -40,6 +40,16 @@ export interface SushiExtra {
   freeLimit?: number;
 }
 
+// An extra/add-on the restaurant offers for a specific product (e.g. "Cream
+// Cheese Extra", up to 3x, R$3 each) — configured per product by the admin,
+// picked by the customer on the public menu.
+export interface ProductExtra {
+  id: string;
+  name: string;
+  price: number;
+  maxQuantity: number;
+}
+
 export interface ComboFlavorOption {
   id: string;
   name: string;
@@ -66,6 +76,9 @@ export interface Product {
   totalPieces?: number; // e.g. 20, 30, 50, 100
   supportsHalfAndHalf?: boolean;
   halfAndHalfFlavors?: string[];
+  // Optional paid add-ons a customer can pick on the public menu for this
+  // specific product (e.g. extra cream cheese). Absent/empty = no add-ons.
+  extras?: ProductExtra[];
 }
 
 export type OrderStatus = 'received' | 'preparing' | 'dispatched' | 'delivered';

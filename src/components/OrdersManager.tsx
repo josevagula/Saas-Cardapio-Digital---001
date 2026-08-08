@@ -51,8 +51,9 @@ export default function OrdersManager() {
     text += `\n*Resumo do Pedido:*\n`;
     order.items.forEach(item => {
       const removedText = item.removedIngredients && item.removedIngredients.length > 0 ? ` [Sem: ${item.removedIngredients.join(', ')}]` : '';
+      const extrasText = item.extras && item.extras.length > 0 ? ` [+ ${item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}]` : '';
       const notesText = item.notes ? ` (Obs: ${item.notes})` : '';
-      text += `- ${item.quantity}x ${item.product.name}${removedText}${notesText}\n`;
+      text += `- ${item.quantity}x ${item.product.name}${removedText}${extrasText}${notesText}\n`;
     });
 
     text += `\n*Total:* R$ ${formatCurrency(order.total)}\n`;
@@ -192,12 +193,17 @@ export default function OrdersManager() {
                               <span className="line-through">{item.removedIngredients.join(', ')}</span>
                             </p>
                           )}
+                          {item.extras && item.extras.length > 0 && (
+                            <p className="text-[10px] text-emerald-400 font-bold mt-0.5 ml-5">
+                              ➕ {item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}
+                            </p>
+                          )}
                           {item.notes && (
                             <p className="text-[10px] text-amber-300 italic mt-0.5 ml-5">"Obs: {item.notes}"</p>
                           )}
                         </div>
                         <span className="font-mono text-[#A8A29A]">
-                          R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity)}
+                          R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity + (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0))}
                         </span>
                       </div>
                     ))}

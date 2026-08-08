@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, OrderItem, OrderStatus, PaymentMethod, DeliveryMethod } from '../types';
+import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, OrderItem, OrderStatus, PaymentMethod, DeliveryMethod, SelectedExtra } from '../types';
 import {
   INITIAL_VISUAL_CONFIG,
   INITIAL_CATEGORIES,
@@ -120,7 +120,7 @@ interface AppContextType {
 
   // Shopping Cart & Checkout
   cart: OrderItem[];
-  addToCart: (product: Product, quantity?: number, notes?: string, removedIngredients?: string[]) => void;
+  addToCart: (product: Product, quantity?: number, notes?: string, removedIngredients?: string[], extras?: SelectedExtra[]) => void;
   removeFromCart: (productId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -581,21 +581,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Shopping Cart Handlers
-  const addToCart = (product: Product, quantity = 1, notes = "", removedIngredients?: string[]) => {
+  const addToCart = (product: Product, quantity = 1, notes = "", removedIngredients?: string[], extras?: SelectedExtra[]) => {
     setCart(prev => {
-      const existingIndex = prev.findIndex(item => 
-        item.product.id === product.id && 
+      const existingIndex = prev.findIndex(item =>
+        item.product.id === product.id &&
         JSON.stringify(item.removedIngredients || []) === JSON.stringify(removedIngredients || []) &&
+        JSON.stringify(item.extras || []) === JSON.stringify(extras || []) &&
         (item.notes || "") === (notes || "")
       );
       if (existingIndex > -1) {
-        return prev.map((item, idx) => 
-          idx === existingIndex 
+        return prev.map((item, idx) =>
+          idx === existingIndex
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
-      return [...prev, { product, quantity, notes, removedIngredients }];
+      return [...prev, { product, quantity, notes, removedIngredients, extras }];
     });
   };
 
@@ -627,7 +628,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Calculate current cart total
     const subtotal = cart.reduce((acc, item) => {
       const price = item.product.promoPrice || item.product.price;
-      return acc + ((typeof price === 'number' && !isNaN(price) ? price : parseFloat(price as any) || 0) * item.quantity);
+      const extrasTotal = (item.extras || []).reduce((s, ex) => s + ex.price * ex.quantity, 0);
+      return acc + ((typeof price === 'number' && !isNaN(price) ? price : parseFloat(price as any) || 0) * item.quantity) + extrasTotal;
     }, 0);
 
     const minVal = typeof coupon.minOrderValue === 'number' && !isNaN(coupon.minOrderValue) ? coupon.minOrderValue : (parseFloat(coupon.minOrderValue as any) || 0);
@@ -653,7 +655,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ): Order => {
     const subtotal = cart.reduce((acc, item) => {
       const price = item.product.promoPrice || item.product.price;
-      return acc + (price * item.quantity);
+      const extrasTotal = (item.extras || []).reduce((s, ex) => s + ex.price * ex.quantity, 0);
+      return acc + (price * item.quantity) + extrasTotal;
     }, 0);
 
     const deliveryFee = deliveryMethod === 'delivery' ? visualConfig.deliveryFee : 0;

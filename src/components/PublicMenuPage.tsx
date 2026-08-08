@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Product, Category, PaymentMethod, DeliveryMethod, SelectedComboPiece, SelectedHalfAndHalf } from '../types';
+import { Product, Category, PaymentMethod, DeliveryMethod, SelectedComboPiece, SelectedHalfAndHalf, SelectedExtra } from '../types';
 import { safeNumber, formatCurrency, parseCashAmount } from '../utils/formatters';
 import { 
   ShoppingBag, 
@@ -100,6 +100,7 @@ export default function PublicMenuPage() {
   const [productQuantity, setProductQuantity] = useState(1);
   const [productNotes, setProductNotes] = useState('');
   const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
+  const [selectedExtras, setSelectedExtras] = useState<SelectedExtra[]>([]);
 
   // Sync placed order status
   useEffect(() => {
@@ -184,19 +185,33 @@ export default function PublicMenuPage() {
     setProductQuantity(existingInCart ? existingInCart.quantity : 1);
     setProductNotes(existingInCart?.notes || '');
     setRemovedIngredients(existingInCart?.removedIngredients || []);
+    setSelectedExtras(existingInCart?.extras || []);
   };
 
   const toggleRemoveIngredient = (ing: string) => {
-    setRemovedIngredients(prev => 
+    setRemovedIngredients(prev =>
       prev.includes(ing) ? prev.filter(i => i !== ing) : [...prev, ing]
     );
   };
 
+  const setExtraQuantity = (extra: NonNullable<Product['extras']>[number], quantity: number) => {
+    const clamped = Math.max(0, Math.min(extra.maxQuantity, quantity));
+    setSelectedExtras(prev => {
+      const withoutThis = prev.filter(e => e.id !== extra.id);
+      if (clamped === 0) return withoutThis;
+      return [...withoutThis, { id: extra.id, name: extra.name, price: extra.price, quantity: clamped }];
+    });
+  };
+
+  const extrasTotalForSelection = (extras: SelectedExtra[]) =>
+    extras.reduce((sum, ex) => sum + ex.price * ex.quantity, 0);
+
   const handleAddToCartModal = () => {
     if (selectedProduct) {
-      addToCart(selectedProduct, productQuantity, productNotes, removedIngredients);
+      addToCart(selectedProduct, productQuantity, productNotes, removedIngredients, selectedExtras);
       setSelectedProduct(null);
       setRemovedIngredients([]);
+      setSelectedExtras([]);
       setIsCartOpen(true);
     }
   };
@@ -216,7 +231,8 @@ export default function PublicMenuPage() {
   // Calculations
   const subtotal = cart.reduce((acc, item) => {
     const price = safeNumber(item.product.promoPrice || item.product.price);
-    return acc + (price * safeNumber(item.quantity, 1));
+    const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
+    return acc + (price * safeNumber(item.quantity, 1)) + extrasTotal;
   }, 0);
 
   const deliveryFee = deliveryMethod === 'delivery' ? safeNumber(visualConfig.deliveryFee) : 0;
@@ -746,6 +762,57 @@ export default function PublicMenuPage() {
                   </div>
                 )}
 
+                {/* ADICIONAIS Section — only for products with configured extras */}
+                {selectedProduct.extras && selectedProduct.extras.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-baseline gap-1.5">
+                      <h4 className="font-extrabold text-xs tracking-wider text-white uppercase">ADICIONAIS</h4>
+                      <span className="text-[#8E8B85] text-xs font-normal">(opcional)</span>
+                    </div>
+                    <p className="text-[#A09D96] text-xs">
+                      Capriche no seu pedido com um extra:
+                    </p>
+
+                    <div className="space-y-2 pt-1">
+                      {selectedProduct.extras.map(extra => {
+                        const current = selectedExtras.find(e => e.id === extra.id)?.quantity || 0;
+                        return (
+                          <div
+                            key={extra.id}
+                            className="flex items-center justify-between gap-3 bg-[#181614] border border-[#2A2724] rounded-xl px-3.5 py-2.5"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-white truncate">{extra.name}</p>
+                              <p className="text-[10px] text-[#A09D96] font-mono">
+                                + R$ {formatCurrency(extra.price).replace('.', ',')} · até {extra.maxQuantity}x
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 bg-[#0F0D0B] border border-[#2A2724] rounded-full px-2.5 py-1">
+                              <button
+                                type="button"
+                                onClick={() => setExtraQuantity(extra, current - 1)}
+                                disabled={current === 0}
+                                className="text-[#8E8B85] hover:text-white transition-colors cursor-pointer p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="font-mono font-black text-white text-xs min-w-[14px] text-center">{current}</span>
+                              <button
+                                type="button"
+                                onClick={() => setExtraQuantity(extra, current + 1)}
+                                disabled={current >= extra.maxQuantity}
+                                className="text-[#8E8B85] hover:text-white transition-colors cursor-pointer p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* OBSERVAÇÕES ESPECIAIS Section */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-extrabold text-white uppercase tracking-wider">
@@ -815,7 +882,7 @@ export default function PublicMenuPage() {
                   <div className="flex items-center gap-2 font-mono font-black text-sm text-black">
                     <span className="opacity-40">|</span>
                     <span>
-                      R$ {formatCurrency(safeNumber(selectedProduct.promoPrice || selectedProduct.price) * productQuantity).replace('.', ',')}
+                      R$ {formatCurrency(safeNumber(selectedProduct.promoPrice || selectedProduct.price) * productQuantity + extrasTotalForSelection(selectedExtras)).replace('.', ',')}
                     </span>
                   </div>
                 </button>
@@ -877,7 +944,7 @@ export default function PublicMenuPage() {
                           <div className="flex items-start justify-between gap-2">
                             <h4 className="font-bold text-xs sm:text-sm text-white line-clamp-2 leading-snug">{item.product.name}</h4>
                             <span className="font-mono font-bold text-xs sm:text-sm text-white whitespace-nowrap">
-                              R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity).replace('.', ',')}
+                              R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity + extrasTotalForSelection(item.extras || [])).replace('.', ',')}
                             </span>
                           </div>
 
@@ -885,6 +952,11 @@ export default function PublicMenuPage() {
                             <p className="text-[10px] text-red-400 font-semibold mt-1 flex items-center gap-1">
                               <span>Sem:</span>
                               <span className="line-through">{item.removedIngredients.join(', ')}</span>
+                            </p>
+                          )}
+                          {item.extras && item.extras.length > 0 && (
+                            <p className="text-[10px] text-[#22C55E] font-semibold mt-0.5">
+                              + {item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}
                             </p>
                           )}
                           {item.notes && (
