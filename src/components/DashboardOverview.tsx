@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardOverview() {
-  const { analytics, products, orders, analyzeAISales, visualConfig } = useApp();
+  const { analytics, products, orders, analyzeAISales, visualConfig, isDemoMode } = useApp();
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [loadingAI, setLoadingAI] = useState<boolean>(false);
 
@@ -33,15 +33,68 @@ export default function DashboardOverview() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  // Sums this account's real orders per day across [start, end] (inclusive).
+  // Used for every non-demo chart/KPI below so a real account with zero
+  // orders always shows zero instead of placeholder/mock figures.
+  const sumOrdersByDay = (start: Date, end: Date) => {
+    const dayCount = Math.min(366, Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1));
+    const days: { date: string; amount: number }[] = [];
+    for (let i = 0; i < dayCount; i++) {
+      const current = new Date(start);
+      current.setDate(start.getDate() + i);
+      const dayTotal = orders
+        .filter(o => new Date(o.createdAt).toDateString() === current.toDateString())
+        .reduce((sum, o) => sum + o.total, 0);
+      days.push({ date: current.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), amount: Math.round(dayTotal * 100) / 100 });
+    }
+    return days;
+  };
+
+  // Real revenue/order figures derived directly from this account's actual
+  // orders — never from the (separately-persisted, easily stale) analytics
+  // snapshot — so the dashboard only ever counts what was really sold.
+  const realStats = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - 6);
+    const weeklyHistory = sumOrdersByDay(weekStart, today);
+    const weeklyRevenue = Math.round(weeklyHistory.reduce((s, d) => s + d.amount, 0) * 100) / 100;
+
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthlyHistory = sumOrdersByDay(monthStart, today);
+    const monthlyRevenue = Math.round(monthlyHistory.reduce((s, d) => s + d.amount, 0) * 100) / 100;
+
+    const dailyRevenue = Math.round(
+      orders
+        .filter(o => new Date(o.createdAt).toDateString() === today.toDateString())
+        .reduce((sum, o) => sum + o.total, 0) * 100
+    ) / 100;
+
+    const totalOrders = orders.length;
+    const totalRevenueAllTime = orders.reduce((sum, o) => sum + o.total, 0);
+    const ticketAverage = totalOrders > 0 ? Math.round((totalRevenueAllTime / totalOrders) * 100) / 100 : 0;
+
+    return { weeklyHistory, weeklyRevenue, monthlyHistory, monthlyRevenue, dailyRevenue, totalOrders, ticketAverage };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders]);
+
+  // KPI figures: the demo dataset keeps its intentionally impressive mock
+  // numbers, every real account only ever shows what it actually sold.
+  const kpi = isDemoMode
+    ? { dailyRevenue: analytics.dailyRevenue, weeklyRevenue: analytics.weeklyRevenue, monthlyRevenue: analytics.monthlyRevenue, totalOrders: analytics.totalOrders, ticketAverage: analytics.ticketAverage }
+    : { dailyRevenue: realStats.dailyRevenue, weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue, totalOrders: realStats.totalOrders, ticketAverage: realStats.ticketAverage };
+
   // Determine active chart data and total based on the selected view
-  let displayedChartData = [];
+  let displayedChartData: { date: string; amount: number }[] = [];
   let displayedTotal = 0;
 
   if (chartView === 'semanal') {
-    displayedChartData = analytics.revenueHistory;
-    displayedTotal = analytics.weeklyRevenue;
+    displayedChartData = isDemoMode ? analytics.revenueHistory : realStats.weeklyHistory;
+    displayedTotal = kpi.weeklyRevenue;
   } else if (chartView === 'mensal') {
-    displayedChartData = [
+    displayedChartData = isDemoMode ? [
       { date: '01/07', amount: 1250 },
       { date: '04/07', amount: 1800 },
       { date: '08/07', amount: 1450 },
@@ -51,18 +104,16 @@ export default function DashboardOverview() {
       { date: '24/07', amount: 2100 },
       { date: '28/07', amount: 3100 },
       { date: '30/07', amount: 3400 },
-    ];
-    displayedTotal = analytics.monthlyRevenue;
-  } else {
-    // Custom date range dynamic calculation
+    ] : realStats.monthlyHistory;
+    displayedTotal = kpi.monthlyRevenue;
+  } else if (isDemoMode) {
+    // Custom date range mock distribution — demo only.
     const start = new Date(startDate);
     const end = new Date(endDate);
     const dataList = [];
     let sum = 0;
-
-    // Determine the days difference to generate realistic mock distribution matching start & end
     const daysDiff = Math.min(31, Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1));
-    
+
     for (let i = 0; i < daysDiff; i++) {
       const current = new Date(start);
       current.setDate(start.getDate() + i);
@@ -75,6 +126,13 @@ export default function DashboardOverview() {
     }
     displayedChartData = dataList;
     displayedTotal = sum;
+  } else {
+    // Custom date range: real orders placed within the selected window.
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days = sumOrdersByDay(start, end);
+    displayedChartData = days;
+    displayedTotal = Math.round(days.reduce((s, d) => s + d.amount, 0) * 100) / 100;
   }
 
   // Track initial load & date filter changes to trigger chart rise animation
@@ -181,11 +239,17 @@ export default function DashboardOverview() {
             </div>
           </div>
           <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
-            {formatCurrency(analytics.monthlyRevenue)}
+            {formatCurrency(kpi.monthlyRevenue)}
           </h3>
           <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#F97316] font-bold">
-            <ArrowUpRight className="w-3 h-3" />
-            <span>+14.3% este mês</span>
+            {isDemoMode ? (
+              <>
+                <ArrowUpRight className="w-3 h-3" />
+                <span>+14.3% este mês</span>
+              </>
+            ) : (
+              <span className="text-[#A8A29A]">Baseado em vendas reais</span>
+            )}
           </div>
         </div>
 
@@ -198,7 +262,7 @@ export default function DashboardOverview() {
             </div>
           </div>
           <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
-            {formatCurrency(analytics.dailyRevenue)}
+            {formatCurrency(kpi.dailyRevenue)}
           </h3>
           <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#A8A29A] font-medium">
             <Activity className="w-3 h-3 text-[#FB923C] animate-pulse" />
@@ -215,11 +279,17 @@ export default function DashboardOverview() {
             </div>
           </div>
           <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
-            {analytics.totalOrders}
+            {kpi.totalOrders}
           </h3>
           <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#F97316] font-bold">
-            <ArrowUpRight className="w-3 h-3" />
-            <span>+8.2% conversão</span>
+            {isDemoMode ? (
+              <>
+                <ArrowUpRight className="w-3 h-3" />
+                <span>+8.2% conversão</span>
+              </>
+            ) : (
+              <span className="text-[#A8A29A]">Pedidos reais recebidos</span>
+            )}
           </div>
         </div>
 
@@ -232,11 +302,17 @@ export default function DashboardOverview() {
             </div>
           </div>
           <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
-            {formatCurrency(analytics.ticketAverage)}
+            {formatCurrency(kpi.ticketAverage)}
           </h3>
           <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#FB923C] font-bold">
-            <ArrowUpRight className="w-3 h-3" />
-            <span>Fidelidade ativa: 72%</span>
+            {isDemoMode ? (
+              <>
+                <ArrowUpRight className="w-3 h-3" />
+                <span>Fidelidade ativa: 72%</span>
+              </>
+            ) : (
+              <span className="text-[#A8A29A]">Média por pedido real</span>
+            )}
           </div>
         </div>
       </div>

@@ -83,6 +83,10 @@ interface AppContextType {
   // trying the product from the landing page. Never reads or writes a real
   // Supabase account's data, even if one happens to be signed in already.
   enterDemoMode: () => void;
+  // True only while showing the built-in "Demonstração" mock dataset — lets
+  // screens like the dashboard tell a real account's (possibly all-zero)
+  // data apart from the demo's intentionally impressive mock numbers.
+  isDemoMode: boolean;
 
   // Shopping Cart & Checkout
   cart: OrderItem[];
@@ -865,6 +869,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPublicView,
       enterAdminDashboard,
       enterDemoMode,
+      isDemoMode,
       cart,
       addToCart,
       removeFromCart,
