@@ -90,6 +90,11 @@ interface AppContextType {
   setIsAdmin: (isAdmin: boolean) => void;
   loggedIn: boolean;
   setLoggedIn: (loggedIn: boolean) => void;
+  // False while a public menu link's real data (or a signed-in account's
+  // workspace) is still loading from Supabase — gates the public menu screen
+  // so it never flashes this browser's stale/cached data for a *different*
+  // restaurant before the correct one arrives.
+  workspaceReady: boolean;
   currentPlan: 'basic' | 'pro' | 'premium';
   setCurrentPlan: (plan: 'basic' | 'pro' | 'premium') => void;
   // Billing status of the current account's real Stripe subscription, mapped
@@ -1005,6 +1010,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin,
       loggedIn,
       setLoggedIn,
+      workspaceReady,
       currentPlan,
       setCurrentPlan,
       planStatus,

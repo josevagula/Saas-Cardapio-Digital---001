@@ -18,7 +18,7 @@ import { Menu } from 'lucide-react';
 import { SushiLogoEmblem } from './components/SushiIcons';
 
 export default function App() {
-  const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus } = useApp();
+  const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, workspaceReady } = useApp();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // 1. Landing Marketing & Pricing page (or Login / Trial signup) if not signed in yet
@@ -34,6 +34,17 @@ export default function App() {
 
   // 2. Customer Public Digital Menu Cardápio Screen
   if (!isAdmin) {
+    // While the real menu data for this link is still loading, show a plain
+    // loading screen instead of this browser's previously-cached data — a
+    // customer opening a restaurant's link must never see a flash of a
+    // different (stale/cached) menu before the correct one appears.
+    if (!workspaceReady) {
+      return (
+        <div className="min-h-screen w-full bg-[#0C0A08] flex items-center justify-center">
+          <SushiLogoEmblem size={48} />
+        </div>
+      );
+    }
     return (
       <ErrorBoundary>
         <PublicMenuPage />
