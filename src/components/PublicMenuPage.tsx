@@ -271,35 +271,34 @@ export default function PublicMenuPage() {
     return matchQ && matchC && p.isAvailable;
   });
 
-  const renderCategoryIcon = (cat: Category | { name: string; icon?: string }, isActive = false) => {
-    const activeClass = isActive ? 'text-black' : '';
+  const renderCategoryIcon = (cat: Category | { name: string; icon?: string }) => {
     const iconKey = (cat.icon || '').toLowerCase();
     switch (iconKey) {
-      case 'flame': return <Flame className={`w-3.5 h-3.5 ${activeClass || 'text-[#FF6A00]'}`} />;
-      case 'fish': return <Fish className={`w-3.5 h-3.5 ${activeClass || 'text-cyan-400'}`} />;
-      case 'beef': return <Beef className={`w-3.5 h-3.5 ${activeClass || 'text-red-400'}`} />;
-      case 'coffee': return <Coffee className={`w-3.5 h-3.5 ${activeClass || 'text-amber-600'}`} />;
-      case 'wine': return <Wine className={`w-3.5 h-3.5 ${activeClass || 'text-purple-400'}`} />;
+      case 'flame': return <Flame className="w-3.5 h-3.5 text-[#FF6A00]" />;
+      case 'fish': return <Fish className="w-3.5 h-3.5 text-cyan-400" />;
+      case 'beef': return <Beef className="w-3.5 h-3.5 text-red-400" />;
+      case 'coffee': return <Coffee className="w-3.5 h-3.5 text-amber-600" />;
+      case 'wine': return <Wine className="w-3.5 h-3.5 text-purple-400" />;
       case 'icecream':
-      case 'ice-cream': return <IceCream className={`w-3.5 h-3.5 ${activeClass || 'text-pink-400'}`} />;
-      case 'tag': return <Tag className={`w-3.5 h-3.5 ${activeClass || 'text-emerald-400'}`} />;
-      case 'star': return <Star className={`w-3.5 h-3.5 ${activeClass || 'text-yellow-400'}`} />;
-      case 'heart': return <Heart className={`w-3.5 h-3.5 ${activeClass || 'text-rose-400'}`} />;
-      case 'sparkles': return <Sparkles className={`w-3.5 h-3.5 ${activeClass || 'text-[#FB923C]'}`} />;
-      case 'utensils': return <Utensils className={`w-3.5 h-3.5 ${activeClass || 'text-amber-400'}`} />;
+      case 'ice-cream': return <IceCream className="w-3.5 h-3.5 text-pink-400" />;
+      case 'tag': return <Tag className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'star': return <Star className="w-3.5 h-3.5 text-yellow-400" />;
+      case 'heart': return <Heart className="w-3.5 h-3.5 text-rose-400" />;
+      case 'sparkles': return <Sparkles className="w-3.5 h-3.5 text-[#FB923C]" />;
+      case 'utensils': return <Utensils className="w-3.5 h-3.5 text-amber-400" />;
     }
 
     const lower = cat.name.toLowerCase();
     if (lower.includes('hot') || lower.includes('entrada') || lower.includes('quente')) {
-      return <Flame className={`w-3.5 h-3.5 ${activeClass || 'text-[#FF6A00]'}`} />;
+      return <Flame className="w-3.5 h-3.5 text-[#FF6A00]" />;
     }
     if (lower.includes('sushi') || lower.includes('sashimi') || lower.includes('temaki') || lower.includes('peixe')) {
-      return <Fish className={`w-3.5 h-3.5 ${activeClass || 'text-cyan-400'}`} />;
+      return <Fish className="w-3.5 h-3.5 text-cyan-400" />;
     }
     if (lower.includes('combo') || lower.includes('barca') || lower.includes('especia')) {
-      return <Utensils className={`w-3.5 h-3.5 ${activeClass || 'text-amber-400'}`} />;
+      return <Utensils className="w-3.5 h-3.5 text-amber-400" />;
     }
-    return <Sparkles className={`w-3.5 h-3.5 ${activeClass || 'text-[#FB923C]'}`} />;
+    return <Sparkles className="w-3.5 h-3.5 text-[#FB923C]" />;
   };
 
   // Smart Navigation Handler for "Voltar" (Back) in Cardápio Digital
@@ -604,7 +603,7 @@ export default function PublicMenuPage() {
                             }`
                       }
                     >
-                      {renderCategoryIcon(cat, isKomyCategoryStyle && isActive)}
+                      {renderCategoryIcon(cat)}
                       <span>{cat.name}</span>
                     </button>
                   );
