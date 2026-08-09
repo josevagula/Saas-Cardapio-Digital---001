@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product, Category, PaymentMethod, DeliveryMethod, SelectedComboPiece, SelectedHalfAndHalf, SelectedExtra } from '../types';
 import { safeNumber, formatCurrency, parseCashAmount } from '../utils/formatters';
@@ -71,7 +71,19 @@ export default function PublicMenuPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  
+
+  // Start the menu on the first configured category instead of "Todos os Pratos".
+  // Categories may still be loading (async fetch for public menu links), so wait
+  // until they're available and only do this once.
+  const hasSetInitialCategory = useRef(false);
+  useEffect(() => {
+    if (!hasSetInitialCategory.current && categories.length > 0) {
+      setActiveCategory(categories[0].id);
+      hasSetInitialCategory.current = true;
+    }
+  }, [categories]);
+
+
   // Cart & Checkout flow state
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
