@@ -64,8 +64,12 @@ export default function VisualCustomizer() {
       case 'heart': return <Heart className={`${className} text-rose-400`} />;
       case 'sparkles': return <Sparkles className={`${className} text-[#FB923C]`} />;
       case 'utensils': return <Utensils className={`${className} text-amber-400`} />;
-      default: return <Sparkles className={`${className} text-[#FB923C]`} />;
     }
+    // A real emoji picked from the category icon picker — render as text.
+    if (iconName) {
+      return <span className="text-[8px] leading-none">{iconName}</span>;
+    }
+    return <Sparkles className={`${className} text-[#FB923C]`} />;
   };
   const [copied, setCopied] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);

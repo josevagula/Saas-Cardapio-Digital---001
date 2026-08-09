@@ -288,6 +288,12 @@ export default function PublicMenuPage() {
       case 'utensils': return <Utensils className="w-3.5 h-3.5 text-amber-400" />;
     }
 
+    // A real emoji picked from the category icon picker (not one of the
+    // legacy Lucide icon names above) — just render it as text.
+    if (cat.icon) {
+      return <span className="text-sm leading-none">{cat.icon}</span>;
+    }
+
     const lower = cat.name.toLowerCase();
     if (lower.includes('hot') || lower.includes('entrada') || lower.includes('quente')) {
       return <Flame className="w-3.5 h-3.5 text-[#FF6A00]" />;

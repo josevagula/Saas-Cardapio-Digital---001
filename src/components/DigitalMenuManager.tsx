@@ -84,21 +84,28 @@ export default function DigitalMenuManager() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const CATEGORY_ICONS_LIST = [
-    { id: 'Utensils', name: 'Utensílios' },
-    { id: 'Fish', name: 'Peixe / Sushi' },
-    { id: 'Flame', name: 'Hot / Chama' },
-    { id: 'Beef', name: 'Grelhados' },
-    { id: 'Coffee', name: 'Bebidas' },
-    { id: 'Wine', name: 'Saquê / Vinho' },
-    { id: 'IceCream', name: 'Sobremesas' },
-    { id: 'Sparkles', name: 'Destaques' },
-    { id: 'Tag', name: 'Promoções' },
-    { id: 'Star', name: 'Especiais' },
-    { id: 'Heart', name: 'Favoritos' },
+    { id: '⭐', name: 'Especiais' },
+    { id: '🥗', name: 'Saladas' },
+    { id: '🔥', name: 'Hot / Promoção' },
+    { id: '🐟', name: 'Peixe / Sashimi' },
+    { id: '🍣', name: 'Sushi' },
+    { id: '🍱', name: 'Combinados' },
+    { id: '🥣', name: 'Sopas / Caldos' },
+    { id: '✨', name: 'Destaques' },
+    { id: '🥤', name: 'Bebidas' },
+    { id: '🥩', name: 'Grelhados' },
+    { id: '🍔', name: 'Lanches' },
+    { id: '🍺', name: 'Bebidas Alcoólicas' },
+    { id: '🍽️', name: 'Pratos em Geral' },
   ];
 
+  // Categories created before the emoji picker existed still store a Lucide
+  // icon name (e.g. "Flame") — keep rendering those correctly, while any
+  // other value (a real emoji picked from CATEGORY_ICONS_LIST) is just
+  // displayed as text.
   const renderCatIcon = (iconName: string = '', className = "w-4 h-4") => {
-    switch ((iconName || '').toLowerCase()) {
+    const key = (iconName || '').toLowerCase();
+    switch (key) {
       case 'flame': return <Flame className={className} />;
       case 'fish': return <Fish className={className} />;
       case 'beef': return <Beef className={className} />;
@@ -110,9 +117,13 @@ export default function DigitalMenuManager() {
       case 'heart': return <Heart className={className} />;
       case 'tag': return <Tag className={className} />;
       case 'sparkles': return <Sparkles className={className} />;
-      case 'utensils':
-      default: return <Utensils className={className} />;
+      case 'utensils': return <Utensils className={className} />;
     }
+    if (iconName) {
+      const textSizeClass = className.includes('w-4') ? 'text-base' : 'text-sm';
+      return <span className={`${textSizeClass} leading-none`}>{iconName}</span>;
+    }
+    return <Utensils className={className} />;
   };
   
   // Modals / Forms States
@@ -139,10 +150,10 @@ export default function DigitalMenuManager() {
 
   // Category Fields
   const [newCatName, setNewCatName] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState('Utensils');
+  const [newCatIcon, setNewCatIcon] = useState('🍽️');
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editCatName, setEditCatName] = useState('');
-  const [editCatIcon, setEditCatIcon] = useState('Utensils');
+  const [editCatIcon, setEditCatIcon] = useState('🍽️');
 
   // AI Generation States
   const [generatingAI, setGeneratingAI] = useState(false);
@@ -262,7 +273,7 @@ export default function DigitalMenuManager() {
   const handleStartEditCat = (cat: Category) => {
     setEditingCatId(cat.id);
     setEditCatName(cat.name);
-    setEditCatIcon(cat.icon || 'Utensils');
+    setEditCatIcon(cat.icon || '🍽️');
   };
 
   const handleSaveEditCat = (id: string) => {
