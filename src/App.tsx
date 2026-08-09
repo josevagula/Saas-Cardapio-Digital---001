@@ -14,7 +14,7 @@ import LoginPage from './components/LoginPage';
 import TrialSignupPage from './components/TrialSignupPage';
 import PlanRenewalOverlay from './components/PlanRenewalOverlay';
 import ErrorBoundary from './components/ErrorBoundary';
-import { Menu } from 'lucide-react';
+import { Menu, Loader2 } from 'lucide-react';
 import { SushiLogoEmblem } from './components/SushiIcons';
 
 export default function App() {
@@ -40,8 +40,9 @@ export default function App() {
     // different (stale/cached) menu before the correct one appears.
     if (!workspaceReady) {
       return (
-        <div className="min-h-screen w-full bg-[#0C0A08] flex items-center justify-center">
+        <div className="min-h-screen w-full bg-[#0C0A08] flex flex-col items-center justify-center gap-4">
           <SushiLogoEmblem size={48} />
+          <Loader2 className="w-6 h-6 text-[#FB923C] animate-spin" />
         </div>
       );
     }
