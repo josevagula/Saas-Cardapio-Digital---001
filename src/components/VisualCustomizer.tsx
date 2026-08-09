@@ -459,9 +459,9 @@ export default function VisualCustomizer() {
                 </div>
                 {/* mini preview */}
                 <div className="flex gap-1.5 overflow-hidden">
-                  <span className="px-2.5 py-1 rounded-full text-[9px] font-black bg-[#F97316] text-white shrink-0">Destaques</span>
-                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-[#161616] border border-[#262626] text-[#9CA3AF] shrink-0">Sushi</span>
-                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-[#161616] border border-[#262626] text-[#9CA3AF] shrink-0">Bebidas</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-black bg-[#F97316] text-white shrink-0">⭐ Destaques</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-[#161616] border border-[#262626] text-[#9CA3AF] shrink-0">🍣 Sushi</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-[#161616] border border-[#262626] text-[#9CA3AF] shrink-0">🥤 Bebidas</span>
                 </div>
               </button>
 
@@ -475,7 +475,7 @@ export default function VisualCustomizer() {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-200">Estilo Komy (cápsula)</span>
+                  <span className="text-xs font-bold text-slate-200">Estilo Cápsula</span>
                   {categoryStyle === 'komy' && <Check className="w-3.5 h-3.5 text-[#FB923C]" />}
                 </div>
                 {/* mini preview */}
