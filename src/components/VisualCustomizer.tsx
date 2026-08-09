@@ -19,12 +19,22 @@ import {
   Edit2,
   Clock,
   Power,
-  Loader2
+  Loader2,
+  Flame,
+  Fish,
+  Beef,
+  Coffee,
+  Wine,
+  IceCream,
+  Tag,
+  Star,
+  Heart,
+  Utensils
 } from 'lucide-react';
 import { checkIsStoreOpen } from '../utils/storeStatus';
 
 export default function VisualCustomizer() {
-  const { visualConfig, setVisualConfig, currentPlan } = useApp();
+  const { visualConfig, setVisualConfig, currentPlan, categories } = useApp();
 
   const [establishmentName, setEstablishmentName] = useState(visualConfig.establishmentName);
   const [phone, setPhone] = useState(visualConfig.phone);
@@ -37,6 +47,26 @@ export default function VisualCustomizer() {
   const [bannerUrl, setBannerUrl] = useState(visualConfig.bannerUrl);
   const [menuSlug, setMenuSlug] = useState(visualConfig.menuSlug || 'delivery-sushi');
   const [categoryStyle, setCategoryStyle] = useState<'default' | 'komy'>(visualConfig.categoryStyle || 'default');
+  const [previewActiveCategoryId, setPreviewActiveCategoryId] = useState<string>(categories[0]?.id || 'all');
+
+  const renderPreviewCatIcon = (iconName: string = '') => {
+    const className = "w-2.5 h-2.5";
+    switch ((iconName || '').toLowerCase()) {
+      case 'flame': return <Flame className={`${className} text-[#FF6A00]`} />;
+      case 'fish': return <Fish className={`${className} text-cyan-400`} />;
+      case 'beef': return <Beef className={`${className} text-red-400`} />;
+      case 'coffee': return <Coffee className={`${className} text-amber-600`} />;
+      case 'wine': return <Wine className={`${className} text-purple-400`} />;
+      case 'icecream':
+      case 'ice-cream': return <IceCream className={`${className} text-pink-400`} />;
+      case 'tag': return <Tag className={`${className} text-emerald-400`} />;
+      case 'star': return <Star className={`${className} text-yellow-400`} />;
+      case 'heart': return <Heart className={`${className} text-rose-400`} />;
+      case 'sparkles': return <Sparkles className={`${className} text-[#FB923C]`} />;
+      case 'utensils': return <Utensils className={`${className} text-amber-400`} />;
+      default: return <Sparkles className={`${className} text-[#FB923C]`} />;
+    }
+  };
   const [copied, setCopied] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
@@ -675,6 +705,37 @@ export default function VisualCustomizer() {
                 <p className="text-[9px] text-[#A8A29A] truncate mt-0.5">
                   📍 {address}
                 </p>
+
+                {/* categories preview — reflects the real categories and the chosen style/color live */}
+                <div className={`mt-4 flex gap-1.5 overflow-x-auto scrollbar-none ${
+                  categoryStyle === 'komy' ? 'bg-black rounded-full p-1' : ''
+                }`}>
+                  {categories.map(cat => {
+                    const isActive = previewActiveCategoryId === cat.id;
+                    return (
+                      <button
+                        type="button"
+                        key={cat.id}
+                        onClick={() => setPreviewActiveCategoryId(cat.id)}
+                        style={isActive ? { backgroundColor: primaryColor } : undefined}
+                        className={
+                          categoryStyle === 'komy'
+                            ? `px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
+                                isActive ? 'text-black shadow-sm' : 'bg-transparent text-[#9CA3AF]'
+                              }`
+                            : `px-2.5 py-1 rounded-full text-[8px] font-bold whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
+                                isActive
+                                  ? 'text-white shadow-sm'
+                                  : 'bg-[#161616] border border-[#262626] text-[#9CA3AF]'
+                              }`
+                        }
+                      >
+                        {renderPreviewCatIcon(cat.icon)}
+                        <span>{cat.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
                 {/* simulated menu section */}
                 <div className="mt-6">
