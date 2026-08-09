@@ -27,21 +27,34 @@ import {
   AlertCircle,
   Download,
   Upload,
-  Loader2
+  Loader2,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 export default function DigitalMenuManager() {
   const { 
-    products, 
-    categories, 
-    addProduct, 
-    updateProduct, 
-    deleteProduct, 
-    addCategory, 
+    products,
+    categories,
+    setCategories,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    addCategory,
     updateCategory,
     deleteCategory,
-    generateAIDescription 
+    generateAIDescription
   } = useApp();
+
+  const moveCategory = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+    setCategories(prev => {
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  };
 
   const handleDownloadImage = async (url: string, filename: string) => {
     try {
@@ -932,15 +945,37 @@ export default function DigitalMenuManager() {
                 </h4>
 
                 <div className="space-y-2">
-                  {categories.map((cat) => {
+                  {categories.map((cat, catIndex) => {
                     const prodCount = products.filter(p => p.categoryIds.includes(cat.id)).length;
                     const isEditing = editingCatId === cat.id;
 
                     return (
-                      <div 
-                        key={cat.id} 
+                      <div
+                        key={cat.id}
                         className="bg-[#181512] border border-[#2A211A] rounded-xl p-3 flex items-center justify-between gap-3"
                       >
+                        {!isEditing && (
+                          <div className="flex flex-col gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => moveCategory(catIndex, -1)}
+                              disabled={catIndex === 0}
+                              className="p-0.5 rounded-md bg-[#141210] border border-[#2A211A] text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                              title="Mover para cima"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveCategory(catIndex, 1)}
+                              disabled={catIndex === categories.length - 1}
+                              className="p-0.5 rounded-md bg-[#141210] border border-[#2A211A] text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                              title="Mover para baixo"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                         {isEditing ? (
                           <div className="flex-1 flex flex-col gap-3 bg-[#141210] p-3 rounded-xl border border-[#2A211A]">
                             <div>
