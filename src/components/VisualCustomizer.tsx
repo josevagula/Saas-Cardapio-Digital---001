@@ -36,6 +36,7 @@ export default function VisualCustomizer() {
   const [logoUrl, setLogoUrl] = useState(visualConfig.logoUrl);
   const [bannerUrl, setBannerUrl] = useState(visualConfig.bannerUrl);
   const [menuSlug, setMenuSlug] = useState(visualConfig.menuSlug || 'delivery-sushi');
+  const [categoryStyle, setCategoryStyle] = useState<'default' | 'komy'>(visualConfig.categoryStyle || 'default');
   const [copied, setCopied] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
@@ -123,6 +124,7 @@ export default function VisualCustomizer() {
         logoUrl: logoUrl || '',
         bannerUrl: bannerUrl || '',
         menuSlug: formattedSlug || 'delivery-sushi',
+        categoryStyle,
         openingTime,
         closingTime,
         openingDays,
@@ -436,6 +438,52 @@ export default function VisualCustomizer() {
                 </div>
                 {!colors.some(c => c.value === primaryColor) && <Check className="w-3.5 h-3.5 ml-auto text-[#FB923C] shrink-0" />}
               </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-300 block mb-2">Estilo das Categorias no Cardápio</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setCategoryStyle('default')}
+                className={`text-left p-3 rounded-xl border transition-all cursor-pointer space-y-2.5 ${
+                  categoryStyle === 'default'
+                    ? 'border-[#F97316] bg-[#1F1209]'
+                    : 'border-[#2A211A] bg-[#181512] hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200">Estilo Padrão</span>
+                  {categoryStyle === 'default' && <Check className="w-3.5 h-3.5 text-[#FB923C]" />}
+                </div>
+                {/* mini preview */}
+                <div className="flex gap-1.5 overflow-hidden">
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-black bg-[#F97316] text-white shrink-0">Destaques</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-[#161616] border border-[#262626] text-[#9CA3AF] shrink-0">Sushi</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-[#161616] border border-[#262626] text-[#9CA3AF] shrink-0">Bebidas</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCategoryStyle('komy')}
+                className={`text-left p-3 rounded-xl border transition-all cursor-pointer space-y-2.5 ${
+                  categoryStyle === 'komy'
+                    ? 'border-[#F97316] bg-[#1F1209]'
+                    : 'border-[#2A211A] bg-[#181512] hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200">Estilo Komy (cápsula)</span>
+                  {categoryStyle === 'komy' && <Check className="w-3.5 h-3.5 text-[#FB923C]" />}
+                </div>
+                {/* mini preview */}
+                <div className="flex gap-1 bg-black rounded-full p-1 overflow-hidden w-fit max-w-full">
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#F97316] text-white shrink-0">⭐ Destaques</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider text-[#9CA3AF] shrink-0">🍣 Sushi</span>
+                </div>
+              </button>
             </div>
           </div>
 

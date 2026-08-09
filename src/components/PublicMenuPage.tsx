@@ -71,6 +71,7 @@ export default function PublicMenuPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const isKomyCategoryStyle = visualConfig.categoryStyle === 'komy';
 
   // Start the menu on the first configured category instead of "Todos os Pratos".
   // Categories may still be loading (async fetch for public menu links), so wait
@@ -270,34 +271,35 @@ export default function PublicMenuPage() {
     return matchQ && matchC && p.isAvailable;
   });
 
-  const renderCategoryIcon = (cat: Category | { name: string; icon?: string }) => {
+  const renderCategoryIcon = (cat: Category | { name: string; icon?: string }, isActive = false) => {
+    const activeClass = isActive ? 'text-white' : '';
     const iconKey = (cat.icon || '').toLowerCase();
     switch (iconKey) {
-      case 'flame': return <Flame className="w-3.5 h-3.5 text-[#FF6A00]" />;
-      case 'fish': return <Fish className="w-3.5 h-3.5 text-cyan-400" />;
-      case 'beef': return <Beef className="w-3.5 h-3.5 text-red-400" />;
-      case 'coffee': return <Coffee className="w-3.5 h-3.5 text-amber-600" />;
-      case 'wine': return <Wine className="w-3.5 h-3.5 text-purple-400" />;
+      case 'flame': return <Flame className={`w-3.5 h-3.5 ${activeClass || 'text-[#FF6A00]'}`} />;
+      case 'fish': return <Fish className={`w-3.5 h-3.5 ${activeClass || 'text-cyan-400'}`} />;
+      case 'beef': return <Beef className={`w-3.5 h-3.5 ${activeClass || 'text-red-400'}`} />;
+      case 'coffee': return <Coffee className={`w-3.5 h-3.5 ${activeClass || 'text-amber-600'}`} />;
+      case 'wine': return <Wine className={`w-3.5 h-3.5 ${activeClass || 'text-purple-400'}`} />;
       case 'icecream':
-      case 'ice-cream': return <IceCream className="w-3.5 h-3.5 text-pink-400" />;
-      case 'tag': return <Tag className="w-3.5 h-3.5 text-emerald-400" />;
-      case 'star': return <Star className="w-3.5 h-3.5 text-yellow-400" />;
-      case 'heart': return <Heart className="w-3.5 h-3.5 text-rose-400" />;
-      case 'sparkles': return <Sparkles className="w-3.5 h-3.5 text-[#FB923C]" />;
-      case 'utensils': return <Utensils className="w-3.5 h-3.5 text-amber-400" />;
+      case 'ice-cream': return <IceCream className={`w-3.5 h-3.5 ${activeClass || 'text-pink-400'}`} />;
+      case 'tag': return <Tag className={`w-3.5 h-3.5 ${activeClass || 'text-emerald-400'}`} />;
+      case 'star': return <Star className={`w-3.5 h-3.5 ${activeClass || 'text-yellow-400'}`} />;
+      case 'heart': return <Heart className={`w-3.5 h-3.5 ${activeClass || 'text-rose-400'}`} />;
+      case 'sparkles': return <Sparkles className={`w-3.5 h-3.5 ${activeClass || 'text-[#FB923C]'}`} />;
+      case 'utensils': return <Utensils className={`w-3.5 h-3.5 ${activeClass || 'text-amber-400'}`} />;
     }
 
     const lower = cat.name.toLowerCase();
     if (lower.includes('hot') || lower.includes('entrada') || lower.includes('quente')) {
-      return <Flame className="w-3.5 h-3.5 text-[#FF6A00]" />;
+      return <Flame className={`w-3.5 h-3.5 ${activeClass || 'text-[#FF6A00]'}`} />;
     }
     if (lower.includes('sushi') || lower.includes('sashimi') || lower.includes('temaki') || lower.includes('peixe')) {
-      return <Fish className="w-3.5 h-3.5 text-cyan-400" />;
+      return <Fish className={`w-3.5 h-3.5 ${activeClass || 'text-cyan-400'}`} />;
     }
     if (lower.includes('combo') || lower.includes('barca') || lower.includes('especia')) {
-      return <Utensils className="w-3.5 h-3.5 text-amber-400" />;
+      return <Utensils className={`w-3.5 h-3.5 ${activeClass || 'text-amber-400'}`} />;
     }
-    return <Sparkles className="w-3.5 h-3.5 text-[#FB923C]" />;
+    return <Sparkles className={`w-3.5 h-3.5 ${activeClass || 'text-[#FB923C]'}`} />;
   };
 
   // Smart Navigation Handler for "Voltar" (Back) in Cardápio Digital
@@ -558,33 +560,56 @@ export default function PublicMenuPage() {
 
           {/* ==================== 3. CATEGORIES NAVIGATION & SEARCH ==================== */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2">
-            
-            <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none flex-1">
-              <button
-                onClick={() => setActiveCategory('all')}
-                className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
-                  activeCategory === 'all'
-                    ? 'bg-[#FF6A00] text-white shadow-md'
-                    : 'bg-[#161616] border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
-                }`}
-              >
-                Todos os Pratos
-              </button>
 
-              {categories.map(cat => (
+            <div className={`flex-1 overflow-x-auto scrollbar-none ${
+              isKomyCategoryStyle ? 'bg-black rounded-full p-1.5' : 'pb-2'
+            }`}>
+              <div className="flex gap-2.5 w-fit min-w-full sm:min-w-0">
                 <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
-                    activeCategory === cat.id
-                      ? 'bg-[#FF6A00] text-white font-black shadow-md'
-                      : 'bg-[#161616] border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
-                  }`}
+                  onClick={() => setActiveCategory('all')}
+                  className={
+                    isKomyCategoryStyle
+                      ? `px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
+                          activeCategory === 'all'
+                            ? 'bg-[#FF6A00] text-white shadow-md'
+                            : 'bg-transparent text-[#9CA3AF] hover:text-white'
+                        }`
+                      : `px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
+                          activeCategory === 'all'
+                            ? 'bg-[#FF6A00] text-white shadow-md'
+                            : 'bg-[#161616] border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
+                        }`
+                  }
                 >
-                  {renderCategoryIcon(cat)}
-                  <span>{cat.name}</span>
+                  Todos os Pratos
                 </button>
-              ))}
+
+                {categories.map(cat => {
+                  const isActive = activeCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveCategory(cat.id)}
+                      className={
+                        isKomyCategoryStyle
+                          ? `px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
+                              isActive
+                                ? 'bg-[#FF6A00] text-white font-black shadow-md'
+                                : 'bg-transparent text-[#9CA3AF] hover:text-white'
+                            }`
+                          : `px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
+                              isActive
+                                ? 'bg-[#FF6A00] text-white font-black shadow-md'
+                                : 'bg-[#161616] border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
+                            }`
+                      }
+                    >
+                      {renderCategoryIcon(cat, isKomyCategoryStyle && isActive)}
+                      <span>{cat.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="relative w-full md:w-72 shrink-0">

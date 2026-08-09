@@ -12,6 +12,7 @@ export const INITIAL_VISUAL_CONFIG: VisualConfig = {
   themeMode: "dark", // Mode escuro padrão para consistência com o painel SaaS
   deliveryFee: 7.00,
   menuSlug: "zushy",
+  categoryStyle: "default",
   openingTime: "18:00",
   closingTime: "23:30",
   openingDays: "Segunda a Domingo",
@@ -640,6 +641,7 @@ export const BLANK_VISUAL_CONFIG: VisualConfig = {
   themeMode: "dark",
   deliveryFee: 0,
   menuSlug: "",
+  categoryStyle: "default",
   openingTime: "",
   closingTime: "",
   openingDays: "",

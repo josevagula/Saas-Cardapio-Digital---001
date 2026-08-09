@@ -9,6 +9,10 @@ export interface VisualConfig {
   address: string;
   deliveryFee: number;
   menuSlug: string;
+  // Visual style of the category navigation bar on the public menu.
+  // 'default' is the original pill-with-outline style; 'komy' is the
+  // capsule-container / uppercase-letterspaced / solid-orange-active style.
+  categoryStyle?: 'default' | 'komy';
   // Horário de Atendimento e Status
   openingTime?: string; // e.g. "18:00"
   closingTime?: string; // e.g. "23:30"
