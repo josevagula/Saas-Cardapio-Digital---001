@@ -480,7 +480,7 @@ export default function VisualCustomizer() {
                 </div>
                 {/* mini preview */}
                 <div className="flex gap-1 bg-black rounded-full p-1 overflow-hidden w-fit max-w-full">
-                  <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#F97316] text-white shrink-0">⭐ Destaques</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#F97316] text-black shrink-0">⭐ Destaques</span>
                   <span className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider text-[#9CA3AF] shrink-0">🍣 Sushi</span>
                 </div>
               </button>

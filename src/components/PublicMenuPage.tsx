@@ -272,7 +272,7 @@ export default function PublicMenuPage() {
   });
 
   const renderCategoryIcon = (cat: Category | { name: string; icon?: string }, isActive = false) => {
-    const activeClass = isActive ? 'text-white' : '';
+    const activeClass = isActive ? 'text-black' : '';
     const iconKey = (cat.icon || '').toLowerCase();
     switch (iconKey) {
       case 'flame': return <Flame className={`w-3.5 h-3.5 ${activeClass || 'text-[#FF6A00]'}`} />;
@@ -571,7 +571,7 @@ export default function PublicMenuPage() {
                     isKomyCategoryStyle
                       ? `px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
                           activeCategory === 'all'
-                            ? 'bg-[#FF6A00] text-white shadow-md'
+                            ? 'bg-[#FF6A00] text-black shadow-md'
                             : 'bg-transparent text-[#9CA3AF] hover:text-white'
                         }`
                       : `px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
@@ -594,7 +594,7 @@ export default function PublicMenuPage() {
                         isKomyCategoryStyle
                           ? `px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
                               isActive
-                                ? 'bg-[#FF6A00] text-white font-black shadow-md'
+                                ? 'bg-[#FF6A00] text-black font-black shadow-md'
                                 : 'bg-transparent text-[#9CA3AF] hover:text-white'
                             }`
                           : `px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
