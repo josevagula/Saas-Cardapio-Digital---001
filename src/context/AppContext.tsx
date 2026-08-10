@@ -28,7 +28,7 @@ import {
   syncAnalytics
 } from '../lib/workspaceRepo';
 import { startCheckout, openBillingPortal } from '../lib/billing';
-import { retryUntilSuccess } from '../lib/retry';
+import { retryUntilSuccess, getSyncPendingCount } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
 
@@ -577,6 +577,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     safeSetLocalStorage('sushi_plan_status', planStatus);
   }, [planStatus]);
+
+  // Warns before closing/refreshing the tab while a save to Supabase is
+  // still mid-retry (e.g. a network blip) — without this, closing early
+  // abandons that write silently: it never reaches Supabase, so nothing was
+  // ever deleted, the change just never existed there in the first place.
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (getSyncPendingCount() > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   // One-time cleanup: earlier versions of this app stored login credentials
   // (including the plaintext password) in localStorage as a mock auth system.

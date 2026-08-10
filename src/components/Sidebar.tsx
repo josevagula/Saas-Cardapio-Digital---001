@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { useSyncPending } from '../lib/retry';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -14,7 +15,8 @@ import {
   ExternalLink,
   X,
   ShieldAlert,
-  MessageCircle
+  MessageCircle,
+  Loader2
 } from 'lucide-react';
 import { HashiIcon, SushiRollIcon, SushiLogoEmblem, WasabiTag } from './SushiIcons';
 
@@ -27,6 +29,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
   const { currentView, setCurrentView, visualConfig, currentPlan, planStatus, cancelPlan, setIsAdmin, setLoggedIn } = useApp();
   const { logout } = useAuth();
   const [copied, setCopied] = useState(false);
+  const syncPending = useSyncPending();
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -177,6 +180,20 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
 
       {/* Footer Profile */}
       <div className="p-4 border-t border-[#2A211A] bg-[#0C0A08] space-y-3">
+        <div className="flex items-center gap-1.5 text-[10px] font-mono font-semibold" title={syncPending ? 'Salvando suas últimas alterações no servidor — não feche esta aba ainda.' : 'Todas as alterações já estão salvas no servidor.'}>
+          {syncPending ? (
+            <>
+              <Loader2 className="w-3 h-3 text-[#FB923C] animate-spin shrink-0" />
+              <span className="text-[#FB923C]">Salvando alterações...</span>
+            </>
+          ) : (
+            <>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <span className="text-[#6B655C]">Tudo salvo</span>
+            </>
+          )}
+        </div>
+
         <div className="flex items-center gap-3">
           <img 
             src={visualConfig.logoUrl || "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=100"} 
