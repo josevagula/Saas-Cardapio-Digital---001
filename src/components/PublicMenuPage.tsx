@@ -1234,7 +1234,7 @@ export default function PublicMenuPage() {
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { id: 'delivery', label: 'Entrega' },
-                    { id: 'pickup', label: 'Retirada' }
+                    { id: 'pickup', label: 'Retirada no Local' }
                   ].map(m => (
                     <button
                       type="button"
