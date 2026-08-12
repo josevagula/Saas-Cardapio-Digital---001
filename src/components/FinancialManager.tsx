@@ -41,7 +41,7 @@ export default function FinancialManager() {
   // Most-used real payment method by revenue share — no mock fallback text,
   // since an account with no orders yet simply has no champion.
   const championPaymentMethod = useMemo(() => {
-    if (isDemoMode) return 'PIX (55%)';
+    if (isDemoMode) return 'Pix (55%)';
     const totals: Record<string, number> = {};
     orders.forEach(o => {
       totals[o.paymentMethod] = (totals[o.paymentMethod] || 0) + o.total;

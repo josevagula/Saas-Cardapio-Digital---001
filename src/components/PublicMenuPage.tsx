@@ -446,7 +446,7 @@ export default function PublicMenuPage() {
               <button
                 onClick={() => {
                   let payStr = 'Outros';
-                  if (placedOrder.paymentMethod === 'pix') payStr = 'PIX';
+                  if (placedOrder.paymentMethod === 'pix') payStr = 'Pix';
                   else if (placedOrder.paymentMethod === 'credit_card') payStr = 'Cartão de Crédito';
                   else if (placedOrder.paymentMethod === 'debit_card') payStr = 'Cartão de Débito';
                   else if (placedOrder.paymentMethod === 'cash') {
@@ -1273,7 +1273,7 @@ export default function PublicMenuPage() {
                 <label className="text-[10px] font-mono font-bold uppercase tracking-wider block mb-1.5 text-[#9CA3AF]">Forma de Pagamento</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { id: 'pix', label: 'PIX' },
+                    { id: 'pix', label: 'Pix' },
                     { id: 'credit_card', label: 'Crédito' },
                     { id: 'debit_card', label: 'Débito' },
                     { id: 'cash', label: 'Dinheiro' }
