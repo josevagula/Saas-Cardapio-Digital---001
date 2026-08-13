@@ -479,15 +479,20 @@ export default function PublicMenuPage() {
       
       {/* ==================== 1. STICKY TOP NAVBAR ==================== */}
       <header className="py-2.5 px-3.5 sm:py-3 sm:px-8 border-b border-[#22201D] flex items-center justify-between shrink-0 sticky top-0 z-30 bg-[#0F0D0B]/95 backdrop-blur-md">
-        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <img
             src={visualConfig.logoUrl}
             alt={visualConfig.establishmentName}
-            className="w-[26px] h-[26px] rounded-full object-cover border border-[#262626] shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-[#262626] shrink-0"
           />
-          <span className="font-display font-black text-xs sm:text-base tracking-tight text-white uppercase truncate">
-            {visualConfig.establishmentName}
-          </span>
+          <div className="min-w-0 leading-tight">
+            <p className="font-display font-black text-sm sm:text-base tracking-tight text-white uppercase truncate">
+              {visualConfig.establishmentName}
+            </p>
+            <p className="text-[10px] sm:text-[11px] font-mono font-semibold text-[#9CA3AF] tracking-wide truncate">
+              DELIVERY • CARDÁPIO DIGITAL
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
