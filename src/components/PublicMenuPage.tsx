@@ -261,8 +261,13 @@ export default function PublicMenuPage() {
       const removedText = item.removedIngredients && item.removedIngredients.length > 0 ? ` [Sem: ${item.removedIngredients.join(', ')}]` : '';
       const extrasText = item.extras && item.extras.length > 0 ? ` [+ ${item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}]` : '';
       const notesText = item.notes ? ` (Obs: ${item.notes})` : '';
-      return `- ${item.quantity}x ${item.product.name}${removedText}${extrasText}${notesText}`;
-    }).join('\n');
+      const unitPrice = safeNumber(item.product.promoPrice || item.product.price);
+      const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
+      const lineTotal = unitPrice * safeNumber(item.quantity, 1) + extrasTotal;
+      return `*${item.quantity}x ${item.product.name}*${removedText}${extrasText}${notesText}\n`
+        + `  └ Preço Unitário: R$ ${unitPrice.toFixed(2).replace('.', ',')}\n`
+        + `  └ Total Item: R$ ${lineTotal.toFixed(2).replace('.', ',')}`;
+    }).join('\n\n');
 
     const deliveryLine = order.deliveryMethod === 'delivery'
       ? `Entrega — ${order.customerAddress || 'Endereço não informado'}`
@@ -279,7 +284,7 @@ export default function PublicMenuPage() {
     messageText += `${itemsText}\n\n`;
     messageText += `============================\n`;
     messageText += `💰 *EXTRATO FINANCEIRO:*\n`;
-    messageText += `*TOTAL A PAGAR: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}\n`;
+    messageText += `*TOTAL A PAGAR: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}*\n`;
     messageText += `============================\n\n`;
     messageText += `🛵 *MEIO DE ENTREGA:*\n`;
     messageText += `${deliveryLine}\n`;
