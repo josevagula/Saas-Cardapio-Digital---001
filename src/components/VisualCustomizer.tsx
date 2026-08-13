@@ -37,6 +37,7 @@ export default function VisualCustomizer() {
   const { visualConfig, setVisualConfig, currentPlan, categories } = useApp();
 
   const [establishmentName, setEstablishmentName] = useState(visualConfig.establishmentName);
+  const [menuDescription, setMenuDescription] = useState(visualConfig.menuDescription || '');
   const [phone, setPhone] = useState(visualConfig.phone);
   const [address, setAddress] = useState(visualConfig.address);
   const [deliveryFee, setDeliveryFee] = useState(visualConfig.deliveryFee.toString());
@@ -148,6 +149,7 @@ export default function VisualCustomizer() {
       const formattedSlug = menuSlug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
       setVisualConfig({
         establishmentName: establishmentName || 'Sushi & Temaki',
+        menuDescription: menuDescription || '',
         phone: phone || '',
         address: address || '',
         deliveryFee: parseFloat(deliveryFee) || 0,
@@ -285,6 +287,18 @@ export default function VisualCustomizer() {
                 className="w-full px-3.5 py-2.5 text-sm input-sushi focus:outline-none"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-300 block mb-1.5">Subtítulo do Cardápio</label>
+            <textarea
+              value={menuDescription}
+              onChange={(e) => setMenuDescription(e.target.value)}
+              placeholder="Ex: Especialistas em culinária japonesa, temakis crocantes e combinados artesanais."
+              rows={2}
+              className="w-full px-3.5 py-2.5 text-sm input-sushi focus:outline-none resize-none"
+            />
+            <p className="text-[11px] text-[#A8A29A] mt-1">Aparece abaixo do nome do restaurante, no topo do cardápio.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

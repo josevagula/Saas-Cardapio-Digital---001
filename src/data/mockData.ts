@@ -3,6 +3,7 @@ import { SUSHIOS_LOGO_DATA_URL } from '../components/SushiIcons';
 
 export const INITIAL_VISUAL_CONFIG: VisualConfig = {
   establishmentName: "Zushy",
+  menuDescription: "Especialistas em culinária japonesa, temakis crocantes e combinados artesanais.",
   phone: "(11) 98765-4321",
   address: "Alameda das Esmeraldas, 450 - Jardins, São Paulo - SP",
   logoUrl: SUSHIOS_LOGO_DATA_URL,
@@ -632,6 +633,7 @@ export const INITIAL_ANALYTICS: SalesAnalytics = {
 // so the customer builds their own menu/catalog from scratch.
 export const BLANK_VISUAL_CONFIG: VisualConfig = {
   establishmentName: "",
+  menuDescription: "",
   phone: "",
   address: "",
   logoUrl: "",

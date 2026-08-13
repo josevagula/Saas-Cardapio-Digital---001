@@ -5,6 +5,10 @@ export interface VisualConfig {
   fontFamily: 'sans' | 'display' | 'mono';
   themeMode: 'light' | 'dark';
   establishmentName: string;
+  // Subtitle shown under the establishment name on the public menu's hero
+  // banner — configurable per tenant, unlike the fixed "DELIVERY • CARDÁPIO
+  // DIGITAL" tagline in the top navbar.
+  menuDescription?: string;
   phone: string;
   address: string;
   deliveryFee: number;

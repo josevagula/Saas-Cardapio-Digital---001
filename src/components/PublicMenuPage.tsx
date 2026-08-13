@@ -777,7 +777,7 @@ export default function PublicMenuPage() {
                 {visualConfig.establishmentName}
               </h2>
               <p className="text-xs sm:text-sm text-[#9CA3AF] font-medium mt-1 max-w-xl line-clamp-2">
-                Especialistas em culinária japonesa, temakis crocantes e combinados artesanais.
+                {visualConfig.menuDescription || 'Especialistas em culinária japonesa, temakis crocantes e combinados artesanais.'}
               </p>
             </div>
           </div>
