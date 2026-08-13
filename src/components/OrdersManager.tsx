@@ -229,7 +229,7 @@ export default function OrdersManager() {
                           return `DINHEIRO (Para ${noteFormatted}${changeFormatted})`;
                         })()}
                       </span>
-                      <span className="text-[#FB923C] font-semibold">{order.deliveryMethod.toUpperCase()}</span>
+                      <span className="text-[#FB923C] font-semibold">{order.deliveryMethod === 'pickup' ? 'RETIRADA NO LOCAL' : order.deliveryMethod.toUpperCase()}</span>
                     </div>
                     {order.deliveryMethod === 'delivery' && (
                       <div className="text-slate-300 truncate mt-1">
