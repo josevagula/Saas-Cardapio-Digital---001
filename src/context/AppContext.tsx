@@ -12,6 +12,7 @@ import {
   BLANK_ANALYTICS
 } from '../data/mockData';
 import { useAuth } from './AuthContext';
+import { SUSHIOS_LOGO_DATA_URL } from '../components/SushiIcons';
 import {
   fetchWorkspace,
   fetchSubscriptionStatus,
@@ -513,18 +514,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else {
       safeSetLocalStorage(scopedKey('visual_config'), visualConfig);
     }
-    // Only brand the tab with the establishment's name once someone is
-    // actually inside an account (dashboard) or viewing that account's
-    // public menu — the SaaS's own landing/login/trial pages are shown
-    // logged out and should just read "Zushy", not whatever establishment
-    // name happens to be sitting in local state from a previous session.
-    if (loggedIn && visualConfig.establishmentName) {
-      document.title = `Zushy - ${visualConfig.establishmentName}`;
-    } else {
-      document.title = 'Zushy';
-    }
     return cleanup;
   }, [visualConfig, workspaceReady, userId, isDemoMode, loggedIn, publicMenuSlug]);
+
+  // Browser tab title + favicon. The customer-facing public menu (isAdmin
+  // false — whether a real ?menu=slug link or the owner's own "Visualizar
+  // Cardápio" preview) must show only that restaurant's own name/logo, never
+  // the Zushy platform brand. Runs unguarded by publicMenuSlug/isDemoMode
+  // (unlike the sync effect above) since it's a pure UI side effect with no
+  // risk of writing stale data back to Supabase.
+  useEffect(() => {
+    const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (loggedIn && !isAdmin && visualConfig.establishmentName) {
+      document.title = visualConfig.establishmentName;
+      if (favicon && visualConfig.logoUrl) favicon.href = visualConfig.logoUrl;
+    } else if (loggedIn && visualConfig.establishmentName) {
+      document.title = `Zushy - ${visualConfig.establishmentName}`;
+      if (favicon) favicon.href = SUSHIOS_LOGO_DATA_URL;
+    } else {
+      document.title = 'Zushy';
+      if (favicon) favicon.href = SUSHIOS_LOGO_DATA_URL;
+    }
+  }, [isAdmin, loggedIn, visualConfig.establishmentName, visualConfig.logoUrl]);
 
   useEffect(() => {
     if (!workspaceReady || isDemoMode || publicMenuSlug) return;
