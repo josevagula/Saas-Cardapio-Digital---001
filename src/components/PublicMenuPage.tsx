@@ -40,7 +40,7 @@ import {
   Coins,
   Landmark
 } from 'lucide-react';
-import { SushiRollIcon } from './SushiIcons';
+import { SushiRollIcon, SushiLogoEmblem } from './SushiIcons';
 import ComboBuilderModal from './ComboBuilderModal';
 import HalfAndHalfModal from './HalfAndHalfModal';
 import { checkIsStoreOpen } from '../utils/storeStatus';
@@ -467,11 +467,7 @@ export default function PublicMenuPage() {
       {/* ==================== 1. STICKY TOP NAVBAR ==================== */}
       <header className="py-2.5 px-3.5 sm:py-3 sm:px-8 border-b border-[#22201D] flex items-center justify-between shrink-0 sticky top-0 z-30 bg-[#0F0D0B]/95 backdrop-blur-md">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-          <img
-            src={visualConfig.logoUrl}
-            alt={visualConfig.establishmentName}
-            className="w-[26px] h-[26px] rounded-full object-cover border border-[#262626] shrink-0"
-          />
+          <SushiLogoEmblem size={26} />
           <span className="font-display font-black text-xs sm:text-base tracking-tight text-white uppercase truncate">
             {visualConfig.establishmentName}
           </span>
@@ -706,29 +702,12 @@ export default function PublicMenuPage() {
         /* ==================== CARDÁPIO CATALOG PUBLIC HOME ==================== */
         <div className="flex-1 max-w-5xl mx-auto w-full p-4 md:p-6 space-y-6 pb-28">
           
-          {/* ==================== 2. RESTAURANT IDENTITY BAR ==================== */}
-          <div className="flex items-center gap-3 rounded-2xl border border-[#262626] bg-[#161616] p-3.5 sm:p-4 shadow-lg">
-            <img
-              src={visualConfig.logoUrl}
-              alt={visualConfig.establishmentName}
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-[#262626] object-cover shadow-md bg-[#0A0A0A] shrink-0"
-            />
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-display font-black tracking-tight text-white uppercase truncate">
-                {visualConfig.establishmentName}
-              </h2>
-              <p className="text-[11px] sm:text-xs text-[#9CA3AF] font-medium mt-0.5 truncate">
-                Especialistas em culinária japonesa, temakis crocantes e combinados artesanais.
-              </p>
-            </div>
-          </div>
-
-          {/* ==================== 3. HERO BANNER HEADER ==================== */}
-          <div className="relative rounded-3xl overflow-hidden border border-[#262626] bg-[#0A0A0A] shadow-2xl min-h-[90px] sm:min-h-[110px] flex flex-col justify-center p-5 sm:p-7">
+          {/* ==================== 2. HERO BANNER HEADER ==================== */}
+          <div className="relative rounded-3xl overflow-hidden border border-[#262626] bg-[#0A0A0A] shadow-2xl min-h-[220px] sm:min-h-[250px] flex flex-col justify-between p-5 sm:p-7">
             <div className="absolute inset-0 z-0">
-              <img
-                src={visualConfig.bannerUrl}
-                alt={visualConfig.establishmentName}
+              <img 
+                src={visualConfig.bannerUrl} 
+                alt={visualConfig.establishmentName} 
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-[#0A0A0A]/85 backdrop-blur-[1px]"></div>
@@ -770,9 +749,27 @@ export default function PublicMenuPage() {
                 </div>
               </div>
             </div>
+
+            <div className="relative z-10 mt-6 sm:mt-8">
+              <div className="flex items-center gap-3">
+                <img 
+                  src={visualConfig.logoUrl} 
+                  alt="Logo" 
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-[#262626] object-cover shadow-xl bg-[#161616] shrink-0"
+                />
+                <div>
+                  <h2 className="text-2xl sm:text-4xl font-display font-black tracking-tight text-white uppercase drop-shadow-md">
+                    {visualConfig.establishmentName}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#9CA3AF] font-medium mt-1 max-w-xl line-clamp-2">
+                    Especialistas em culinária japonesa, temakis crocantes e combinados artesanais.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* ==================== 4. CATEGORIES NAVIGATION & SEARCH ==================== */}
+          {/* ==================== 3. CATEGORIES NAVIGATION & SEARCH ==================== */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2">
 
             <div className={`flex-1 overflow-x-auto scrollbar-none ${

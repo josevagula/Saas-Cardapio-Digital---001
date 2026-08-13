@@ -39,11 +39,9 @@ export default function App() {
     // customer opening a restaurant's link must never see a flash of a
     // different (stale/cached) menu before the correct one appears.
     if (!workspaceReady) {
-      // No platform branding here — the restaurant's own logo isn't known yet
-      // at this point (visualConfig hasn't loaded), and this splash must never
-      // show the Zushy mark to a customer.
       return (
         <div className="min-h-screen w-full bg-[#0C0A08] flex flex-col items-center justify-center gap-4">
+          <SushiLogoEmblem size={48} />
           <Loader2 className="w-6 h-6 text-[#FB923C] animate-spin" />
         </div>
       );
