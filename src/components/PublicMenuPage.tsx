@@ -252,17 +252,42 @@ export default function PublicMenuPage() {
 
   const sendOrderToWhatsApp = (order: any) => {
     const payStr = getOrderPaymentLabel(order);
-    let messageText = `Olá! Acabei de fazer um pedido no site (Código: ${order.id}):\n\n`;
-    messageText += `*Cliente:* ${order.customerName}\n`;
-    messageText += `*Telefone:* ${order.customerPhone}\n`;
-    if (order.deliveryMethod === 'delivery') {
-      messageText += `*Entrega:* ${order.customerAddress || 'Endereço não informado'}\n`;
-    } else {
-      messageText += `*Retirada:* Retirada no Local\n`;
-    }
-    messageText += `*Pagamento:* ${payStr}\n`;
-    messageText += `*Total:* R$ ${(order.total || 0).toFixed(2).replace('.', ',')}\n\n`;
-    messageText += `Gostaria de confirmar meu pedido!`;
+    const orderDate = new Date(order.createdAt);
+    const dateStr = orderDate.toLocaleDateString('pt-BR');
+    const timeStr = orderDate.toLocaleTimeString('pt-BR');
+    const storeName = (visualConfig.establishmentName || '').toUpperCase();
+
+    const itemsText = (order.items as OrderItem[]).map((item) => {
+      const removedText = item.removedIngredients && item.removedIngredients.length > 0 ? ` [Sem: ${item.removedIngredients.join(', ')}]` : '';
+      const extrasText = item.extras && item.extras.length > 0 ? ` [+ ${item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}]` : '';
+      const notesText = item.notes ? ` (Obs: ${item.notes})` : '';
+      return `- ${item.quantity}x ${item.product.name}${removedText}${extrasText}${notesText}`;
+    }).join('\n');
+
+    const deliveryLine = order.deliveryMethod === 'delivery'
+      ? `Entrega — ${order.customerAddress || 'Endereço não informado'}`
+      : `Retirada no Local — ${visualConfig.address || 'Endereço não informado'}`;
+
+    let messageText = `🚨 *NOVO PEDIDO NO ${storeName}*\n`;
+    messageText += `============================\n`;
+    messageText += `*DATA:* ${dateStr}, ${timeStr}\n`;
+    messageText += `============================\n\n`;
+    messageText += `👤 *CLIENTE:*\n`;
+    messageText += `Nome: ${order.customerName}\n`;
+    messageText += `WhatsApp: ${order.customerPhone}\n\n`;
+    messageText += `🍱 *ITENS DO PEDIDO:*\n`;
+    messageText += `${itemsText}\n\n`;
+    messageText += `============================\n`;
+    messageText += `💰 *EXTRATO FINANCEIRO:*\n`;
+    messageText += `*TOTAL A PAGAR: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}\n`;
+    messageText += `============================\n\n`;
+    messageText += `🛵 *MEIO DE ENTREGA:*\n`;
+    messageText += `${deliveryLine}\n`;
+    messageText += `============================\n\n`;
+    messageText += `💳 *PAGAMENTO:*\n`;
+    messageText += `Forma: ${payStr}\n\n`;
+    messageText += `============================\n\n`;
+    messageText += `Obrigado pela preferência! Seu pedido começará a ser preparado em instantes. 🍣`;
 
     const txt = encodeURIComponent(messageText);
     window.open(`https://wa.me/55${visualConfig.phone.replace(/\D/g, '')}?text=${txt}`, '_blank');
