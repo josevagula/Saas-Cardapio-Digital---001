@@ -521,7 +521,7 @@ export default function PublicMenuPage() {
               </div>
               <h3 className="text-xl sm:text-2xl font-display font-black text-white">Pedido feito com Sucesso!</h3>
               <p className="text-xs mt-1.5 text-[#93A5C4] max-w-xs mx-auto">
-                Seu pedido será enviado via WhatsApp para a loja confirmar e iniciar o preparo.
+                Falta só um passo: envie seu pedido pelo WhatsApp para a loja confirmar e iniciar o preparo.
               </p>
             </div>
 
@@ -592,9 +592,16 @@ export default function PublicMenuPage() {
               </div>
             </div>
 
+            <div className="mt-4 p-3 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
+              <p className="text-[11px] leading-snug text-[#D1FAE5]">
+                <span className="font-black">Atenção:</span> toque no botão abaixo e envie a mensagem no WhatsApp. A loja só vai começar a preparar o seu pedido depois de recebê-la.
+              </p>
+            </div>
+
             <button
               onClick={() => sendOrderToWhatsApp(placedOrder)}
-              className="w-full mt-4 bg-[#22C55E] hover:bg-[#16a34a] text-white py-3 rounded-full text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-transform active:scale-95"
+              className="w-full mt-2.5 bg-[#22C55E] hover:bg-[#16a34a] text-white py-3 rounded-full text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-transform active:scale-95"
             >
               <Send className="w-4 h-4" />
               <span>Enviar Pedido para WhatsApp</span>
