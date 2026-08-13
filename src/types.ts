@@ -91,7 +91,7 @@ export interface Product {
   extras?: ProductExtra[];
 }
 
-export type OrderStatus = 'received' | 'preparing' | 'dispatched' | 'delivered';
+export type OrderStatus = 'received' | 'preparing' | 'dispatched' | 'delivered' | 'cancelled';
 export type PaymentMethod = 'pix' | 'credit_card' | 'debit_card' | 'cash';
 export type DeliveryMethod = 'delivery' | 'pickup' | 'dine_in';
 

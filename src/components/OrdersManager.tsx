@@ -14,25 +14,29 @@ import {
   AlertCircle,
   TrendingUp,
   X,
-  Trash2
+  Ban
 } from 'lucide-react';
 
 export default function OrdersManager() {
-  const { orders, updateOrderStatus, deleteOrder, visualConfig } = useApp();
-  const [activeTab, setActiveTab] = useState<OrderStatus>('received');
-  
+  const { orders, updateOrderStatus, visualConfig } = useApp();
+  const [activeTab, setActiveTab] = useState<OrderStatus>('preparing');
+
   // Simulated WhatsApp State
   const [selectedOrderForWhats, setSelectedOrderForWhats] = useState<Order | null>(null);
   const [customWhatsText, setCustomWhatsText] = useState('');
 
   const tabs: { id: OrderStatus; label: string; icon: any; color: string; hoverColor: string }[] = [
-    { id: 'received', label: 'Pendentes Recebidos', icon: Clock, color: 'bg-amber-500 text-white', hoverColor: 'hover:bg-amber-600' },
     { id: 'preparing', label: 'Em Preparação', icon: TrendingUp, color: 'bg-blue-500 text-white', hoverColor: 'hover:bg-blue-600' },
     { id: 'dispatched', label: 'A Caminho', icon: Truck, color: 'bg-indigo-500 text-white', hoverColor: 'hover:bg-indigo-600' },
-    { id: 'delivered', label: 'Concluídos', icon: Check, color: 'bg-[#F97316] text-white', hoverColor: 'hover:bg-[#EA580C]' }
+    { id: 'delivered', label: 'Concluídos', icon: Check, color: 'bg-[#F97316] text-white', hoverColor: 'hover:bg-[#EA580C]' },
+    { id: 'cancelled', label: 'Cancelados', icon: Ban, color: 'bg-red-600 text-white', hoverColor: 'hover:bg-red-700' }
   ];
 
-  const filteredOrders = orders.filter(o => o.status === activeTab);
+  // Orders received before this tab existed are legacy 'received' — treat them as part of "Em Preparação".
+  const matchesTab = (order: Order, tabId: OrderStatus) =>
+    tabId === 'preparing' ? (order.status === 'preparing' || order.status === 'received') : order.status === tabId;
+
+  const filteredOrders = orders.filter(o => matchesTab(o, activeTab));
 
   // Generate Automated WhatsApp message based on current status
   const triggerWhatsAppSimulator = (order: Order) => {
@@ -46,6 +50,8 @@ export default function OrdersManager() {
       text += `🛵 *Saiu para entrega!* Nosso entregador já está a caminho com seu pedido quentinho.\n`;
     } else if (order.status === 'delivered') {
       text += `🎉 *Entregue!* Esperamos que aproveite a refeição. Muito obrigado pela preferência!\n`;
+    } else if (order.status === 'cancelled') {
+      text += `❌ *Pedido Cancelado.* Seu pedido foi cancelado. Qualquer dúvida, fale com a gente.\n`;
     }
 
     text += `\n*Resumo do Pedido:*\n`;
@@ -116,7 +122,7 @@ export default function OrdersManager() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {tabs.map(tab => {
           const Icon = tab.icon;
-          const count = orders.filter(o => o.status === tab.id).length;
+          const count = orders.filter(o => matchesTab(o, tab.id)).length;
           const isActive = activeTab === tab.id;
 
           return (
@@ -241,17 +247,19 @@ export default function OrdersManager() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Apagar o pedido ${order.id} permanentemente? Use isso para cancelar um pedido — a ação não pode ser desfeita.`)) {
-                          deleteOrder(order.id);
-                        }
-                      }}
-                      className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
-                      title="Cancelar / Apagar Pedido"
-                    >
-                      <Trash2 className="w-4.5 h-4.5" />
-                    </button>
+                    {order.status !== 'cancelled' && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Cancelar o pedido ${order.id}? Ele vai para a coluna "Cancelados" e a ação não pode ser desfeita.`)) {
+                            updateOrderStatus(order.id, 'cancelled');
+                          }
+                        }}
+                        className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
+                        title="Cancelar Pedido"
+                      >
+                        <Ban className="w-4.5 h-4.5" />
+                      </button>
+                    )}
 
                     <button
                       onClick={() => triggerWhatsAppSimulator(order)}
