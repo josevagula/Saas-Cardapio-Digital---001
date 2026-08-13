@@ -40,7 +40,7 @@ import {
   Coins,
   Landmark
 } from 'lucide-react';
-import { SushiRollIcon, SushiLogoEmblem } from './SushiIcons';
+import { SushiRollIcon, SUSHIOS_LOGO_DATA_URL } from './SushiIcons';
 import ComboBuilderModal from './ComboBuilderModal';
 import HalfAndHalfModal from './HalfAndHalfModal';
 import { checkIsStoreOpen } from '../utils/storeStatus';
@@ -72,6 +72,19 @@ export default function PublicMenuPage() {
   useEffect(() => {
     setIsStoreOpen(checkIsStoreOpen(visualConfig));
   }, [visualConfig]);
+
+  // Browser tab icon: shows this restaurant's own logo (from Personalização)
+  // while a customer is on the public menu, instead of the Zushy platform
+  // favicon — reverted back on unmount (e.g. the owner switching back to the
+  // admin dashboard from "Visualizar Cardápio").
+  useEffect(() => {
+    const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!favicon) return;
+    if (visualConfig.logoUrl) favicon.href = visualConfig.logoUrl;
+    return () => {
+      favicon.href = SUSHIOS_LOGO_DATA_URL;
+    };
+  }, [visualConfig.logoUrl]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -467,7 +480,11 @@ export default function PublicMenuPage() {
       {/* ==================== 1. STICKY TOP NAVBAR ==================== */}
       <header className="py-2.5 px-3.5 sm:py-3 sm:px-8 border-b border-[#22201D] flex items-center justify-between shrink-0 sticky top-0 z-30 bg-[#0F0D0B]/95 backdrop-blur-md">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-          <SushiLogoEmblem size={26} />
+          <img
+            src={visualConfig.logoUrl}
+            alt={visualConfig.establishmentName}
+            className="w-[26px] h-[26px] rounded-full object-cover border border-[#262626] shrink-0"
+          />
           <span className="font-display font-black text-xs sm:text-base tracking-tight text-white uppercase truncate">
             {visualConfig.establishmentName}
           </span>
@@ -751,21 +768,12 @@ export default function PublicMenuPage() {
             </div>
 
             <div className="relative z-10 mt-6 sm:mt-8">
-              <div className="flex items-center gap-3">
-                <img 
-                  src={visualConfig.logoUrl} 
-                  alt="Logo" 
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-[#262626] object-cover shadow-xl bg-[#161616] shrink-0"
-                />
-                <div>
-                  <h2 className="text-2xl sm:text-4xl font-display font-black tracking-tight text-white uppercase drop-shadow-md">
-                    {visualConfig.establishmentName}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-[#9CA3AF] font-medium mt-1 max-w-xl line-clamp-2">
-                    Especialistas em culinária japonesa, temakis crocantes e combinados artesanais.
-                  </p>
-                </div>
-              </div>
+              <h2 className="text-2xl sm:text-4xl font-display font-black tracking-tight text-white uppercase drop-shadow-md">
+                {visualConfig.establishmentName}
+              </h2>
+              <p className="text-xs sm:text-sm text-[#9CA3AF] font-medium mt-1 max-w-xl line-clamp-2">
+                Especialistas em culinária japonesa, temakis crocantes e combinados artesanais.
+              </p>
             </div>
           </div>
 
