@@ -295,7 +295,10 @@ export default function PublicMenuPage() {
     messageText += `Obrigado pela preferência! Seu pedido começará a ser preparado em instantes. 🍣`;
 
     const txt = encodeURIComponent(messageText);
-    window.open(`https://wa.me/55${visualConfig.phone.replace(/\D/g, '')}?text=${txt}`, '_blank');
+    // api.whatsapp.com/send (rather than wa.me) avoids the emoji/astral-character
+    // corruption some Android WhatsApp versions hit when wa.me hands the URL
+    // straight to the app via an OS-level deep link.
+    window.open(`https://api.whatsapp.com/send?phone=55${visualConfig.phone.replace(/\D/g, '')}&text=${txt}`, '_blank');
   };
 
   const handleOpenProduct = (p: Product) => {
