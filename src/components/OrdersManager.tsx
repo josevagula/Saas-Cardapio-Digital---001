@@ -40,7 +40,7 @@ export default function OrdersManager() {
 
   // Generate Automated WhatsApp message based on current status
   const triggerWhatsAppSimulator = (order: Order) => {
-    let text = `Olá, *${order.customerName}*! Seu pedido *${order.id}* na *${visualConfig.establishmentName}* foi atualizado:\n\n`;
+    let text = `Olá, *${order.customerName}*! Seu pedido *${order.id.replace('LUV', 'PED')}* na *${visualConfig.establishmentName}* foi atualizado:\n\n`;
     
     if (order.status === 'received') {
       text += `✅ *Pedido Confirmado!* Já recebemos a sua solicitação no sistema e estamos analisando.\n`;
@@ -178,11 +178,11 @@ export default function OrdersManager() {
                 <div className="p-5">
                   <div className="flex items-center justify-between mb-4 border-b border-[#2A211A] pb-3">
                     <div>
-                      <span className="text-xs font-mono font-bold text-[#FB923C]">ID: {order.id}</span>
+                      <span className="text-xs font-mono font-bold text-[#FB923C]">{order.id.replace('LUV', 'PED')}</span>
                       <p className="text-sm font-semibold text-[#F5F0EA] mt-0.5 truncate">{order.customerName}</p>
                     </div>
                     <span className="text-xs font-mono font-medium text-slate-300 bg-[#0C0A08] border border-[#2A211A] px-2 py-0.5 rounded-md">
-                      {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(order.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
 
@@ -250,7 +250,7 @@ export default function OrdersManager() {
                     {order.status !== 'cancelled' && (
                       <button
                         onClick={() => {
-                          if (window.confirm(`Cancelar o pedido ${order.id}? Ele vai para a coluna "Cancelados" e a ação não pode ser desfeita.`)) {
+                          if (window.confirm(`Cancelar o pedido ${order.id.replace('LUV', 'PED')}? Ele vai para a coluna "Cancelados" e a ação não pode ser desfeita.`)) {
                             updateOrderStatus(order.id, 'cancelled');
                           }
                         }}
