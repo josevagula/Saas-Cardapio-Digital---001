@@ -127,8 +127,6 @@ export default function PublicMenuPage() {
 
   // Active placed order tracking
   const [placedOrder, setPlacedOrder] = useState<any>(null);
-  // Post-order screen: static receipt first, live tracking timeline only if the customer asks for it
-  const [orderPhase, setOrderPhase] = useState<'receipt' | 'tracking'>('receipt');
 
   // Selected Product Detail Modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -239,7 +237,6 @@ export default function PublicMenuPage() {
     );
 
     setPlacedOrder(newOrder);
-    setOrderPhase('receipt');
     setIsCheckoutOpen(false);
     setIsCartOpen(false);
     setCheckoutStep(1);
@@ -512,7 +509,6 @@ export default function PublicMenuPage() {
 
       {/* Main body depending on state */}
       {placedOrder ? (
-        orderPhase === 'receipt' ? (
           /* ==================== TELA 4: SUCESSO (RECIBO) ==================== */
           <div className="flex-1 max-w-lg mx-auto w-full p-6 flex flex-col justify-center">
             <div className="text-center mb-5">
@@ -608,15 +604,8 @@ export default function PublicMenuPage() {
             </button>
 
             <button
-              onClick={() => setOrderPhase('tracking')}
-              className="w-full mt-2.5 text-center text-[11px] font-bold text-[#9CA3AF] hover:text-white transition-colors cursor-pointer"
-            >
-              Acompanhar Status do Pedido →
-            </button>
-
-            <button
               onClick={() => setPlacedOrder(null)}
-              className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs text-[#9CA3AF] hover:text-white transition-colors cursor-pointer"
+              className="w-full mt-2.5 flex items-center justify-center gap-1.5 text-xs text-[#9CA3AF] hover:text-white transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Voltar ao Cardápio Inicial</span>
@@ -629,104 +618,6 @@ export default function PublicMenuPage() {
               </span>
             </div>
           </div>
-        ) : (
-        /* ==================== ACTIVE ORDER TRACKING TIMELINE SCREEN ==================== */
-        <div className="flex-1 max-w-lg mx-auto w-full p-6 flex flex-col justify-center">
-          <div className="p-6 rounded-3xl border border-[#262626] bg-[#161616] text-center shadow-2xl">
-            <button
-              onClick={() => setOrderPhase('receipt')}
-              className="mb-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#9CA3AF] hover:text-white transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Voltar ao Recibo</span>
-            </button>
-
-            <div className="w-12 h-12 rounded-full bg-[#22C55E]/20 text-[#22C55E] flex items-center justify-center mx-auto mb-4 animate-bounce border border-[#22C55E]/40">
-              <Check className="w-6 h-6 stroke-[3]" />
-            </div>
-
-            <h3 className="text-xl font-display font-extrabold tracking-tight text-white">Pedido Confirmado no Sushiman!</h3>
-            <p className="text-xs mt-1 font-mono text-[#9CA3AF]">
-              Código do Pedido: <span className="font-bold text-white">{placedOrder.id}</span>
-            </p>
-
-            {/* Live Timeline */}
-            <div className="my-8 space-y-6 text-left max-w-xs mx-auto">
-              <div className="flex gap-4 items-start relative">
-                <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-[#262626]"></div>
-                <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center z-10 font-bold text-xs ${
-                  placedOrder.status === 'received' || placedOrder.status === 'preparing' || placedOrder.status === 'dispatched' || placedOrder.status === 'delivered'
-                    ? 'bg-[#FF6A00] text-white' : 'bg-[#262626] text-[#9CA3AF]'
-                }`}>
-                  1
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Pedido Recebido na Cozinha</h4>
-                  <p className="text-[10px] mt-0.5 text-[#9CA3AF]">Conferindo os adicionais e corte dos peixes.</p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 items-start relative">
-                <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-[#262626]"></div>
-                <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center z-10 font-bold text-xs ${
-                  placedOrder.status === 'preparing' || placedOrder.status === 'dispatched' || placedOrder.status === 'delivered'
-                    ? 'bg-[#FF6A00] text-white animate-pulse' : 'bg-[#262626] text-[#9CA3AF]'
-                }`}>
-                  2
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Sushiman em Ação</h4>
-                  <p className="text-[10px] mt-0.5 text-[#9CA3AF]">Montando combinados e maçaricando hots.</p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 items-start relative">
-                <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-[#262626]"></div>
-                <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center z-10 font-bold text-xs ${
-                  placedOrder.status === 'dispatched' || placedOrder.status === 'delivered'
-                    ? 'bg-[#FF6A00] text-white' : 'bg-[#262626] text-[#9CA3AF]'
-                }`}>
-                  3
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Saiu para Entrega</h4>
-                  <p className="text-[10px] mt-0.5 text-[#9CA3AF]">Em bag térmica selada até seu endereço.</p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 items-start">
-                <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center z-10 font-bold text-xs ${
-                  placedOrder.status === 'delivered'
-                    ? 'bg-[#22C55E] text-white' : 'bg-[#262626] text-[#9CA3AF]'
-                }`}>
-                  4
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Pedido Entregue</h4>
-                  <p className="text-[10px] mt-0.5 text-[#9CA3AF]">Itadakimasu! Bom apetite.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <button
-                onClick={() => sendOrderToWhatsApp(placedOrder)}
-                className="w-full bg-[#22C55E] hover:bg-[#16a34a] text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-colors"
-              >
-                <Send className="w-4 h-4" />
-                <span>Enviar Confirmação no WhatsApp</span>
-              </button>
-
-              <button
-                onClick={() => setPlacedOrder(null)}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold cursor-pointer bg-[#1F1F1F] border border-[#262626] hover:bg-[#262626] text-white transition-colors"
-              >
-                Voltar para o Cardápio
-              </button>
-            </div>
-          </div>
-        </div>
-        )
       ) : (
         /* ==================== CARDÁPIO CATALOG PUBLIC HOME ==================== */
         <div className="flex-1 max-w-5xl mx-auto w-full p-4 md:p-6 space-y-6 pb-28">
