@@ -43,7 +43,7 @@ export default function FinancialManager() {
   const championPaymentMethod = useMemo(() => {
     if (isDemoMode) return 'Pix (55%)';
     const totals: Record<string, number> = {};
-    orders.forEach(o => {
+    orders.filter(o => o.status !== 'cancelled').forEach(o => {
       totals[o.paymentMethod] = (totals[o.paymentMethod] || 0) + o.total;
     });
     const entries = Object.entries(totals);
@@ -58,7 +58,7 @@ export default function FinancialManager() {
   // Real count of orders that actually used a coupon code — not a fixed
   // mock number, since there's no separate "redemptions" counter kept
   // anywhere else in the app.
-  const redeemedCouponsCount = isDemoMode ? 42 : orders.filter(o => !!o.couponCode).length;
+  const redeemedCouponsCount = isDemoMode ? 42 : orders.filter(o => !!o.couponCode && o.status !== 'cancelled').length;
 
   const handleCreateCoupon = (e: React.FormEvent) => {
     e.preventDefault();

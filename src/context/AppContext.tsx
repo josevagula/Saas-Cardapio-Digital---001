@@ -928,8 +928,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders(prev => prev.map(order =>
-      order.id === orderId ? { ...order, status } : order
+    const order = orders.find(o => o.id === orderId);
+
+    // Cancelling reverses everything the order added when it was placed —
+    // it must count nowhere (dashboard, financials, loyalty, sales) once
+    // cancelled, same as if it had never happened. Only fires on the
+    // received -> cancelled transition, never twice for the same order.
+    if (order && status === 'cancelled' && order.status !== 'cancelled') {
+      setProducts(prev => prev.map(p => {
+        const item = order.items.find(i => i.product.id === p.id);
+        return item ? { ...p, salesCount: Math.max(0, p.salesCount - item.quantity) } : p;
+      }));
+
+      setCustomers(prev => prev.map(c =>
+        c.phone === order.customerPhone
+          ? { ...c, loyaltyPoints: Math.max(0, c.loyaltyPoints - order.pointsEarned), orderCount: Math.max(0, c.orderCount - 1) }
+          : c
+      ));
+
+      setAnalytics(prev => {
+        const totalOrd = Math.max(0, prev.totalOrders - 1);
+        const daily = Math.max(0, prev.dailyRevenue - order.total);
+        const weekly = Math.max(0, prev.weeklyRevenue - order.total);
+        const monthly = Math.max(0, prev.monthlyRevenue - order.total);
+        return {
+          ...prev,
+          dailyRevenue: Math.round(daily * 100) / 100,
+          weeklyRevenue: Math.round(weekly * 100) / 100,
+          monthlyRevenue: Math.round(monthly * 100) / 100,
+          totalOrders: totalOrd,
+          ticketAverage: totalOrd > 0 ? Math.round((daily / totalOrd) * 100) / 100 : 0
+        };
+      });
+    }
+
+    setOrders(prev => prev.map(o =>
+      o.id === orderId ? { ...o, status } : o
     ));
   };
 
