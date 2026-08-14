@@ -95,6 +95,12 @@ const orderToRow = (o: Order, userId: string) => ({
   hashi_count: o.hashiCount ?? null,
   kit_auto_included: o.kitAutoIncluded ?? null,
   is_upsell_order: o.isUpsellOrder ?? null
+  // order_number deliberately omitted — it's only ever written by the
+  // assign_order_number RPC below, never by this general upsert (used both
+  // for the initial public insert and the admin's routine syncOrders). If it
+  // were included here, an admin syncOrders firing between the order's
+  // insert and assign_order_number's completion would upsert a stale/null
+  // value and clobber the number the RPC had just assigned.
 });
 
 const rowToOrder = (r: any): Order => ({
@@ -118,7 +124,8 @@ const rowToOrder = (r: any): Order => ({
   changeAmount: r.change_amount ?? undefined,
   hashiCount: r.hashi_count ?? undefined,
   kitAutoIncluded: r.kit_auto_included ?? undefined,
-  isUpsellOrder: r.is_upsell_order ?? undefined
+  isUpsellOrder: r.is_upsell_order ?? undefined,
+  orderNumber: r.order_number ?? undefined
 });
 
 const couponToRow = (c: Coupon, userId: string) => ({
@@ -411,6 +418,19 @@ export async function recordCustomerOrder(
     p_points: points
   });
   if (error) throw new Error(`Failed to update customer loyalty record: ${error.message}`);
+}
+
+// Hands this order the next sequential number for its restaurant (shown as
+// PED-0001, PED-0002... in the admin order screen). The RPC raises if the
+// order row isn't there yet, so a retry here just waits for
+// insertPublicOrder to land — the counter has already moved on by then, so
+// no number is ever reused.
+export async function assignOrderNumber(ownerId: string, orderId: string) {
+  const { error } = await supabase.rpc('assign_order_number', {
+    p_user_id: ownerId,
+    p_order_id: orderId
+  });
+  if (error) throw new Error(`Failed to assign order number: ${error.message}`);
 }
 
 export async function syncVisualConfig(userId: string, visualConfig: VisualConfig) {

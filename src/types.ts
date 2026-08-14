@@ -154,6 +154,10 @@ export interface Order {
   hashiCount?: number;
   kitAutoIncluded?: KitAutoIncluded;
   isUpsellOrder?: boolean;
+  // Per-restaurant sequential number (1, 2, 3...), shown as PED-0001 in the
+  // admin order screen. Assigned asynchronously after the order is placed —
+  // absent (undefined) until then, so it's optional.
+  orderNumber?: number;
 }
 
 export interface Coupon {

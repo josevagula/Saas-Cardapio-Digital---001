@@ -19,6 +19,7 @@ import {
   insertPublicOrder,
   incrementProductSales,
   recordCustomerOrder,
+  assignOrderNumber,
   syncCategories,
   syncProducts,
   syncOrders,
@@ -738,6 +739,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         retryUntilSuccess(() => incrementProductSales(publicMenuOwnerId, item.product.id, item.quantity));
       });
       retryUntilSuccess(() => recordCustomerOrder(publicMenuOwnerId, customer, pointsEarned));
+      // Assigns the restaurant's next sequential number to this order. The
+      // RPC raises until the row above has actually landed, so retrying
+      // here naturally waits its turn instead of racing it.
+      retryUntilSuccess(() => assignOrderNumber(publicMenuOwnerId, orderId));
     }
 
     // Update customer lists and loyalty points
