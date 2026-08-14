@@ -36,7 +36,10 @@ export default function OrdersManager() {
   const matchesTab = (order: Order, tabId: OrderStatus) =>
     tabId === 'preparing' ? (order.status === 'preparing' || order.status === 'received') : order.status === tabId;
 
-  const filteredOrders = orders.filter(o => matchesTab(o, activeTab));
+  // Oldest first — a kitchen queue reads top to bottom in arrival order.
+  const filteredOrders = orders
+    .filter(o => matchesTab(o, activeTab))
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   // The sequential number is assigned in the background shortly after
   // checkout (see assignOrderNumber in AppContext), so it may briefly be
