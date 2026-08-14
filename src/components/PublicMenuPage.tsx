@@ -796,8 +796,8 @@ export default function PublicMenuPage() {
                       <div className="flex items-baseline gap-2">
                         {p.promoPrice && safeNumber(p.promoPrice) > 0 ? (
                           <>
-                            <span className="text-lg font-black font-mono text-[#FF6A00]">R$ {formatCurrency(p.promoPrice)}</span>
-                            <span className="text-xs font-mono line-through text-[#6B7280]">R$ {formatCurrency(p.price)}</span>
+                            <span className="text-lg font-black font-mono text-[#FF6A00]">R$ {formatCurrency(p.price)}</span>
+                            <span className="text-xs font-mono line-through text-[#6B7280]">R$ {formatCurrency(p.promoPrice)}</span>
                           </>
                         ) : (
                           <span className="text-lg font-black font-mono text-[#FF6A00]">R$ {formatCurrency(p.price)}</span>

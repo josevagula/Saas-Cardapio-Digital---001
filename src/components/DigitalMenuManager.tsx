@@ -476,8 +476,8 @@ export default function DigitalMenuManager() {
                       <div className="text-right">
                         {prod.promoPrice && safeNumber(prod.promoPrice) > 0 ? (
                           <>
-                            <span className="text-[10px] line-through text-[#A8A29A]/70 font-mono">R$ {formatCurrency(prod.price)}</span>
-                            <p className="text-sm font-bold text-[#FB923C] font-mono">R$ {formatCurrency(prod.promoPrice)}</p>
+                            <span className="text-[10px] line-through text-[#A8A29A]/70 font-mono">R$ {formatCurrency(prod.promoPrice)}</span>
+                            <p className="text-sm font-bold text-[#FB923C] font-mono">R$ {formatCurrency(prod.price)}</p>
                           </>
                         ) : (
                           <p className="text-sm font-bold text-[#F5F0EA] font-mono">R$ {formatCurrency(prod.price)}</p>
