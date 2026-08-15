@@ -671,8 +671,8 @@ export default function PublicMenuPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#22C55E] text-[11px]">
-                    &nbsp;
+                  <span className="font-bold text-white font-mono text-[11px]">
+                    Entrega
                   </span>
                 </div>
               </div>
