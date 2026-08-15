@@ -671,9 +671,8 @@ export default function PublicMenuPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <DollarSign className="w-3.5 h-3.5 text-[#22C55E]" />
                   <span className="font-bold text-[#22C55E] text-[11px]">
-                    Entrega
+                    &nbsp;
                   </span>
                 </div>
               </div>
