@@ -392,12 +392,21 @@ export default function PublicMenuPage() {
   const finalTotal = Math.max(0, subtotal + deliveryFee - discountAmount);
   const totalCartCount = cart.reduce((a, b) => a + b.quantity, 0);
 
-  const filteredProducts = products.filter(p => {
-    const matchQ = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                   p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchC = activeCategory === 'all' || p.categoryIds.includes(activeCategory);
-    return matchQ && matchC && p.isAvailable;
-  });
+  const filteredProducts = products
+    .filter(p => {
+      const matchQ = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                     p.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchC = activeCategory === 'all' || p.categoryIds.includes(activeCategory);
+      return matchQ && matchC && p.isAvailable;
+    })
+    .sort((a, b) => {
+      // "Todos" has no single category to key the order by — keep insertion order.
+      if (activeCategory === 'all') return products.indexOf(a) - products.indexOf(b);
+      const orderA = a.categoryDisplayOrder?.[activeCategory] ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.categoryDisplayOrder?.[activeCategory] ?? Number.MAX_SAFE_INTEGER;
+      if (orderA !== orderB) return orderA - orderB;
+      return products.indexOf(a) - products.indexOf(b);
+    });
 
   const renderCategoryIcon = (cat: Category | { name: string; icon?: string }) => {
     const iconKey = (cat.icon || '').toLowerCase();

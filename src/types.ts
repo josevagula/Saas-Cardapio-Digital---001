@@ -89,10 +89,12 @@ export interface Product {
   // Optional paid add-ons a customer can pick on the public menu for this
   // specific product (e.g. extra cream cheese). Absent/empty = no add-ons.
   extras?: ProductExtra[];
-  // Controls position within a category's product list (lower = earlier).
-  // Undefined for products that haven't been manually reordered yet — those
-  // sort after any with an explicit value.
-  displayOrder?: number;
+  // Position within each category's product list (lower = earlier), keyed by
+  // categoryId. A product in multiple categories gets an independent
+  // position in each — reordering it within one never moves it in another.
+  // Missing entry (or missing map) for a category = sorts after any product
+  // with an explicit value there.
+  categoryDisplayOrder?: Record<string, number>;
 }
 
 export type OrderStatus = 'received' | 'preparing' | 'dispatched' | 'delivered' | 'cancelled';

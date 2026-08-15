@@ -331,8 +331,11 @@ export default function DigitalMenuManager() {
       return matchesQuery && matchesCategory;
     })
     .sort((a, b) => {
-      const orderA = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
-      const orderB = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
+      // Under "Todos" there's no single category to key the order by, so
+      // just keep the array's existing (insertion) order.
+      if (selectedCategory === 'all') return products.indexOf(a) - products.indexOf(b);
+      const orderA = a.categoryDisplayOrder?.[selectedCategory] ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.categoryDisplayOrder?.[selectedCategory] ?? Number.MAX_SAFE_INTEGER;
       if (orderA !== orderB) return orderA - orderB;
       return products.indexOf(a) - products.indexOf(b);
     });

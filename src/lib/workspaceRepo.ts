@@ -50,7 +50,7 @@ const productToRow = (p: Product, userId: string) => ({
   supports_half_and_half: p.supportsHalfAndHalf ?? null,
   half_and_half_flavors: p.halfAndHalfFlavors ?? null,
   extras: p.extras ?? [],
-  display_order: p.displayOrder ?? null
+  category_display_order: p.categoryDisplayOrder ?? {}
 });
 
 const rowToProduct = (r: any): Product => ({
@@ -71,7 +71,7 @@ const rowToProduct = (r: any): Product => ({
   supportsHalfAndHalf: r.supports_half_and_half ?? undefined,
   halfAndHalfFlavors: r.half_and_half_flavors ?? undefined,
   extras: r.extras ?? [],
-  displayOrder: r.display_order ?? undefined
+  categoryDisplayOrder: r.category_display_order ?? undefined
 });
 
 const orderToRow = (o: Order, userId: string) => ({
@@ -261,7 +261,11 @@ export async function fetchWorkspace(userId: string): Promise<{
 }> {
   const [categoriesRes, productsRes, ordersRes, couponsRes, customersRes, visualConfigRes, analyticsRes, profileRes] = await Promise.all([
     supabase.from('categories').select('*').eq('user_id', userId),
-    supabase.from('products').select('*').eq('user_id', userId).order('display_order', { ascending: true, nullsFirst: false }),
+    // Real ordering is per-category (category_display_order) and applied
+    // client-side wherever products are filtered down to one category — a
+    // flat cross-category order-by can't reflect that. This just keeps the
+    // base fetch stable/insertion-ordered.
+    supabase.from('products').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
     supabase.from('orders').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     supabase.from('coupons').select('*').eq('user_id', userId),
     supabase.from('customers').select('*').eq('user_id', userId),
@@ -362,7 +366,11 @@ export async function fetchPublicMenuBySlug(slug: string): Promise<{
   const userId = configRow.user_id as string;
   const [categoriesRes, productsRes, couponsRes] = await Promise.all([
     supabase.from('categories').select('*').eq('user_id', userId),
-    supabase.from('products').select('*').eq('user_id', userId).order('display_order', { ascending: true, nullsFirst: false }),
+    // Real ordering is per-category (category_display_order) and applied
+    // client-side wherever products are filtered down to one category — a
+    // flat cross-category order-by can't reflect that. This just keeps the
+    // base fetch stable/insertion-ordered.
+    supabase.from('products').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
     supabase.from('coupons').select('*').eq('user_id', userId).eq('active', true)
   ]);
 
