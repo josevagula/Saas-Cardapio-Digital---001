@@ -672,7 +672,7 @@ export default function PublicMenuPage() {
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <span className="font-bold text-white font-mono text-[11px]">
-                    Para Entrega
+                    Entrega
                   </span>
                 </div>
               </div>
