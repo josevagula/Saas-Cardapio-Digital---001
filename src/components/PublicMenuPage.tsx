@@ -664,15 +664,15 @@ export default function PublicMenuPage() {
               </div>
 
               <div className="bg-[#161616]/90 backdrop-blur-md border border-[#262626] p-3 rounded-2xl flex flex-col gap-1.5 text-xs text-[#9CA3AF] shrink-0 shadow-lg">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="font-bold text-white font-mono text-[11px]">
+                    Entrega
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-[#FF6A00]" />
                   <span className="font-bold text-white font-mono text-[11px]">
                     {visualConfig.deliveryTime || '30-45 min'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="font-bold text-white font-mono text-[11px]">
-                    Entrega
                   </span>
                 </div>
               </div>
