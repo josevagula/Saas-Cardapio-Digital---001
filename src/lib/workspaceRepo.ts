@@ -259,7 +259,7 @@ export async function fetchWorkspace(userId: string): Promise<{
 }> {
   const [categoriesRes, productsRes, ordersRes, couponsRes, customersRes, visualConfigRes, analyticsRes, profileRes] = await Promise.all([
     supabase.from('categories').select('*').eq('user_id', userId),
-    supabase.from('products').select('*').eq('user_id', userId),
+    supabase.from('products').select('*').eq('user_id', userId).order('display_order', { ascending: true, nullsFirst: false }),
     supabase.from('orders').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     supabase.from('coupons').select('*').eq('user_id', userId),
     supabase.from('customers').select('*').eq('user_id', userId),
@@ -360,7 +360,7 @@ export async function fetchPublicMenuBySlug(slug: string): Promise<{
   const userId = configRow.user_id as string;
   const [categoriesRes, productsRes, couponsRes] = await Promise.all([
     supabase.from('categories').select('*').eq('user_id', userId),
-    supabase.from('products').select('*').eq('user_id', userId),
+    supabase.from('products').select('*').eq('user_id', userId).order('display_order', { ascending: true, nullsFirst: false }),
     supabase.from('coupons').select('*').eq('user_id', userId).eq('active', true)
   ]);
 
