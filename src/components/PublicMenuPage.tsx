@@ -670,9 +670,9 @@ export default function PublicMenuPage() {
                     {visualConfig.deliveryTime || '30-45 min'}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-2">
                   <span className="font-bold text-white font-mono text-[11px]">
-                    Entrega
+                    P/Entrega
                   </span>
                 </div>
               </div>
