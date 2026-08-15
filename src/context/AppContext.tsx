@@ -335,6 +335,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const scopedKey = (base: string) => `sushi_${base}`;
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const loadedUserIdRef = useRef<string | null | undefined>(undefined);
+  // Mirrors workspaceReady but as a ref, mutated synchronously, so every
+  // "sync local state to Supabase" effect below can gate on it even during
+  // the very commit where `userId` changes. workspaceReady itself is a
+  // useState value: when userId flips from null to a real id, the effect
+  // below calls setWorkspaceReady(false), but React doesn't apply that until
+  // the *next* render — so any sync effect that also fires in this same
+  // commit (because `userId` is in its own dependency array) still reads the
+  // *previous* render's workspaceReady=true and fires a Supabase sync using
+  // whatever local state (stale localStorage/demo defaults) happened to be
+  // sitting in `products`/`categories`/etc. before the real fetch resolved.
+  // That raced deletion is what corrupted a real account's data in
+  // production (see 2026-08-15 incident). Comparing this ref's value against
+  // the current-render `userId` instead closes the gap: the ref is mutated
+  // (not just scheduled) before the account-loading effect below awaits
+  // fetchWorkspace, and effects run in declaration order within a commit, so
+  // every later effect in this same pass already sees the updated ref.
+  const syncGateUserIdRef = useRef<string | null | undefined>(undefined);
   // True only while showing the landing page's "Demonstração" mock dataset.
   // Guards every sync-to-Supabase/localStorage effect below so demo
   // interactions never leak into (or read from) a real signed-in account.
@@ -369,9 +386,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (authLoading) return;
     if (loadedUserIdRef.current === userId) {
       setWorkspaceReady(true);
+      syncGateUserIdRef.current = userId;
       return;
     }
     loadedUserIdRef.current = userId;
+    // Close the sync gate immediately (synchronous ref mutation) before
+    // anything async happens, so no sync effect can fire against the
+    // outgoing user's stale local state while this user's real data loads.
+    syncGateUserIdRef.current = undefined;
 
     if (userId) {
       // A persisted Supabase session (e.g. after a page refresh) means this
@@ -384,10 +406,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentView(prev => (prev === 'home' || prev === 'public_menu') ? 'dashboard' : prev);
       setWorkspaceReady(false);
 
-      // workspaceReady gates every "sync local state to Supabase" effect
-      // below, and those effects delete any row missing from local state —
-      // so on a failed load we must retry rather than ever flip it to true
-      // with partial/empty local state, which would get mirrored back to
+      // workspaceReady (and syncGateUserIdRef, see its declaration above)
+      // gates every "sync local state to Supabase" effect below, and those
+      // effects delete any row missing from local state — so on a failed
+      // load we must retry rather than ever flip it to true with
+      // partial/empty local state, which would get mirrored back to
       // Supabase as real deletions.
       return retryUntilSuccess(() =>
         fetchWorkspace(userId).then(data => {
@@ -401,10 +424,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setPlanStatus(mapSubscriptionStatus(data.subscriptionStatus));
           setSubscriptionStatusRaw(data.subscriptionStatus);
           setWorkspaceReady(true);
+          syncGateUserIdRef.current = userId;
         })
       );
     }
     setWorkspaceReady(true);
+    syncGateUserIdRef.current = userId;
   }, [userId, authLoading, publicMenuSlug]);
 
   // The browser lands back here with ?checkout=... after Stripe Checkout, or
@@ -504,7 +529,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // corrupting the visited restaurant's rows, and for products specifically,
     // double-counting sales_count alongside createOrder's own
     // incrementProductSales RPC call below.
-    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
+    if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     let cleanup: (() => void) | undefined;
     if (userId) {
       cleanup = retryUntilSuccess(() => syncVisualConfig(userId, visualConfig));
@@ -525,7 +550,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [visualConfig, workspaceReady, userId, isDemoMode, loggedIn, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
+    if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncCategories(userId, categories));
     }
@@ -533,7 +558,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [categories, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
+    if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncProducts(userId, products));
     }
@@ -541,7 +566,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [products, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
+    if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncOrders(userId, orders));
     }
@@ -549,7 +574,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [orders, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
+    if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncCoupons(userId, coupons));
     }
@@ -557,7 +582,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [coupons, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
+    if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncCustomers(userId, customers));
     }
@@ -565,7 +590,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [customers, workspaceReady, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
-    if (!workspaceReady || isDemoMode || publicMenuSlug) return;
+    if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     if (userId) {
       return retryUntilSuccess(() => syncAnalytics(userId, analytics));
     }
