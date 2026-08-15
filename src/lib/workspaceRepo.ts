@@ -49,7 +49,8 @@ const productToRow = (p: Product, userId: string) => ({
   total_pieces: p.totalPieces ?? null,
   supports_half_and_half: p.supportsHalfAndHalf ?? null,
   half_and_half_flavors: p.halfAndHalfFlavors ?? null,
-  extras: p.extras ?? []
+  extras: p.extras ?? [],
+  display_order: p.displayOrder ?? null
 });
 
 const rowToProduct = (r: any): Product => ({
@@ -69,7 +70,8 @@ const rowToProduct = (r: any): Product => ({
   totalPieces: r.total_pieces ?? undefined,
   supportsHalfAndHalf: r.supports_half_and_half ?? undefined,
   halfAndHalfFlavors: r.half_and_half_flavors ?? undefined,
-  extras: r.extras ?? []
+  extras: r.extras ?? [],
+  displayOrder: r.display_order ?? undefined
 });
 
 const orderToRow = (o: Order, userId: string) => ({

@@ -40,6 +40,7 @@ export default function DigitalMenuManager() {
     addProduct,
     updateProduct,
     deleteProduct,
+    reorderProductInCategory,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -322,12 +323,24 @@ export default function DigitalMenuManager() {
     }
   };
 
-  const filteredProducts = products.filter(p => {
-    const matchesQuery = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || p.categoryIds.includes(selectedCategory);
-    return matchesQuery && matchesCategory;
-  });
+  const filteredProducts = products
+    .filter(p => {
+      const matchesQuery = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           p.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || p.categoryIds.includes(selectedCategory);
+      return matchesQuery && matchesCategory;
+    })
+    .sort((a, b) => {
+      const orderA = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
+      if (orderA !== orderB) return orderA - orderB;
+      return products.indexOf(a) - products.indexOf(b);
+    });
+
+  // Reordering (up/down) is only meaningful while a single category is
+  // selected — a product's position is per-category, so "within category"
+  // has no single answer under the "Todos" filter.
+  const canReorder = selectedCategory !== 'all' && !searchQuery;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-menu-manager">
@@ -402,6 +415,14 @@ export default function DigitalMenuManager() {
         </div>
       </div>
 
+      {!canReorder && (
+        <p className="text-[11px] text-[#A8A29A] -mt-4 mb-6">
+          {searchQuery
+            ? 'Limpe a busca para reordenar os produtos.'
+            : 'Selecione uma categoria específica acima para reordenar os produtos dentro dela.'}
+        </p>
+      )}
+
       {/* Catalog Grid */}
       {filteredProducts.length === 0 ? (
         <div className="bg-[#141210] p-12 text-center rounded-2xl border border-[#2A211A] shadow-sm">
@@ -417,7 +438,7 @@ export default function DigitalMenuManager() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map(prod => {
+          {filteredProducts.map((prod, prodIndex) => {
             const catNames = prod.categoryIds
               .map(id => categories.find(c => c.id === id)?.name)
               .filter((n): n is string => Boolean(n));
@@ -505,6 +526,26 @@ export default function DigitalMenuManager() {
                   </span>
 
                   <div className="flex items-center gap-2">
+                    {canReorder && (
+                      <>
+                        <button
+                          onClick={() => reorderProductInCategory(prod.id, -1, selectedCategory)}
+                          disabled={prodIndex === 0}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141210] transition-colors cursor-pointer border border-transparent hover:border-[#2A211A] disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Mover para cima"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => reorderProductInCategory(prod.id, 1, selectedCategory)}
+                          disabled={prodIndex === filteredProducts.length - 1}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141210] transition-colors cursor-pointer border border-transparent hover:border-[#2A211A] disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Mover para baixo"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={() => handleOpenEdit(prod)}
                       className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141210] transition-colors cursor-pointer border border-transparent hover:border-[#2A211A]"

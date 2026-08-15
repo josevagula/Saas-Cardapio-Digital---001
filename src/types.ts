@@ -89,6 +89,10 @@ export interface Product {
   // Optional paid add-ons a customer can pick on the public menu for this
   // specific product (e.g. extra cream cheese). Absent/empty = no add-ons.
   extras?: ProductExtra[];
+  // Controls position within a category's product list (lower = earlier).
+  // Undefined for products that haven't been manually reordered yet — those
+  // sort after any with an explicit value.
+  displayOrder?: number;
 }
 
 export type OrderStatus = 'received' | 'preparing' | 'dispatched' | 'delivered' | 'cancelled';

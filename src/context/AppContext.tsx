@@ -144,6 +144,7 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id' | 'salesCount'>) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
+  reorderProductInCategory: (productId: string, direction: -1 | 1, categoryId: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   addCoupon: (coupon: Coupon) => void;
   addCategory: (category: Omit<Category, 'id'>) => void;
@@ -957,6 +958,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProducts(prev => prev.filter(p => p.id !== id));
   };
 
+  // Reorders a product one slot up/down among the other products sharing
+  // `categoryId`, then normalizes displayOrder to sequential values (0..n-1)
+  // for every product in that category so future moves have a clean,
+  // gap-free ordering to work from. A product in multiple categories shares
+  // one global displayOrder, so reordering it within one category can shift
+  // its position in another it also belongs to.
+  const reorderProductInCategory = (productId: string, direction: -1 | 1, categoryId: string) => {
+    setProducts(prev => {
+      const inCategory = prev.filter(p => p.categoryIds.includes(categoryId));
+      const sorted = [...inCategory].sort((a, b) => {
+        const orderA = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
+        const orderB = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        return prev.indexOf(a) - prev.indexOf(b);
+      });
+      const index = sorted.findIndex(p => p.id === productId);
+      const targetIndex = index + direction;
+      if (index === -1 || targetIndex < 0 || targetIndex >= sorted.length) return prev;
+      [sorted[index], sorted[targetIndex]] = [sorted[targetIndex], sorted[index]];
+      const orderById = new Map(sorted.map((p, i) => [p.id, i]));
+      return prev.map(p => orderById.has(p.id) ? { ...p, displayOrder: orderById.get(p.id)! } : p);
+    });
+  };
+
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
     const order = orders.find(o => o.id === orderId);
 
@@ -1105,6 +1130,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       analyzeAISales,
       addProduct,
       updateProduct,
+      reorderProductInCategory,
       deleteProduct,
       updateOrderStatus,
       addCoupon,
