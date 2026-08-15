@@ -673,7 +673,7 @@ export default function PublicMenuPage() {
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-3.5 h-3.5 text-[#22C55E]" />
                   <span className="font-bold text-[#22C55E] text-[11px]">
-                    {deliveryFee === 0 ? 'Entrega Grátis' : `R$ ${formatCurrency(deliveryFee)}`}
+                    Entrega
                   </span>
                 </div>
               </div>
