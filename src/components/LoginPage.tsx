@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { SushiLogoEmblem } from './SushiIcons';
@@ -69,6 +69,16 @@ export default function LoginPage() {
   const [resetError, setResetError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const openForgotPassword = () => {
     setForgotEmail(email);
     setForgotEmailError('');
@@ -125,10 +135,13 @@ export default function LoginPage() {
     setConfirmPassword('');
     setResetErrors({});
     setResetError('');
+    setResendCooldown(15);
     setStep('forgot-reset');
   };
 
   const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+
     setForgotError('');
     setResetError('');
     setForgotLoading(true);
@@ -139,6 +152,7 @@ export default function LoginPage() {
       setResetError(mapResetRequestError(getErrorMessage(error, 'Não foi possível reenviar o código. Tente novamente.')));
       return;
     }
+    setResendCooldown(15);
     setForgotInfo('Enviamos um novo código para o seu e-mail.');
   };
 
@@ -445,10 +459,10 @@ export default function LoginPage() {
                 </button>
                 <button
                   onClick={handleResendCode}
-                  disabled={forgotLoading}
-                  className="text-[#FB923C] font-semibold hover:underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={forgotLoading || resendCooldown > 0}
+                  className="text-[#FB923C] font-semibold hover:underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:no-underline"
                 >
-                  Reenviar código
+                  {resendCooldown > 0 ? `Reenviar código (${resendCooldown}s)` : 'Reenviar código'}
                 </button>
               </div>
             </div>
