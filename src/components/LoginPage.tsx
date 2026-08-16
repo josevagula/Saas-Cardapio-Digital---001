@@ -460,7 +460,11 @@ export default function LoginPage() {
                 <button
                   onClick={handleResendCode}
                   disabled={forgotLoading || resendCooldown > 0}
-                  className="text-[#FB923C] font-semibold hover:underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:no-underline"
+                  className={`font-semibold cursor-pointer disabled:cursor-not-allowed ${
+                    forgotLoading || resendCooldown > 0
+                      ? 'text-[#6B6259]'
+                      : 'text-[#FB923C] hover:underline'
+                  }`}
                 >
                   {resendCooldown > 0 ? `Reenviar código (${resendCooldown}s)` : 'Reenviar código'}
                 </button>
