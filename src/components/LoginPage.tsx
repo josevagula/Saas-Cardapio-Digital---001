@@ -157,7 +157,8 @@ export default function LoginPage() {
       return;
     }
     setResendCooldown(15);
-    setForgotInfo('Enviamos um novo código para o seu e-mail.');
+    setOtp('');
+    setForgotInfo('Enviamos um novo código para o seu e-mail. Use o código do e-mail mais recente — os anteriores deixam de valer.');
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -413,6 +414,7 @@ export default function LoginPage() {
                       className="input-sushi w-full pl-9 pr-3 py-2.5 text-sm tracking-[0.3em]"
                     />
                   </div>
+                  <p className="text-[11px] text-[#A8A29A]">Use o código do e-mail mais recente que você recebeu.</p>
                   {resetErrors.otp && <p className="text-[11px] text-red-400 font-medium">{resetErrors.otp}</p>}
                 </div>
 
