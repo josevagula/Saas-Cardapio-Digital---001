@@ -4,6 +4,14 @@ import { supabase } from '../lib/supabase';
 import { SushiLogoEmblem } from './SushiIcons';
 import { ArrowLeft, Mail, Lock, KeyRound } from 'lucide-react';
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    const msg = (error as { message?: unknown }).message;
+    if (typeof msg === 'string' && msg.trim().length > 0) return msg;
+  }
+  return fallback;
+}
+
 function mapLoginError(message: string): string {
   const lower = message.toLowerCase();
   if (lower.includes('email not confirmed')) {
@@ -80,11 +88,28 @@ export default function LoginPage() {
     setForgotEmailError('');
 
     setForgotLoading(true);
+
+    const { data: exists, error: lookupError } = await supabase.rpc('email_has_account', {
+      check_email: forgotEmail,
+    });
+
+    if (lookupError) {
+      setForgotLoading(false);
+      setForgotError(getErrorMessage(lookupError, 'Não foi possível verificar o e-mail. Tente novamente.'));
+      return;
+    }
+
+    if (!exists) {
+      setForgotLoading(false);
+      setForgotEmailError('Não encontramos nenhuma conta com esse e-mail.');
+      return;
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail);
     setForgotLoading(false);
 
     if (error) {
-      setForgotError(mapResetRequestError(error.message));
+      setForgotError(mapResetRequestError(getErrorMessage(error, 'Não foi possível enviar o código. Tente novamente.')));
       return;
     }
 
@@ -104,7 +129,7 @@ export default function LoginPage() {
     setForgotLoading(false);
 
     if (error) {
-      setResetError(mapResetRequestError(error.message));
+      setResetError(mapResetRequestError(getErrorMessage(error, 'Não foi possível reenviar o código. Tente novamente.')));
       return;
     }
     setForgotInfo('Enviamos um novo código para o seu e-mail.');
@@ -136,7 +161,7 @@ export default function LoginPage() {
 
     if (verifyError) {
       setResetLoading(false);
-      setResetError(mapVerifyOtpError(verifyError.message));
+      setResetError(mapVerifyOtpError(getErrorMessage(verifyError, 'Não foi possível validar o código. Tente novamente.')));
       return;
     }
 
@@ -144,7 +169,7 @@ export default function LoginPage() {
     setResetLoading(false);
 
     if (updateError) {
-      setResetError(updateError.message);
+      setResetError(getErrorMessage(updateError, 'Não foi possível redefinir a senha. Tente novamente.'));
       return;
     }
 
@@ -174,7 +199,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (error) {
-      setFormError(mapLoginError(error.message));
+      setFormError(mapLoginError(getErrorMessage(error, 'Não foi possível entrar. Tente novamente.')));
       return;
     }
 
