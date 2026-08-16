@@ -5,9 +5,16 @@ import { SushiLogoEmblem } from './SushiIcons';
 import { ArrowLeft, Mail, Lock, KeyRound } from 'lucide-react';
 
 function getErrorMessage(error: unknown, fallback: string): string {
+  console.error(error);
+
   if (error && typeof error === 'object' && 'message' in error) {
     const msg = (error as { message?: unknown }).message;
-    if (typeof msg === 'string' && msg.trim().length > 0) return msg;
+    // auth-js's AuthRetryableFetchError (used for 5xx responses) sometimes
+    // sets .message to the literal string "{}" instead of the server's
+    // actual error body, so that's not a usable message either.
+    if (typeof msg === 'string' && msg.trim().length > 0 && msg.trim() !== '{}') {
+      return msg;
+    }
   }
   return fallback;
 }
