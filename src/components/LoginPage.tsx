@@ -166,8 +166,8 @@ export default function LoginPage() {
     setResetError('');
 
     const newErrors: { otp?: string; newPassword?: string; confirmPassword?: string } = {};
-    if (!/^\d{6}$/.test(otp)) {
-      newErrors.otp = 'Informe o código de 6 dígitos enviado por e-mail.';
+    if (!/^\d{8}$/.test(otp)) {
+      newErrors.otp = 'Informe o código de 8 dígitos enviado por e-mail.';
     }
     if (newPassword.length < 6) {
       newErrors.newPassword = 'A senha deve ter no mínimo 6 caracteres.';
@@ -334,7 +334,7 @@ export default function LoginPage() {
             <div className="card-sushi p-8 sm:p-10 space-y-6">
               <div className="space-y-1.5 text-center">
                 <h1 className="text-2xl font-display font-extrabold text-[#F5F0EA]">Recuperar senha</h1>
-                <p className="text-xs text-[#A8A29A]">Informe seu e-mail para receber um código de verificação de 6 dígitos.</p>
+                <p className="text-xs text-[#A8A29A]">Informe seu e-mail para receber um código de verificação de 8 dígitos.</p>
               </div>
 
               <form onSubmit={handleSendCode} className="space-y-5" noValidate>
@@ -382,7 +382,7 @@ export default function LoginPage() {
               <div className="space-y-1.5 text-center">
                 <h1 className="text-2xl font-display font-extrabold text-[#F5F0EA]">Digite o código</h1>
                 <p className="text-xs text-[#A8A29A]">
-                  Enviamos um código de 6 dígitos para <span className="text-[#F5F0EA] font-semibold">{forgotEmail}</span>.
+                  Enviamos um código de 8 dígitos para <span className="text-[#F5F0EA] font-semibold">{forgotEmail}</span>.
                 </p>
               </div>
 
@@ -407,10 +407,10 @@ export default function LoginPage() {
                       type="text"
                       inputMode="numeric"
                       autoComplete="one-time-code"
-                      maxLength={6}
+                      maxLength={8}
                       value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      placeholder="000000"
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                      placeholder="00000000"
                       className="input-sushi w-full pl-9 pr-3 py-2.5 text-sm tracking-[0.3em]"
                     />
                   </div>
