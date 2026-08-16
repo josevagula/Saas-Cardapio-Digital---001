@@ -30,12 +30,9 @@ function mapLoginError(message: string): string {
   return message;
 }
 
-function mapResetRequestError(message: string): string {
+function isRateLimitError(message: string): boolean {
   const lower = message.toLowerCase();
-  if (lower.includes('security purposes') || lower.includes('rate limit')) {
-    return 'Aguarde alguns segundos antes de solicitar um novo código.';
-  }
-  return message;
+  return lower.includes('security purposes') || lower.includes('rate limit');
 }
 
 function mapVerifyOtpError(message: string): string {
@@ -126,8 +123,11 @@ export default function LoginPage() {
     setForgotLoading(false);
 
     if (error) {
-      setForgotError(mapResetRequestError(getErrorMessage(error, 'Não foi possível enviar o código. Tente novamente.')));
-      return;
+      const message = getErrorMessage(error, 'Não foi possível enviar o código. Tente novamente.');
+      if (!isRateLimitError(message)) {
+        setForgotError(message);
+        return;
+      }
     }
 
     setOtp('');
@@ -149,7 +149,11 @@ export default function LoginPage() {
     setForgotLoading(false);
 
     if (error) {
-      setResetError(mapResetRequestError(getErrorMessage(error, 'Não foi possível reenviar o código. Tente novamente.')));
+      const message = getErrorMessage(error, 'Não foi possível reenviar o código. Tente novamente.');
+      setResendCooldown(15);
+      if (!isRateLimitError(message)) {
+        setResetError(message);
+      }
       return;
     }
     setResendCooldown(15);
