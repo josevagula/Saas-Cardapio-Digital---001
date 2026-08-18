@@ -17,9 +17,27 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { Menu, Loader2 } from 'lucide-react';
 import { SushiLogoEmblem } from './components/SushiIcons';
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen w-full bg-[#0C0A08] flex flex-col items-center justify-center gap-4">
+      <SushiLogoEmblem size={48} />
+      <Loader2 className="w-6 h-6 text-[#FB923C] animate-spin" />
+    </div>
+  );
+}
+
 export default function App() {
-  const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, workspaceReady } = useApp();
+  const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, workspaceReady, authLoading } = useApp();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // 0. A dashboard URL (e.g. reloading /dashboard/pedidos) whose Supabase
+  // session is still being verified: keep showing the loading screen instead
+  // of flashing the login screen first, only to swap to the dashboard a
+  // moment later once the session is confirmed.
+  const isDashboardPath = isAdmin && currentView !== 'home' && currentView !== 'public_menu';
+  if (authLoading && isDashboardPath) {
+    return <LoadingScreen />;
+  }
 
   // 1. Landing Marketing & Pricing page (or Login / Trial signup) if not signed in yet
   if (!loggedIn) {
@@ -39,12 +57,7 @@ export default function App() {
     // customer opening a restaurant's link must never see a flash of a
     // different (stale/cached) menu before the correct one appears.
     if (!workspaceReady) {
-      return (
-        <div className="min-h-screen w-full bg-[#0C0A08] flex flex-col items-center justify-center gap-4">
-          <SushiLogoEmblem size={48} />
-          <Loader2 className="w-6 h-6 text-[#FB923C] animate-spin" />
-        </div>
-      );
+      return <LoadingScreen />;
     }
     return (
       <ErrorBoundary>
@@ -59,12 +72,7 @@ export default function App() {
   // loading screen as the public cardápio instead of mounting the dashboard
   // with stale/empty local state that would flash before the real data lands.
   if (!workspaceReady) {
-    return (
-      <div className="min-h-screen w-full bg-[#0C0A08] flex flex-col items-center justify-center gap-4">
-        <SushiLogoEmblem size={48} />
-        <Loader2 className="w-6 h-6 text-[#FB923C] animate-spin" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // TEMPORARILY DISABLED: the "Finalize sua assinatura para começar" /
