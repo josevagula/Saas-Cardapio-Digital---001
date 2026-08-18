@@ -54,6 +54,19 @@ export default function App() {
   }
 
   // 3. Admin Workspace SaaS Control Center
+  // While the account's workspace data (visual config, catalog, orders, etc.)
+  // is still being fetched/synced from Supabase after login, show the same
+  // loading screen as the public cardápio instead of mounting the dashboard
+  // with stale/empty local state that would flash before the real data lands.
+  if (!workspaceReady) {
+    return (
+      <div className="min-h-screen w-full bg-[#0C0A08] flex flex-col items-center justify-center gap-4">
+        <SushiLogoEmblem size={48} />
+        <Loader2 className="w-6 h-6 text-[#FB923C] animate-spin" />
+      </div>
+    );
+  }
+
   // TEMPORARILY DISABLED: the "Finalize sua assinatura para começar" /
   // "Seu plano precisa ser renovado" paywall lock (PlanRenewalOverlay) is
   // switched off on purpose — every logged-in account gets full dashboard
