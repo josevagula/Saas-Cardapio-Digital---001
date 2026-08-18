@@ -31,12 +31,41 @@ const SINGLE_PRODUCT_DESCRIPTIONS = [
 
 const DISCOUNT_OPTIONS = [10, 12, 15, 18, 20, 22, 25];
 
-const BEST_HOURS_OPTIONS = [
-  ['Quintas e Sextas-feiras de noite'],
-  ['Terça a Quinta-feira, das 18:00 às 20:00 (Período de Happy Hour)', 'Domingos, das 15:00 às 17:00 (Lanche da tarde)'],
-  ['Quartas-feiras à noite', 'Sábados à tarde'],
-  ['Segundas e Terças-feiras, das 19:00 às 21:00 (dias de menor movimento)']
+// Mirrors the day codes toggled in "Personalização" (VisualCustomizer's
+// operatingDaysList), so promo hour suggestions only ever name a day the
+// restaurant actually marked as open.
+const DAY_CODE_NAMES: Record<string, string> = {
+  dom: 'Domingos',
+  seg: 'Segundas-feiras',
+  ter: 'Terças-feiras',
+  qua: 'Quartas-feiras',
+  qui: 'Quintas-feiras',
+  sex: 'Sextas-feiras',
+  sab: 'Sábados'
+};
+const ALL_DAY_CODES = Object.keys(DAY_CODE_NAMES);
+
+const BEST_HOUR_TEMPLATES: ((day: string) => string)[] = [
+  (day) => `${day}, das 18:00 às 20:00 (Período de Happy Hour)`,
+  (day) => `${day}, das 15:00 às 17:00 (Lanche da tarde)`,
+  (day) => `${day} à noite`,
+  (day) => `${day}, das 19:00 às 21:00 (dias de menor movimento)`
 ];
+
+function buildBestHours(operatingDaysList?: string[]): string[] {
+  const codes = operatingDaysList && operatingDaysList.length > 0
+    ? operatingDaysList.filter(c => DAY_CODE_NAMES[c])
+    : ALL_DAY_CODES;
+
+  if (codes.length === 0) {
+    return ['Marque ao menos um dia de funcionamento em Personalização para receber sugestões de horários promocionais.'];
+  }
+
+  const days = shuffle(codes.map(c => DAY_CODE_NAMES[c]));
+  const templates = shuffle(BEST_HOUR_TEMPLATES);
+  const count = Math.min(2, days.length);
+  return Array.from({ length: count }, (_, i) => templates[i % templates.length](days[i]));
+}
 
 const MARKETING_STRATEGY_OPTIONS = [
   'Disparar mensagem em lote para clientes inativos com cupom relâmpago de 10% durante as 19h.',
@@ -58,7 +87,7 @@ function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-export function buildFallbackPromoReport(products: Product[]) {
+export function buildFallbackPromoReport(products: Product[], operatingDaysList?: string[]) {
   const realNames = shuffle(products.map(p => p.name).filter(Boolean));
 
   const combos: { name: string; products: string[]; discountPercent: number; description: string }[] = [];
@@ -89,7 +118,7 @@ export function buildFallbackPromoReport(products: Product[]) {
 
   return {
     combos,
-    bestHours: pickRandom(BEST_HOURS_OPTIONS),
+    bestHours: buildBestHours(operatingDaysList),
     marketingStrategy: pickRandom(MARKETING_STRATEGY_OPTIONS)
   };
 }

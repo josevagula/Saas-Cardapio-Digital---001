@@ -329,7 +329,7 @@ const FALLBACK_COMBO_DESCRIPTIONS = [
 ];
 const FALLBACK_DISCOUNTS = [10, 12, 15, 18, 20, 22, 25];
 
-function shuffleNames(names: string[]) {
+function shuffleNames<T>(names: T[]): T[] {
   const copy = [...names];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -339,6 +339,73 @@ function shuffleNames(names: string[]) {
 }
 function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
+}
+
+// Mirrors the day codes toggled in "Personalização" (VisualCustomizer's
+// operatingDaysList / "Dias de Funcionamento" picker), so AI-suggested promo
+// hours/days can be built from — and validated against — the days the
+// restaurant actually marked as open.
+const DAY_CODE_NAMES: Record<string, string> = {
+  dom: "Domingos",
+  seg: "Segundas-feiras",
+  ter: "Terças-feiras",
+  qua: "Quartas-feiras",
+  qui: "Quintas-feiras",
+  sex: "Sextas-feiras",
+  sab: "Sábados"
+};
+const ALL_DAY_CODES = Object.keys(DAY_CODE_NAMES);
+// Singular/plural forms used to detect a closed day mentioned in free-text
+// AI output, so a suggestion can be filtered out even if the model ignores
+// the prompt instruction.
+const DAY_NAME_FORMS: Record<string, string[]> = {
+  dom: ["domingo", "domingos"],
+  seg: ["segunda-feira", "segundas-feiras", "segunda", "segundas"],
+  ter: ["terça-feira", "terças-feiras", "terça", "terças", "terca-feira", "tercas-feiras", "terca", "tercas"],
+  qua: ["quarta-feira", "quartas-feiras", "quarta", "quartas"],
+  qui: ["quinta-feira", "quintas-feiras", "quinta", "quintas"],
+  sex: ["sexta-feira", "sextas-feiras", "sexta", "sextas"],
+  sab: ["sábado", "sábados", "sabado", "sabados"]
+};
+
+const BEST_HOUR_TEMPLATES: ((day: string) => string)[] = [
+  (day) => `${day}, das 18:00 às 20:00 (Período de Happy Hour)`,
+  (day) => `${day}, das 15:00 às 17:00 (Lanche da tarde)`,
+  (day) => `${day} à noite`,
+  (day) => `${day}, das 19:00 às 21:00 (dias de menor movimento)`
+];
+
+function validOperatingCodes(operatingDays: any): string[] | null {
+  if (!Array.isArray(operatingDays) || operatingDays.length === 0) return null;
+  const codes = operatingDays.filter((c: any) => typeof c === "string" && DAY_CODE_NAMES[c]);
+  return codes.length > 0 ? codes : null;
+}
+
+// Builds "bestHours" suggestions using only days the restaurant marked as
+// open in Personalização — used for the no-API-key template and as the
+// error-recovery fallback, and never names a day the establishment is closed.
+function buildFallbackBestHours(operatingDays?: any): string[] {
+  const codes = validOperatingCodes(operatingDays) ?? ALL_DAY_CODES;
+  const days = shuffleNames(codes.map((c) => DAY_CODE_NAMES[c]));
+  const templates = shuffleNames(BEST_HOUR_TEMPLATES);
+  const count = Math.min(2, days.length);
+  return Array.from({ length: count }, (_, i) => templates[i % templates.length](days[i]));
+}
+
+// Drops any AI-suggested slot that names a day the restaurant marked as
+// closed, so a model that ignores the prompt instruction still can't talk
+// its way into recommending a promo on a day off.
+function sanitizeBestHours(rawBestHours: any, operatingDays?: any): string[] {
+  const codes = validOperatingCodes(operatingDays);
+  const items = Array.isArray(rawBestHours) ? rawBestHours.filter((h) => typeof h === "string") : [];
+  if (!codes) return items.length > 0 ? items : buildFallbackBestHours();
+
+  const closedForms = ALL_DAY_CODES.filter((c) => !codes.includes(c)).flatMap((c) => DAY_NAME_FORMS[c]);
+  const filtered = items.filter((h) => {
+    const normalized = h.toLowerCase();
+    return !closedForms.some((form) => normalized.includes(form));
+  });
+  return filtered.length > 0 ? filtered : buildFallbackBestHours(codes);
 }
 
 // Reshuffles the caller's own products and randomizes the copy/discount on
@@ -390,28 +457,32 @@ function sanitizeCombos(rawCombos: any[], validNames: string[]) {
 
 // AI 2: AI Promotion Suggester
 app.post("/api/gemini/suggest-promotions", async (req, res) => {
-  const { products } = req.body;
+  const { products, operatingDays } = req.body;
 
   if (!products || !Array.isArray(products) || products.length === 0) {
     return res.status(400).json({ error: "É necessário enviar uma lista de produtos." });
   }
 
   const productNames = products.map((p: any) => p?.name).filter(Boolean);
+  const operatingCodes = validOperatingCodes(operatingDays);
 
   const ai = getAIClient();
   if (!ai) {
     return res.json({
       combos: buildFallbackCombos(productNames),
-      bestHours: ["Terça a Quinta-feira, das 18:00 às 20:00 (Período de Happy Hour)", "Domingos, das 15:00 às 17:00 (Lanche da tarde)"],
+      bestHours: buildFallbackBestHours(operatingDays),
       marketingStrategy: "Ofereça frete grátis exclusivamente nas compras acima de R$ 50 feitas durantes as horas promocionais sugeridas. Divulgue no status do WhatsApp usando gatilhos de escassez (ex: 'Apenas para as próximas 10 pessoas!')."
     });
   }
 
   try {
+    const operatingDaysRule = operatingCodes
+      ? `\nREGRA OBRIGATÓRIA: o restaurante só funciona nestes dias: ${operatingCodes.map((c) => DAY_CODE_NAMES[c]).join(", ")}. NUNCA sugira um dia ou horário fora desta lista.`
+      : "";
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: `Com base EXCLUSIVAMENTE na seguinte lista de produtos já cadastrados no cardápio do restaurante, sugira 2 combos promocionais altamente atrativos, os melhores dias/horários para aplicar descontos (para aumentar o fluxo em dias lentos), e uma estratégia de marketing inteligente.
-REGRA OBRIGATÓRIA: use apenas os nomes de produtos exatamente como aparecem na lista abaixo. NUNCA invente, altere ou sugira produtos que não estejam nesta lista.
+REGRA OBRIGATÓRIA: use apenas os nomes de produtos exatamente como aparecem na lista abaixo. NUNCA invente, altere ou sugira produtos que não estejam nesta lista.${operatingDaysRule}
 Produtos do cardápio: ${JSON.stringify(productNames)}`,
       config: {
         responseMimeType: "application/json",
@@ -453,17 +524,19 @@ Produtos do cardápio: ${JSON.stringify(productNames)}`,
 
     const parsed = JSON.parse(text);
     // Never trust the model blindly: strip out any suggested product that isn't
-    // actually registered in the cardápio before returning the combos.
+    // actually registered in the cardápio, and any day/hour slot that names a
+    // day the restaurant marked as closed, before returning the report.
     const sanitized = sanitizeCombos(parsed.combos, productNames);
     return res.json({
       ...parsed,
-      combos: sanitized.length > 0 ? sanitized : buildFallbackCombos(productNames)
+      combos: sanitized.length > 0 ? sanitized : buildFallbackCombos(productNames),
+      bestHours: sanitizeBestHours(parsed.bestHours, operatingDays)
     });
   } catch (error: any) {
     console.error("Erro na API de Promoção:", error);
     return res.json({
       combos: buildFallbackCombos(productNames),
-      bestHours: ["Quartas-feiras à noite", "Sábados à tarde"],
+      bestHours: buildFallbackBestHours(operatingDays),
       marketingStrategy: "Crie campanhas de cupom relâmpago nas redes sociais para engajar o público jovem."
     });
   }

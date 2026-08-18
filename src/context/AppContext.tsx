@@ -861,11 +861,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const suggestAICombos = async () => {
+    // Days the restaurant marked as open in Personalização (VisualCustomizer's
+    // "Dias de Funcionamento" picker) — sent along so the AI never suggests
+    // promo hours/days the establishment doesn't actually work.
+    const operatingDaysList = visualConfig.operatingDaysList;
     try {
       const response = await fetch('/api/gemini/suggest-promotions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products })
+        body: JSON.stringify({ products, operatingDays: operatingDaysList })
       });
       if (!response.ok) throw new Error("Erro ao sugerir promoções por IA");
       return await response.json();
@@ -876,8 +880,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // the account's own products and randomizes the copy/discount on every
       // call, so clicking "Criar Novas Promoções" again produces a new
       // promotion instead of repeating the same fixed combo — while only
-      // ever referencing products that actually exist in the cardápio.
-      return buildFallbackPromoReport(products);
+      // ever referencing products that actually exist in the cardápio, and
+      // only ever suggesting days the restaurant is actually open.
+      return buildFallbackPromoReport(products, operatingDaysList);
     }
   };
 
