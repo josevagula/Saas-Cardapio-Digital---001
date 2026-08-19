@@ -486,6 +486,15 @@ export default function PublicMenuPage() {
       {/* ==================== 1. STICKY TOP NAVBAR ==================== */}
       <header className="py-2.5 px-3.5 sm:py-3 sm:px-8 border-b border-[#22201D] flex items-center justify-between shrink-0 sticky top-0 z-30 bg-[#0F0D0B]/95 backdrop-blur-md">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          {!isPublicLink && (
+            <button
+              onClick={handleHeaderBack}
+              className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#262626] text-[#D1D5DB] hover:text-white hover:bg-[#181512] transition-colors shrink-0 cursor-pointer"
+              title="Voltar"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
           <img
             src={visualConfig.logoUrl}
             alt={visualConfig.establishmentName}
