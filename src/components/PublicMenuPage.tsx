@@ -444,38 +444,8 @@ export default function PublicMenuPage() {
     return <Sparkles className="w-3.5 h-3.5 text-[#FB923C]" />;
   };
 
-  // Smart Navigation Handler for "Voltar" (Back) in Cardápio Digital
+  // "Voltar" (Back) in Cardápio Digital: always exits straight to the dashboard
   const handleHeaderBack = () => {
-    if (isCheckoutOpen) {
-      setIsCheckoutOpen(false);
-      setIsCartOpen(true);
-      return;
-    }
-    if (isCartOpen) {
-      setIsCartOpen(false);
-      return;
-    }
-    if (selectedProduct) {
-      setSelectedProduct(null);
-      return;
-    }
-    if (comboModalProduct) {
-      setComboModalProduct(null);
-      return;
-    }
-    if (halfAndHalfModalProduct) {
-      setHalfAndHalfModalProduct(null);
-      return;
-    }
-    if (placedOrder) {
-      setPlacedOrder(null);
-      return;
-    }
-    if (activeCategory !== 'all') {
-      setActiveCategory('all');
-      return;
-    }
-    // At initial main page of cardápio: return to dashboard!
     setIsAdmin(true);
     setCurrentView('dashboard');
   };
