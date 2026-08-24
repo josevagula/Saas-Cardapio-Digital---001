@@ -269,7 +269,6 @@ export default function PublicMenuPage() {
     const orderDate = new Date(order.createdAt);
     const dateStr = orderDate.toLocaleDateString('pt-BR');
     const timeStr = orderDate.toLocaleTimeString('pt-BR');
-    const storeName = (visualConfig.establishmentName || '').toUpperCase();
 
     const itemsText = (order.items as OrderItem[]).map((item) => {
       const removedText = item.removedIngredients && item.removedIngredients.length > 0 ? ` [Sem: ${item.removedIngredients.join(', ')}]` : '';
@@ -287,7 +286,7 @@ export default function PublicMenuPage() {
       ? `Entrega — ${order.customerAddress || 'Endereço não informado'}`
       : `Retirada no Local — ${visualConfig.address || 'Endereço não informado'}`;
 
-    let messageText = `🚨 *NOVO PEDIDO NO ${storeName}*\n`;
+    let messageText = `🚨 *NOVO PEDIDO*\n`;
     messageText += `============================\n`;
     messageText += `*DATA:* ${dateStr}, ${timeStr}\n`;
     messageText += `============================\n\n`;
