@@ -119,12 +119,15 @@ export default function DashboardOverview() {
   const paymentDistribution = isDemoMode ? analytics.paymentDistribution : (() => {
     const totals: Record<string, number> = {};
     getPeriodOrders().forEach(o => {
-      totals[o.paymentMethod] = (totals[o.paymentMethod] || 0) + o.total;
+      // Credit and debit card are merged into a single "Cartão" slice —
+      // the split by card type isn't useful here, only card vs. other methods.
+      const method = o.paymentMethod === 'credit_card' || o.paymentMethod === 'debit_card' ? 'card' : o.paymentMethod;
+      totals[method] = (totals[method] || 0) + o.total;
     });
     const sum = Object.values(totals).reduce((a, b) => a + b, 0);
     if (sum <= 0) return [];
     return Object.entries(totals).map(([method, amount]) => ({
-      name: PAYMENT_METHOD_LABELS[method] || method,
+      name: method === 'card' ? 'Cartão' : (PAYMENT_METHOD_LABELS[method] || method),
       value: Math.round((amount / sum) * 100)
     }));
   })();

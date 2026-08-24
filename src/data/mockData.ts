@@ -623,8 +623,7 @@ export const INITIAL_ANALYTICS: SalesAnalytics = {
   ],
   paymentDistribution: [
     { name: "Pix", value: 65 },
-    { name: "Cartão de Crédito", value: 25 },
-    { name: "Cartão de Débito", value: 7 },
+    { name: "Cartão", value: 32 },
     { name: "Dinheiro", value: 3 }
   ]
 };
