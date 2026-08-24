@@ -14,11 +14,12 @@ import {
   AlertCircle,
   TrendingUp,
   X,
-  Ban
+  Ban,
+  Trash2
 } from 'lucide-react';
 
 export default function OrdersManager() {
-  const { orders, updateOrderStatus, visualConfig } = useApp();
+  const { orders, updateOrderStatus, deleteOrder, visualConfig } = useApp();
   const [activeTab, setActiveTab] = useState<OrderStatus>('preparing');
 
   // Simulated WhatsApp State
@@ -122,9 +123,25 @@ export default function OrdersManager() {
           <p className="text-xs text-[#A8A29A] mt-0.5">Monitore e gerencie o fluxo de entrega, atualize status dos clientes e despache pedidos.</p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-[#141210] px-3.5 py-2 rounded-xl border border-[#2A211A] text-[10px] text-slate-300 font-mono">
-          <Clock className="w-3.5 h-3.5 text-[#FB923C] shrink-0" />
-          <span>Fuso Local: Atendimento Ativo</span>
+        <div className="flex items-center gap-3">
+          {activeTab === 'cancelled' && filteredOrders.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm(`Excluir todos os ${filteredOrders.length} pedidos cancelados? Essa ação não pode ser desfeita.`)) {
+                  filteredOrders.forEach(o => deleteOrder(o.id));
+                }
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#4A1616] bg-[#1F0B0B] text-red-400 hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer text-xs font-bold"
+            >
+              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Excluir Todos os Cancelados</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1.5 bg-[#141210] px-3.5 py-2 rounded-xl border border-[#2A211A] text-[10px] text-slate-300 font-mono">
+            <Clock className="w-3.5 h-3.5 text-[#FB923C] shrink-0" />
+            <span>Fuso Local: Atendimento Ativo</span>
+          </div>
         </div>
       </div>
 
@@ -268,6 +285,20 @@ export default function OrdersManager() {
                         title="Cancelar Pedido"
                       >
                         <Ban className="w-4.5 h-4.5" />
+                      </button>
+                    )}
+
+                    {order.status === 'cancelled' && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Excluir o pedido ${formatOrderCode(order)}? Essa ação não pode ser desfeita.`)) {
+                            deleteOrder(order.id);
+                          }
+                        }}
+                        className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
+                        title="Excluir Pedido"
+                      >
+                        <Trash2 className="w-4.5 h-4.5" />
                       </button>
                     )}
 

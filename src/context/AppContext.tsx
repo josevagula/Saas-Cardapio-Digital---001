@@ -150,6 +150,7 @@ interface AppContextType {
   deleteProduct: (id: string) => void;
   reorderProductInCategory: (productId: string, direction: -1 | 1, categoryId: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  deleteOrder: (orderId: string) => void;
   addCoupon: (coupon: Coupon) => void;
   addCategory: (category: Omit<Category, 'id'>) => void;
   updateCategory: (category: Category) => void;
@@ -1033,6 +1034,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ));
   };
 
+  // Only meant for orders already cancelled — a cancelled order has already
+  // been reversed out of every metric above, so simply dropping it from the
+  // list is safe and needs no further bookkeeping.
+  const deleteOrder = (orderId: string) => {
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+  };
+
   const addCoupon = (newCoupon: Coupon) => {
     setCoupons(prev => [newCoupon, ...prev]);
   };
@@ -1145,6 +1153,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       reorderProductInCategory,
       deleteProduct,
       updateOrderStatus,
+      deleteOrder,
       addCoupon,
       addCategory,
       updateCategory,
