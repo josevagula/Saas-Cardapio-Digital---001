@@ -288,17 +288,19 @@ export default function OrdersManager() {
                       </button>
                     )}
 
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Excluir o pedido ${formatOrderCode(order)}? Essa ação não pode ser desfeita.`)) {
-                          deleteOrder(order.id);
-                        }
-                      }}
-                      className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
-                      title="Excluir Pedido"
-                    >
-                      <Trash2 className="w-4.5 h-4.5" />
-                    </button>
+                    {order.status === 'cancelled' && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Excluir o pedido ${formatOrderCode(order)}? Essa ação não pode ser desfeita.`)) {
+                            deleteOrder(order.id);
+                          }
+                        }}
+                        className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
+                        title="Excluir Pedido"
+                      >
+                        <Trash2 className="w-4.5 h-4.5" />
+                      </button>
+                    )}
 
                     <button
                       onClick={() => triggerWhatsAppSimulator(order)}
