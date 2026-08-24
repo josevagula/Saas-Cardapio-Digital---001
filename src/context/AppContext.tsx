@@ -994,39 +994,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Reverses everything an order added when it was placed — it must count
+  // nowhere (dashboard, financials, loyalty, sales) once it's gone, same as
+  // if it had never happened. Shared by cancelling and deleting so neither
+  // path can leave stale numbers behind.
+  const reverseOrderMetrics = (order: Order) => {
+    setProducts(prev => prev.map(p => {
+      const item = order.items.find(i => i.product.id === p.id);
+      return item ? { ...p, salesCount: Math.max(0, p.salesCount - item.quantity) } : p;
+    }));
+
+    setCustomers(prev => prev.map(c =>
+      c.phone === order.customerPhone
+        ? { ...c, loyaltyPoints: Math.max(0, c.loyaltyPoints - order.pointsEarned), orderCount: Math.max(0, c.orderCount - 1) }
+        : c
+    ));
+
+    setAnalytics(prev => {
+      const totalOrd = Math.max(0, prev.totalOrders - 1);
+      const daily = Math.max(0, prev.dailyRevenue - order.total);
+      const weekly = Math.max(0, prev.weeklyRevenue - order.total);
+      const monthly = Math.max(0, prev.monthlyRevenue - order.total);
+      return {
+        ...prev,
+        dailyRevenue: Math.round(daily * 100) / 100,
+        weeklyRevenue: Math.round(weekly * 100) / 100,
+        monthlyRevenue: Math.round(monthly * 100) / 100,
+        totalOrders: totalOrd,
+        ticketAverage: totalOrd > 0 ? Math.round((daily / totalOrd) * 100) / 100 : 0
+      };
+    });
+  };
+
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
     const order = orders.find(o => o.id === orderId);
 
-    // Cancelling reverses everything the order added when it was placed —
-    // it must count nowhere (dashboard, financials, loyalty, sales) once
-    // cancelled, same as if it had never happened. Only fires on the
-    // received -> cancelled transition, never twice for the same order.
+    // Only fires on the received -> cancelled transition, never twice for
+    // the same order.
     if (order && status === 'cancelled' && order.status !== 'cancelled') {
-      setProducts(prev => prev.map(p => {
-        const item = order.items.find(i => i.product.id === p.id);
-        return item ? { ...p, salesCount: Math.max(0, p.salesCount - item.quantity) } : p;
-      }));
-
-      setCustomers(prev => prev.map(c =>
-        c.phone === order.customerPhone
-          ? { ...c, loyaltyPoints: Math.max(0, c.loyaltyPoints - order.pointsEarned), orderCount: Math.max(0, c.orderCount - 1) }
-          : c
-      ));
-
-      setAnalytics(prev => {
-        const totalOrd = Math.max(0, prev.totalOrders - 1);
-        const daily = Math.max(0, prev.dailyRevenue - order.total);
-        const weekly = Math.max(0, prev.weeklyRevenue - order.total);
-        const monthly = Math.max(0, prev.monthlyRevenue - order.total);
-        return {
-          ...prev,
-          dailyRevenue: Math.round(daily * 100) / 100,
-          weeklyRevenue: Math.round(weekly * 100) / 100,
-          monthlyRevenue: Math.round(monthly * 100) / 100,
-          totalOrders: totalOrd,
-          ticketAverage: totalOrd > 0 ? Math.round((daily / totalOrd) * 100) / 100 : 0
-        };
-      });
+      reverseOrderMetrics(order);
     }
 
     setOrders(prev => prev.map(o =>
@@ -1034,10 +1040,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ));
   };
 
-  // Only meant for orders already cancelled — a cancelled order has already
-  // been reversed out of every metric above, so simply dropping it from the
-  // list is safe and needs no further bookkeeping.
+  // Deleting an order not already cancelled must reverse its metrics first —
+  // a cancelled order was already reversed when it was cancelled, so doing
+  // it again here would double-subtract.
   const deleteOrder = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (order && order.status !== 'cancelled') {
+      reverseOrderMetrics(order);
+    }
     setOrders(prev => prev.filter(o => o.id !== orderId));
   };
 
