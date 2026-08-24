@@ -304,8 +304,7 @@ export default function PublicMenuPage() {
     messageText += `${deliveryLine}\n`;
     messageText += `============================\n\n`;
     messageText += `💳 *PAGAMENTO:*\n`;
-    messageText += `Forma: ${payStr}\n\n`;
-    messageText += `============================`;
+    messageText += `Forma de Pagamento: ${payStr}`;
 
     const txt = encodeURIComponent(messageText);
     // api.whatsapp.com/send (rather than wa.me) avoids the emoji/astral-character
