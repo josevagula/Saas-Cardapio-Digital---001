@@ -261,7 +261,11 @@ export default function PublicMenuPage() {
   };
 
   const sendOrderToWhatsApp = (order: any) => {
-    const payStr = getOrderPaymentLabel(order);
+    // The WhatsApp message only needs "Cartão" — the credit/debit split
+    // stays on the on-screen order summary via getOrderPaymentLabel.
+    const payStr = (order.paymentMethod === 'credit_card' || order.paymentMethod === 'debit_card')
+      ? 'Cartão'
+      : getOrderPaymentLabel(order);
     const orderDate = new Date(order.createdAt);
     const dateStr = orderDate.toLocaleDateString('pt-BR');
     const timeStr = orderDate.toLocaleTimeString('pt-BR');
