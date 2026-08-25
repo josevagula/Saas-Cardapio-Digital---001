@@ -326,12 +326,22 @@ export const syncProducts = (userId: string, products: Product[]) =>
 // history is a permanent record: it must survive a stale browser cache, a
 // failed fetch, or a bug in local state, none of which should ever be able
 // to erase a real past sale. The database enforces this too — see
-// supabase/migrations/20260807140000_orders_append_only.sql, which removes
-// the DELETE policy/grant on public.orders entirely.
+// supabase/migrations/20260807140000_orders_append_only.sql (no delete at
+// all) and 20260824120000_allow_delete_cancelled_orders.sql, which reopens
+// deletion only for the owner's own already-cancelled orders — the one path
+// the dashboard's "excluir pedido" button uses, via deleteOrderRow below.
 export async function syncOrders(userId: string, orders: Order[]) {
   if (orders.length === 0) return;
   const { error } = await supabase.from('orders').upsert(orders.map(o => orderToRow(o, userId)), { onConflict: 'id' });
   if (error) throw new Error(`Failed to save orders to Supabase: ${error.message}`);
+}
+
+// Permanently removes one order. The DB policy only allows this for the
+// order's own owner and only while its status is 'cancelled' — a delete
+// attempted on anything else is rejected there, not just here.
+export async function deleteOrderRow(orderId: string) {
+  const { error } = await supabase.from('orders').delete().eq('id', orderId);
+  if (error) throw new Error(`Failed to delete order from Supabase: ${error.message}`);
 }
 
 export const syncCoupons = (userId: string, coupons: Coupon[]) =>

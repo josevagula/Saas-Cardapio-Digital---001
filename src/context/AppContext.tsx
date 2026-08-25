@@ -23,6 +23,7 @@ import {
   syncCategories,
   syncProducts,
   syncOrders,
+  deleteOrderRow,
   syncCoupons,
   syncCustomers,
   syncVisualConfig,
@@ -1042,13 +1043,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Deleting an order not already cancelled must reverse its metrics first —
   // a cancelled order was already reversed when it was cancelled, so doing
-  // it again here would double-subtract.
+  // it again here would double-subtract. The Supabase row is deleted
+  // directly here (not left to the syncOrders effect, which only ever
+  // upserts) — the DB policy only allows it for the owner's own cancelled
+  // orders anyway, see 20260824120000_allow_delete_cancelled_orders.sql.
   const deleteOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (order && order.status !== 'cancelled') {
       reverseOrderMetrics(order);
     }
     setOrders(prev => prev.filter(o => o.id !== orderId));
+    if (userId && !isDemoMode) {
+      retryUntilSuccess(() => deleteOrderRow(orderId));
+    }
   };
 
   const addCoupon = (newCoupon: Coupon) => {
