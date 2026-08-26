@@ -640,12 +640,12 @@ export default function PublicMenuPage() {
           {/* ==================== 2. HERO BANNER HEADER ==================== */}
           <div className="relative rounded-3xl overflow-hidden border border-[#262626] bg-[#0A0A0A] shadow-2xl min-h-[220px] sm:min-h-[250px] flex flex-col justify-between p-5 sm:p-7">
             <div className="absolute inset-0 z-0">
-              <img 
-                src={visualConfig.bannerUrl} 
-                alt={visualConfig.establishmentName} 
+              <img
+                src={visualConfig.bannerUrl}
+                alt={visualConfig.establishmentName}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-[#0A0A0A]/85 backdrop-blur-[1px]"></div>
+              <div className="absolute inset-0 bg-[#0A0A0A]/85"></div>
             </div>
 
             <div className="relative z-10 flex items-start justify-between gap-4">
