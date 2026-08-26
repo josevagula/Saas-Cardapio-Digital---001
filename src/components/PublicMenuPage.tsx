@@ -606,7 +606,7 @@ export default function PublicMenuPage() {
             <div className="mt-4 p-3 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-start gap-2.5">
               <AlertTriangle className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
               <p className="text-[11px] leading-snug text-[#D1FAE5]">
-                <span className="font-black">Atenção:</span> toque no botão abaixo e envie a mensagem no WhatsApp. A loja só vai começar a preparar o seu pedido depois de recebê-la.
+                <span className="font-black">Atenção:</span> clique no botão abaixo para enviar o seu pedido pelo WhatsApp, para começar a preparar o seu pedido.
               </p>
             </div>
 
