@@ -88,11 +88,6 @@ export default function LandingPages() {
               transition={{ duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
               className="lg:col-span-6 space-y-6 text-left"
             >
-              <div className="inline-flex items-center gap-2 badge-sushi px-3.5 py-1.5 rounded-full text-xs font-bold shadow-xs">
-                <Sparkles className="w-3.5 h-3.5 text-[#FB923C]" />
-                <span>Engenharia de Cardápio com Inteligência Artificial</span>
-              </div>
-
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold text-[#F5F0EA] tracking-tight leading-[1.1]">
                 Seu sushi merece um cardápio à altura e dados reais de <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F97316] to-[#FB923C]">vendas</span>.
               </h1>
