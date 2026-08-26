@@ -393,6 +393,25 @@ export default function PublicMenuPage() {
   const finalTotal = Math.max(0, subtotal + deliveryFee - discountAmount);
   const totalCartCount = cart.reduce((a, b) => a + b.quantity, 0);
 
+  const categoryIndex = new Map(categories.map((c, i) => [c.id, i]));
+
+  // In "Todos os Pratos", group products by the admin's category order —
+  // each product's primary category is whichever of its categories comes
+  // first in that order — then order within each group by the product's
+  // display order for that category, so nothing shows up unordered.
+  const primaryCategoryFor = (p: Product) => {
+    let best: string | undefined;
+    let bestIndex = Number.MAX_SAFE_INTEGER;
+    for (const id of p.categoryIds) {
+      const idx = categoryIndex.get(id);
+      if (idx !== undefined && idx < bestIndex) {
+        bestIndex = idx;
+        best = id;
+      }
+    }
+    return { id: best, index: bestIndex };
+  };
+
   const filteredProducts = products
     .filter(p => {
       const matchQ = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -401,8 +420,15 @@ export default function PublicMenuPage() {
       return matchQ && matchC && p.isAvailable;
     })
     .sort((a, b) => {
-      // "Todos" has no single category to key the order by — keep insertion order.
-      if (activeCategory === 'all') return products.indexOf(a) - products.indexOf(b);
+      if (activeCategory === 'all') {
+        const catA = primaryCategoryFor(a);
+        const catB = primaryCategoryFor(b);
+        if (catA.index !== catB.index) return catA.index - catB.index;
+        const orderA = (catA.id && a.categoryDisplayOrder?.[catA.id]) ?? Number.MAX_SAFE_INTEGER;
+        const orderB = (catB.id && b.categoryDisplayOrder?.[catB.id]) ?? Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        return products.indexOf(a) - products.indexOf(b);
+      }
       const orderA = a.categoryDisplayOrder?.[activeCategory] ?? Number.MAX_SAFE_INTEGER;
       const orderB = b.categoryDisplayOrder?.[activeCategory] ?? Number.MAX_SAFE_INTEGER;
       if (orderA !== orderB) return orderA - orderB;
