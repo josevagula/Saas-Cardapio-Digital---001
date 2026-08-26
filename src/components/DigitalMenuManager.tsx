@@ -646,7 +646,7 @@ export default function DigitalMenuManager() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Preço Promocional (Opcional)</label>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Preço Original (R$)*</label>
                     <input
                       type="number"
                       step="0.01"
@@ -659,7 +659,7 @@ export default function DigitalMenuManager() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Preço Original (R$)*</label>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Preço Promocional (Opcional)</label>
                     <input
                       type="number"
                       step="0.01"
