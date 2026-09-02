@@ -583,7 +583,7 @@ export default function DashboardOverview() {
                   </div>
                   <div className="min-w-0">
                     <h5 className="text-xs sm:text-sm font-bold text-[#F5F0EA] truncate">{prod.name}</h5>
-                    <span className="text-[11px] text-[#A8A29A] block truncate">{prod.ingredients.length} ingredientes</span>
+                    <span className="text-[11px] text-[#A8A29A] block truncate font-mono">{formatCurrency(prod.price)}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
