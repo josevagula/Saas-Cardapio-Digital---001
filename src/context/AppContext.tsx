@@ -101,6 +101,10 @@ interface AppContextType {
   // so it never flashes this browser's stale/cached data for a *different*
   // restaurant before the correct one arrives.
   workspaceReady: boolean;
+  // True once a public menu link (?menu=<slug>) has finished loading and no
+  // restaurant matches that slug — lets App.tsx show a "link inválido" error
+  // screen instead of an empty/blank cardápio.
+  publicMenuNotFound: boolean;
   currentPlan: 'basic' | 'pro' | 'premium';
   setCurrentPlan: (plan: 'basic' | 'pro' | 'premium') => void;
   // Billing status of the current account's real Stripe subscription, mapped
@@ -368,6 +372,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // order under that specific restaurant even though the customer has no
   // account/session of their own.
   const [publicMenuOwnerId, setPublicMenuOwnerId] = useState<string | null>(null);
+  // See publicMenuNotFound in the context type above.
+  const [publicMenuNotFound, setPublicMenuNotFound] = useState(false);
 
   useEffect(() => {
     // A public menu link resolves by slug, independent of any signed-in
@@ -377,6 +383,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (publicMenuSlug) {
       setIsDemoMode(false);
       setWorkspaceReady(false);
+      setPublicMenuNotFound(false);
       fetchPublicMenuBySlug(publicMenuSlug).then(data => {
         if (data) {
           setPublicMenuOwnerId(data.ownerId);
@@ -384,6 +391,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCategories(data.categories);
           setProducts(data.products);
           setCoupons(data.coupons);
+        } else {
+          setPublicMenuNotFound(true);
         }
         setWorkspaceReady(true);
       });
@@ -1142,6 +1151,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoggedIn,
       authLoading,
       workspaceReady,
+      publicMenuNotFound,
       currentPlan,
       setCurrentPlan,
       planStatus,

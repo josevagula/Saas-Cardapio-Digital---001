@@ -9,6 +9,7 @@ import FinancialManager from './components/FinancialManager';
 import AISmartAssistant from './components/AISmartAssistant';
 import VisualCustomizer from './components/VisualCustomizer';
 import PublicMenuPage from './components/PublicMenuPage';
+import MenuNotFoundPage from './components/MenuNotFoundPage';
 import LandingPages from './components/LandingPages';
 import LoginPage from './components/LoginPage';
 import TrialSignupPage from './components/TrialSignupPage';
@@ -27,7 +28,7 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, workspaceReady, authLoading } = useApp();
+  const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, workspaceReady, authLoading, publicMenuNotFound } = useApp();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // 0. A dashboard URL (e.g. reloading /dashboard/pedidos) whose Supabase
@@ -58,6 +59,15 @@ export default function App() {
     // different (stale/cached) menu before the correct one appears.
     if (!workspaceReady) {
       return <LoadingScreen />;
+    }
+    // The ?menu=<slug> link didn't match any restaurant — show an error
+    // screen instead of an empty/blank cardápio.
+    if (publicMenuNotFound) {
+      return (
+        <ErrorBoundary>
+          <MenuNotFoundPage />
+        </ErrorBoundary>
+      );
     }
     return (
       <ErrorBoundary>
