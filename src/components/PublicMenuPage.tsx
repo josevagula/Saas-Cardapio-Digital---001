@@ -202,13 +202,13 @@ export default function PublicMenuPage() {
   };
 
   const handleCheckoutHeaderBack = () => {
-    if (checkoutStep > 1) {
-      setCheckoutError(null);
-      setCheckoutStep((s) => (s - 1) as 1 | 2 | 3);
-      return;
-    }
+    // "Voltar" in checkout (any step, including the Pagamento gateway step)
+    // always exits straight to the initial cardápio screen instead of
+    // stepping back through the wizard or landing on the cart.
+    setCheckoutError(null);
+    setCheckoutStep(1);
     setIsCheckoutOpen(false);
-    setIsCartOpen(true);
+    setIsCartOpen(false);
   };
 
   const handleCheckoutSubmit = (e: React.FormEvent) => {
@@ -1705,10 +1705,7 @@ export default function PublicMenuPage() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setCheckoutError(null);
-                        setCheckoutStep(1);
-                      }}
+                      onClick={handleCheckoutHeaderBack}
                       className="px-4 py-2.5 rounded-full text-xs font-black cursor-pointer bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white transition-colors"
                     >
                       Voltar
