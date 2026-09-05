@@ -7,23 +7,19 @@ import {
   PieChart, Pie, Cell, BarChart, Bar
 } from 'recharts';
 import { 
-  TrendingUp, 
-  ShoppingBag, 
-  DollarSign, 
-  Users, 
-  ArrowUpRight, 
-  Sparkles, 
-  Activity, 
-  Flame, 
+  TrendingUp,
+  ShoppingBag,
+  DollarSign,
+  Users,
+  ArrowUpRight,
+  Activity,
+  Flame,
   AlertTriangle,
-  Lightbulb,
   FileDown
 } from 'lucide-react';
 
 export default function DashboardOverview() {
-  const { analytics, products, orders, analyzeAISales, visualConfig, isDemoMode } = useApp();
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
-  const [loadingAI, setLoadingAI] = useState<boolean>(false);
+  const { analytics, products, orders, visualConfig, isDemoMode } = useApp();
 
   // Chart view state and custom date ranges
   const [chartView, setChartView] = useState<'semanal' | 'mensal' | 'personalizado'>('semanal');
@@ -190,18 +186,6 @@ export default function DashboardOverview() {
   const topProducts = sortedProducts.slice(0, 3);
   const lowProducts = sortedProducts.filter(p => p.isAvailable).slice(-3).reverse();
 
-  const handleAIAnalysis = async () => {
-    setLoadingAI(true);
-    try {
-      const data = await analyzeAISales();
-      setAiAnalysis(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingAI(false);
-    }
-  };
-
   return (
     <div className="flex-1 flex flex-col overflow-y-auto p-3.5 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-dashboard-overview">
       {/* Header */}
@@ -222,14 +206,6 @@ export default function DashboardOverview() {
             <span>Exportar Relatório</span>
           </button>
 
-          <button
-            onClick={handleAIAnalysis}
-            disabled={loadingAI}
-            className="flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2 btn-sushi-primary text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-75 w-full sm:w-auto"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-orange-200 fill-orange-200" />
-            <span>{loadingAI ? "Analisando..." : "Consultar Sushi IA"}</span>
-          </button>
         </div>
       </div>
 
@@ -321,75 +297,6 @@ export default function DashboardOverview() {
           </div>
         </div>
       </div>
-
-      {/* AI Consulting Dynamic Response Card — order-3 on mobile, keeps its normal spot from md up */}
-      {aiAnalysis && (
-        <div className="order-3 md:order-none bg-[#141210] text-slate-100 p-4 sm:p-6 md:p-8 rounded-xl shadow-xl mb-5 sm:mb-8 border border-[#4A2A10] relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-            <Sparkles className="w-64 h-64 text-[#FB923C]" />
-          </div>
-
-          <div className="flex items-center justify-between border-b border-[#2A211A] pb-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#C2410C] to-[#F97316] flex items-center justify-center text-white">
-                <Sparkles className="w-5 h-5 fill-white" />
-              </div>
-              <div>
-                <h4 className="text-base font-display font-bold text-[#F5F0EA] tracking-tight">Mapeamento Estratégico Sushi AI</h4>
-                <p className="text-xs text-[#A8A29A]">Resultados da análise com inteligência artificial para {visualConfig.establishmentName}</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setAiAnalysis(null)}
-              className="text-xs text-[#A8A29A] hover:text-white underline transition-colors cursor-pointer"
-            >
-              Fechar Análise
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div>
-                <h5 className="text-xs font-mono text-[#FB923C] uppercase tracking-wider font-bold flex items-center gap-2 mb-2">
-                  <Flame className="w-3.5 h-3.5 text-[#F97316]" />
-                  Alavancagem de Campeões
-                </h5>
-                <p className="text-sm text-slate-300 leading-relaxed">{aiAnalysis.championsAnalysis}</p>
-              </div>
-
-              <div>
-                <h5 className="text-xs font-mono text-amber-400 uppercase tracking-wider font-bold flex items-center gap-2 mb-2">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  Recuperação de Itens Baixos
-                </h5>
-                <p className="text-sm text-slate-300 leading-relaxed">{aiAnalysis.lowPerformingAnalysis}</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <h5 className="text-xs font-mono text-[#FB923C] uppercase tracking-wider font-bold flex items-center gap-2 mb-2">
-                  <Lightbulb className="w-3.5 h-3.5" />
-                  Oportunidades de Crescimento
-                </h5>
-                <ul className="space-y-2.5">
-                  {aiAnalysis.opportunities.map((item: string, idx: number) => (
-                    <li key={idx} className="flex gap-2 text-sm text-slate-300 leading-relaxed">
-                      <span className="text-[#F97316] font-bold">•</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="p-4 bg-[#0C0A08] rounded-xl border border-[#2A211A]">
-                <h5 className="text-xs font-mono text-[#FB923C] uppercase tracking-wider font-bold mb-1.5">Previsão e Projeções</h5>
-                <p className="text-xs text-[#A8A29A] leading-relaxed">{aiAnalysis.forecastSummary}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Graphics Section — order-1 puts it right under the header on mobile (its own size is untouched); md and up keeps the original document order */}
       <div className="order-1 md:order-none grid grid-cols-1 lg:grid-cols-3 gap-6 mb-5 sm:mb-8">

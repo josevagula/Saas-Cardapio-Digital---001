@@ -39,7 +39,7 @@ export default function PlanRenewalOverlay() {
           </div>
 
           <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-2">
-            {neverSubscribed ? 'Pagamento Pendente' : 'Assinatura Cancelada'}
+            {neverSubscribed ? 'Pagamento Pendente' : 'Cancelar Assinatura'}
           </span>
 
           <div className="flex items-center justify-center gap-2 mb-1">
