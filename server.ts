@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import OpenAI from "openai";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -160,6 +161,21 @@ function getAIClient() {
     });
   }
   return aiClient;
+}
+
+// Sushi AI Studio (suggest-promotions) runs on OpenAI instead of Gemini —
+// used only by that route; the other two AI routes stay on Gemini above.
+let openAIClient: OpenAI | null = null;
+function getOpenAIClient() {
+  if (!openAIClient) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey.trim() === "") {
+      console.warn("OPENAI_API_KEY is not defined in environment secrets. Sushi AI Studio will run with premium template simulation.");
+      return null;
+    }
+    openAIClient = new OpenAI({ apiKey });
+  }
+  return openAIClient;
 }
 
 // ==================== API ROUTES ====================
@@ -466,8 +482,8 @@ app.post("/api/gemini/suggest-promotions", async (req, res) => {
   const productNames = products.map((p: any) => p?.name).filter(Boolean);
   const operatingCodes = validOperatingCodes(operatingDays);
 
-  const ai = getAIClient();
-  if (!ai) {
+  const openai = getOpenAIClient();
+  if (!openai) {
     return res.json({
       combos: buildFallbackCombos(productNames),
       bestHours: buildFallbackBestHours(operatingDays),
@@ -479,47 +495,56 @@ app.post("/api/gemini/suggest-promotions", async (req, res) => {
     const operatingDaysRule = operatingCodes
       ? `\nREGRA OBRIGATÓRIA: o restaurante só funciona nestes dias: ${operatingCodes.map((c) => DAY_CODE_NAMES[c]).join(", ")}. NUNCA sugira um dia ou horário fora desta lista.`
       : "";
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: `Com base EXCLUSIVAMENTE na seguinte lista de produtos já cadastrados no cardápio do restaurante, sugira 2 combos promocionais altamente atrativos, os melhores dias/horários para aplicar descontos (para aumentar o fluxo em dias lentos), e uma estratégia de marketing inteligente.
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      messages: [{
+        role: "user",
+        content: `Com base EXCLUSIVAMENTE na seguinte lista de produtos já cadastrados no cardápio do restaurante, sugira 2 combos promocionais altamente atrativos, os melhores dias/horários para aplicar descontos (para aumentar o fluxo em dias lentos), e uma estratégia de marketing inteligente.
 REGRA OBRIGATÓRIA: use apenas os nomes de produtos exatamente como aparecem na lista abaixo. NUNCA invente, altere ou sugira produtos que não estejam nesta lista.${operatingDaysRule}
-Produtos do cardápio: ${JSON.stringify(productNames)}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            combos: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING, description: "Nome atrativo e comercial do combo." },
-                  products: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Lista de nomes dos produtos inclusos, copiados EXATAMENTE da lista de produtos do cardápio fornecida — nunca produtos inventados." },
-                  discountPercent: { type: Type.INTEGER, description: "Porcentagem recomendada de desconto do combo." },
-                  description: { type: Type.STRING, description: "Explicação do porquê esse combo é irresistível." }
-                },
-                required: ["name", "products", "discountPercent", "description"]
+Produtos do cardápio: ${JSON.stringify(productNames)}`
+      }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "promo_suggestions",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              combos: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string", description: "Nome atrativo e comercial do combo." },
+                    products: { type: "array", items: { type: "string" }, description: "Lista de nomes dos produtos inclusos, copiados EXATAMENTE da lista de produtos do cardápio fornecida — nunca produtos inventados." },
+                    discountPercent: { type: "integer", description: "Porcentagem recomendada de desconto do combo." },
+                    description: { type: "string", description: "Explicação do porquê esse combo é irresistível." }
+                  },
+                  required: ["name", "products", "discountPercent", "description"],
+                  additionalProperties: false
+                }
+              },
+              bestHours: {
+                type: "array",
+                items: { type: "string" },
+                description: "Lista de horários ou dias recomendados para promoções relâmpago."
+              },
+              marketingStrategy: {
+                type: "string",
+                description: "Uma estratégia curta de copy e divulgação para reter clientes."
               }
             },
-            bestHours: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: "Lista de horários ou dias recomendados para promoções relâmpago."
-            },
-            marketingStrategy: {
-              type: Type.STRING,
-              description: "Uma estratégia curta de copy e divulgação para reter clientes."
-            }
-          },
-          required: ["combos", "bestHours", "marketingStrategy"]
+            required: ["combos", "bestHours", "marketingStrategy"],
+            additionalProperties: false
+          }
         }
       }
     });
 
-    const text = response.text;
+    const text = completion.choices[0]?.message?.content;
     if (!text) {
-      throw new Error("Empty response from Gemini");
+      throw new Error("Empty response from OpenAI");
     }
 
     const parsed = JSON.parse(text);
