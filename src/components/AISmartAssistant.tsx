@@ -42,11 +42,6 @@ export default function AISmartAssistant() {
           <h2 className="text-3xl font-display font-extrabold text-[#F5F0EA] tracking-tight mt-1">Sushi AI Studio</h2>
           <p className="text-xs text-[#A8A29A] mt-1">Gere combos lucrativos, sugestões de desconto inteligentes e automatize o marketing para suas redes sociais.</p>
         </div>
-
-        <div className="flex items-center gap-1.5 bg-[#1F1209] border border-[#4A2A10] px-3.5 py-1.5 rounded-full text-xs font-bold text-[#FB923C] self-start">
-          <Sparkles className="w-3.5 h-3.5 text-[#FB923C] fill-[#FB923C]" />
-          <span>Gemini Pro Ativo</span>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
