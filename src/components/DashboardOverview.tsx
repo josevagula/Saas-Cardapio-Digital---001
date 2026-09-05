@@ -209,8 +209,8 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* KPI Cards Grid — order-2 on mobile so the chart below takes the top slot; back to document order from md up */}
-      <div className="order-2 md:order-none grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-5 sm:mb-8">
+      {/* KPI Cards Grid — order-1 on mobile so it takes the top slot above the chart; back to document order from md up */}
+      <div className="order-1 md:order-none grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-5 sm:mb-8">
         {/* Monthly Revenue */}
         <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
           <div className="flex items-center justify-between">
@@ -298,8 +298,8 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Main Graphics Section — order-1 puts it right under the header on mobile (its own size is untouched); md and up keeps the original document order */}
-      <div className="order-1 md:order-none grid grid-cols-1 lg:grid-cols-3 gap-6 mb-5 sm:mb-8">
+      {/* Main Graphics Section — order-2 on mobile so it sits below the KPI cards; md and up keeps the original document order */}
+      <div className="order-2 md:order-none grid grid-cols-1 lg:grid-cols-3 gap-6 mb-5 sm:mb-8">
         {/* Revenue Trend Area Chart */}
         <div className="lg:col-span-2 bg-[#141210] p-5 rounded-xl border border-[#2A211A] shadow-sm">
           {/* Chart Header & Tabs */}
