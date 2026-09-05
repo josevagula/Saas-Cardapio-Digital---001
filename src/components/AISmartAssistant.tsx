@@ -99,7 +99,7 @@ export default function AISmartAssistant() {
             <div className="bg-[#141210] p-12 text-center rounded-2xl border border-[#2A211A] shadow-xs space-y-4">
               <div className="w-10 h-10 rounded-full border-2 border-[#F97316] border-t-transparent animate-spin mx-auto"></div>
               <div>
-                <h4 className="font-bold text-[#F5F0EA]">Conectando ao Gemini...</h4>
+                <h4 className="font-bold text-[#F5F0EA]">Criando Combo...</h4>
                 <p className="text-xs text-[#A8A29A] mt-1">Estruturando combinações de alta rentabilidade com IA.</p>
               </div>
             </div>
