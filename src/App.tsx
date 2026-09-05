@@ -104,7 +104,7 @@ export default function App() {
           <Sidebar />
 
           {/* Mobile Top Header (only on mobile) */}
-          <div className="md:hidden bg-[#141210] border-b border-[#2A211A] p-3.5 flex items-center justify-between shrink-0 z-30 shadow-md">
+          <div className="md:hidden bg-[#141210] border-b border-[#2A211A] p-3.5 flex items-center gap-3 shrink-0 z-30 shadow-md">
             <button
               onClick={() => setMobileSidebarOpen(true)}
               className="p-2 rounded-xl bg-[#181512] border border-[#2A211A] text-[#F5F0EA] hover:text-[#FB923C] cursor-pointer transition-colors"
