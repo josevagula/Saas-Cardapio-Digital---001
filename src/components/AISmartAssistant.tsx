@@ -87,7 +87,7 @@ export default function AISmartAssistant() {
               </div>
               <div className="flex gap-2.5">
                 <span className="text-white font-bold">3.</span>
-                <p>O Gemini sugere estratégias de copy persuasivas ideais para postagem rápida no WhatsApp.</p>
+                <p>A IA sugere estratégias de copy persuasivas ideais para postagem rápida no WhatsApp.</p>
               </div>
             </div>
           </div>
