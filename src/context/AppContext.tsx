@@ -32,6 +32,7 @@ import {
 import { startCheckout, openBillingPortal } from '../lib/billing';
 import { retryUntilSuccess, getSyncPendingCount } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
+import { API_BASE } from '../lib/apiBase';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
 
 // Maps a raw Stripe subscription_status value (trialing, active, past_due,
@@ -857,7 +858,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const generateAIDescription = async (productName: string, category: string, ingredients: string[]) => {
     try {
-      const response = await fetch('/api/gemini/generate-description', {
+      const response = await fetch(`${API_BASE}/api/gemini/generate-description`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productName, category, ingredients })
@@ -881,7 +882,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // promo hours/days the establishment doesn't actually work.
     const operatingDaysList = visualConfig.operatingDaysList;
     try {
-      const response = await fetch('/api/gemini/suggest-promotions', {
+      const response = await fetch(`${API_BASE}/api/gemini/suggest-promotions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products, operatingDays: operatingDaysList })
@@ -936,7 +937,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const response = await fetch('/api/gemini/analyze-sales', {
+      const response = await fetch(`${API_BASE}/api/gemini/analyze-sales`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ salesSummary, topProducts, lowPerformingProducts })

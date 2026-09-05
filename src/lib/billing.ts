@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { API_BASE } from './apiBase';
 
 // Calls one of the /api/stripe/* routes on our own Express server, attaching
 // the signed-in user's Supabase access token so the server can verify who's
@@ -7,7 +8,7 @@ async function authPost(path: string): Promise<{ url: string }> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Sessão expirada. Faça login novamente.');
 
-  const response = await fetch(path, {
+  const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${session.access_token}` }
   });
