@@ -105,13 +105,6 @@ export default function App() {
 
           {/* Mobile Top Header (only on mobile) */}
           <div className="md:hidden bg-[#141210] border-b border-[#2A211A] p-3.5 flex items-center justify-between shrink-0 z-30 shadow-md">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <SushiLogoEmblem size={28} />
-              <span className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-sm truncate">
-                {visualConfig.establishmentName || 'Zushy'}
-              </span>
-            </div>
-
             <button
               onClick={() => setMobileSidebarOpen(true)}
               className="p-2 rounded-xl bg-[#181512] border border-[#2A211A] text-[#F5F0EA] hover:text-[#FB923C] cursor-pointer transition-colors"
@@ -119,6 +112,13 @@ export default function App() {
             >
               <Menu className="w-5 h-5" />
             </button>
+
+            <div className="flex items-center gap-2.5 min-w-0">
+              <SushiLogoEmblem size={28} />
+              <span className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-sm truncate">
+                {visualConfig.establishmentName || 'Zushy'}
+              </span>
+            </div>
           </div>
 
           {/* Mobile Drawer Overlay */}
