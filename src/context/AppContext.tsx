@@ -787,18 +787,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       retryUntilSuccess(() => assignOrderNumber(publicMenuOwnerId, orderId));
     }
 
-    // Update customer lists and loyalty points
+    // Register/update the customer's contact profile. Loyalty points and the
+    // order count are earned only once the order is actually completed (see
+    // updateOrderStatus's 'delivered' handling) — not just placed — so they
+    // aren't touched here.
     setCustomers(prev => {
       const existing = prev.find(c => c.phone === customer.phone);
       if (existing) {
-        return prev.map(c => 
+        return prev.map(c =>
           c.phone === customer.phone
-            ? { 
-                ...c, 
-                loyaltyPoints: c.loyaltyPoints + pointsEarned,
-                orderCount: c.orderCount + 1,
-                lastOrderDate: new Date().toISOString().split('T')[0]
-              }
+            ? { ...c, name: customer.name, email: customer.email || c.email, address: customer.address || c.address }
             : c
         );
       } else {
@@ -808,9 +806,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           phone: customer.phone,
           email: customer.email || `${customer.name.toLowerCase().replace(/\s+/g, '')}@exemplo.com`,
           address: customer.address || "",
-          loyaltyPoints: pointsEarned,
-          orderCount: 1,
-          lastOrderDate: new Date().toISOString().split('T')[0]
+          loyaltyPoints: 0,
+          orderCount: 0,
+          lastOrderDate: ""
         };
         return [...prev, newCust];
       }
@@ -1005,6 +1003,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Loyalty is earned only once an order is actually completed ('delivered'),
+  // not merely placed — see updateOrderStatus below, the only place that
+  // calls this on the received/preparing/dispatched -> delivered edge.
+  const creditOrderLoyalty = (order: Order) => {
+    setCustomers(prev => {
+      const existing = prev.find(c => c.phone === order.customerPhone);
+      if (existing) {
+        return prev.map(c =>
+          c.phone === order.customerPhone
+            ? {
+                ...c,
+                loyaltyPoints: c.loyaltyPoints + order.pointsEarned,
+                orderCount: c.orderCount + 1,
+                lastOrderDate: new Date().toISOString().split('T')[0]
+              }
+            : c
+        );
+      }
+      const newCust: CustomerInfo = {
+        id: `cust-${Math.floor(100 + Math.random() * 900)}`,
+        name: order.customerName,
+        phone: order.customerPhone,
+        email: order.customerEmail || `${order.customerName.toLowerCase().replace(/\s+/g, '')}@exemplo.com`,
+        address: order.customerAddress || "",
+        loyaltyPoints: order.pointsEarned,
+        orderCount: 1,
+        lastOrderDate: new Date().toISOString().split('T')[0]
+      };
+      return [...prev, newCust];
+    });
+  };
+
+  // The inverse of creditOrderLoyalty — claws back what a delivered order
+  // earned, for when it's cancelled/deleted or reverted to an earlier stage.
+  const reverseOrderLoyalty = (order: Order) => {
+    setCustomers(prev => prev.map(c =>
+      c.phone === order.customerPhone
+        ? { ...c, loyaltyPoints: Math.max(0, c.loyaltyPoints - order.pointsEarned), orderCount: Math.max(0, c.orderCount - 1) }
+        : c
+    ));
+  };
+
   // Reverses everything an order added when it was placed — it must count
   // nowhere (dashboard, financials, loyalty, sales) once it's gone, same as
   // if it had never happened. Shared by cancelling and deleting so neither
@@ -1015,11 +1055,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return item ? { ...p, salesCount: Math.max(0, p.salesCount - item.quantity) } : p;
     }));
 
-    setCustomers(prev => prev.map(c =>
-      c.phone === order.customerPhone
-        ? { ...c, loyaltyPoints: Math.max(0, c.loyaltyPoints - order.pointsEarned), orderCount: Math.max(0, c.orderCount - 1) }
-        : c
-    ));
+    // Loyalty was only ever credited once the order reached 'delivered'.
+    if (order.status === 'delivered') {
+      reverseOrderLoyalty(order);
+    }
 
     setAnalytics(prev => {
       const totalOrd = Math.max(0, prev.totalOrders - 1);
@@ -1040,10 +1079,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
     const order = orders.find(o => o.id === orderId);
 
-    // Only fires on the received -> cancelled transition, never twice for
-    // the same order.
-    if (order && status === 'cancelled' && order.status !== 'cancelled') {
-      reverseOrderMetrics(order);
+    if (order && status !== order.status) {
+      if (status === 'cancelled') {
+        // Reverses products/analytics/loyalty together (loyalty only if the
+        // order had actually reached 'delivered').
+        reverseOrderMetrics(order);
+      } else if (status === 'delivered') {
+        // The order just completed — this is the one moment loyalty is earned.
+        creditOrderLoyalty(order);
+      } else if (order.status === 'delivered') {
+        // Reverted from 'delivered' back to an earlier stage — claw back the
+        // loyalty it had earned.
+        reverseOrderLoyalty(order);
+      }
     }
 
     setOrders(prev => prev.map(o =>
