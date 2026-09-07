@@ -103,7 +103,7 @@ export default function CustomersLoyalty() {
       {activeSubTab === 'list' ? (
         <>
           {/* Customers Filter */}
-          <div className="bg-[#141210] p-4 rounded-xl border border-[#2A211A] shadow-xs flex flex-col sm:flex-row gap-4 items-center justify-between mb-6">
+          <div className="bg-[#141210] p-4 rounded-xl border border-[#2A211A] shadow-xs mb-6">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-[#A8A29A] absolute left-3.5 top-3.5" />
               <input
@@ -113,10 +113,6 @@ export default function CustomersLoyalty() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 text-xs input-sushi focus:outline-none transition-all font-medium"
               />
-            </div>
-
-            <div className="text-xs font-mono text-[#A8A29A]">
-              Clientes VIP Ativos: <span className="text-[#FB923C] font-bold">{cleanCustomers.length}</span>
             </div>
           </div>
 
