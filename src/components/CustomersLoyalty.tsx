@@ -133,7 +133,7 @@ export default function CustomersLoyalty() {
                 <tbody className="divide-y divide-[#2A211A]">
                   {filteredCustomers.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-[#A8A29A]">
+                      <td colSpan={6} className="py-12 text-left sm:text-center text-[#A8A29A]">
                         Nenhum cliente encontrado.
                       </td>
                     </tr>
