@@ -32,6 +32,7 @@ export default function CustomersLoyalty() {
   const [rewardValue, setRewardValue] = useState(String(savedLoyaltyConfig.rewardValue));
   const [rewardType, setRewardType] = useState<'fixed' | 'percentage'>(savedLoyaltyConfig.rewardType);
   const [activeLoyalty, setActiveLoyalty] = useState(savedLoyaltyConfig.active);
+  const [justSaved, setJustSaved] = useState(false);
 
   // Sanitize and filter customers
   const cleanCustomers = customers.filter(c => c.name && !/^[0-9a-zA-Z]{3,6}$/.test(c.name) && c.name.length > 2 && c.name !== "23413" && c.name !== "12312" && c.name !== "gdfg" && c.orderCount > 0);
@@ -51,7 +52,8 @@ export default function CustomersLoyalty() {
       rewardValue: parseFloat(rewardValue) || 0
     };
     setVisualConfig(prev => ({ ...prev, loyaltyConfig: newConfig }));
-    alert("Configurações do Programa de Fidelidade do Sushi Delivery atualizadas com sucesso!");
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 4000);
   };
 
   const handleResetPoints = (id: string, name: string) => {
@@ -294,12 +296,20 @@ export default function CustomersLoyalty() {
               </p>
             </div>
 
-            <button
-              type="submit"
-              className="px-6 py-3 btn-sushi-primary text-white text-xs font-bold shadow-md cursor-pointer"
-            >
-              Salvar Regras do Clube
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                className="px-6 py-3 btn-sushi-primary text-white text-xs font-bold shadow-md cursor-pointer"
+              >
+                Salvar Regras do Clube
+              </button>
+              {justSaved && (
+                <span className="flex items-center gap-1.5 text-xs font-bold text-green-400">
+                  <Check className="w-4 h-4" />
+                  Regras salvas com sucesso!
+                </span>
+              )}
+            </div>
           </form>
         </div>
       )}

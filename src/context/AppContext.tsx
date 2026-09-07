@@ -1010,7 +1010,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Loyalty is earned only once an order is actually completed ('delivered'),
   // not merely placed — see updateOrderStatus below, the only place that
   // calls this on the received/preparing/dispatched -> delivered edge.
+  // Points are (re)computed here from the CURRENT Regras do Clube Fidelidade
+  // instead of trusting order.pointsEarned's checkout-time snapshot, so a
+  // rate the restaurant changes after the order was placed still applies —
+  // the order's own record is updated to match so a later reversal (see
+  // reverseOrderLoyalty) claws back exactly what was credited here.
   const creditOrderLoyalty = (order: Order) => {
+    const loyaltyConfig = visualConfig.loyaltyConfig ?? DEFAULT_LOYALTY_CONFIG;
+    const pointsToCredit = loyaltyConfig.active ? Math.floor(order.total / 10) * loyaltyConfig.pointsPerTenReais : 0;
+
     setCustomers(prev => {
       const existing = prev.find(c => c.phone === order.customerPhone);
       if (existing) {
@@ -1018,7 +1026,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           c.phone === order.customerPhone
             ? {
                 ...c,
-                loyaltyPoints: c.loyaltyPoints + order.pointsEarned,
+                loyaltyPoints: c.loyaltyPoints + pointsToCredit,
                 orderCount: c.orderCount + 1,
                 lastOrderDate: new Date().toISOString().split('T')[0]
               }
@@ -1031,12 +1039,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         phone: order.customerPhone,
         email: order.customerEmail || `${order.customerName.toLowerCase().replace(/\s+/g, '')}@exemplo.com`,
         address: order.customerAddress || "",
-        loyaltyPoints: order.pointsEarned,
+        loyaltyPoints: pointsToCredit,
         orderCount: 1,
         lastOrderDate: new Date().toISOString().split('T')[0]
       };
       return [...prev, newCust];
     });
+
+    setOrders(prev => prev.map(o => o.id === order.id ? { ...o, pointsEarned: pointsToCredit } : o));
   };
 
   // The inverse of creditOrderLoyalty — claws back what a delivered order
