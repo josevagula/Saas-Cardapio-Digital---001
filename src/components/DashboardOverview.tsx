@@ -38,11 +38,33 @@ export default function DashboardOverview() {
   // both always agree on what "real" means.
   const realStats = useMemo(() => computeRealSalesSummary(orders), [orders]);
 
+  // Real orders placed within the currently selected period (same window as
+  // the revenue chart below) — drives both the "Total de Pedidos" KPI and the
+  // payment-method split further down, instead of a lifetime order count or
+  // a fixed mock split.
+  const getPeriodOrders = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (chartView === 'semanal') {
+      const periodStart = new Date(today);
+      periodStart.setDate(today.getDate() - 6);
+      return ordersInRange(orders, periodStart, today);
+    }
+    if (chartView === 'mensal') {
+      const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      return ordersInRange(orders, periodStart, today);
+    }
+    return ordersInRange(orders, new Date(startDate), new Date(endDate));
+  };
+  const periodOrders = isDemoMode ? [] : getPeriodOrders();
+
   // KPI figures: the demo dataset keeps its intentionally impressive mock
-  // numbers, every real account only ever shows what it actually sold.
+  // numbers, every real account only ever shows what it actually sold —
+  // Total de Pedidos tracks whichever period is selected above (semanal,
+  // mensal or personalizado), not the account's all-time order count.
   const kpi = isDemoMode
     ? { dailyRevenue: analytics.dailyRevenue, weeklyRevenue: analytics.weeklyRevenue, monthlyRevenue: analytics.monthlyRevenue, totalOrders: analytics.totalOrders, ticketAverage: analytics.ticketAverage }
-    : { dailyRevenue: realStats.dailyRevenue, weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue, totalOrders: realStats.totalOrders, ticketAverage: realStats.ticketAverage };
+    : { dailyRevenue: realStats.dailyRevenue, weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue, totalOrders: periodOrders.length, ticketAverage: realStats.ticketAverage };
 
   // Determine active chart data and total based on the selected view
   let displayedChartData: { date: string; amount: number }[] = [];
@@ -91,30 +113,12 @@ export default function DashboardOverview() {
     displayedTotal = Math.round(days.reduce((s, d) => s + d.amount, 0) * 100) / 100;
   }
 
-  // Real orders placed within the currently selected period (same window as
-  // the revenue chart above) — used to build the payment-method split below
-  // from what was actually paid, instead of a fixed mock percentage split.
-  const getPeriodOrders = () => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (chartView === 'semanal') {
-      const periodStart = new Date(today);
-      periodStart.setDate(today.getDate() - 6);
-      return ordersInRange(orders, periodStart, today);
-    }
-    if (chartView === 'mensal') {
-      const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      return ordersInRange(orders, periodStart, today);
-    }
-    return ordersInRange(orders, new Date(startDate), new Date(endDate));
-  };
-
   // Only ever built from orders that were actually placed and paid — a
   // payment method with zero real orders in the period simply doesn't
   // appear, instead of a fixed 4-way mock split.
   const paymentDistribution = isDemoMode ? analytics.paymentDistribution : (() => {
     const totals: Record<string, number> = {};
-    getPeriodOrders().forEach(o => {
+    periodOrders.forEach(o => {
       // Credit and debit card are merged into a single "Cartão" slice —
       // the split by card type isn't useful here, only card vs. other methods.
       const method = o.paymentMethod === 'credit_card' || o.paymentMethod === 'debit_card' ? 'card' : o.paymentMethod;
@@ -269,7 +273,11 @@ export default function DashboardOverview() {
                 <span>+8.2% conversão</span>
               </>
             ) : (
-              <span className="text-[#A8A29A]">Pedidos reais recebidos</span>
+              <span className="text-[#A8A29A]">
+                {chartView === 'semanal' && 'Pedidos reais (7 dias)'}
+                {chartView === 'mensal' && 'Pedidos reais (mês corrente)'}
+                {chartView === 'personalizado' && 'Pedidos reais (período selecionado)'}
+              </span>
             )}
           </div>
         </div>
