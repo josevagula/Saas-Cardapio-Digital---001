@@ -107,7 +107,7 @@ export default function CustomersLoyalty() {
           {/* Customers Filter */}
           <div className="bg-[#141210] p-4 rounded-xl border border-[#2A211A] shadow-xs mb-6">
             <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 text-[#A8A29A] absolute left-3.5 top-3.5" />
+              <Search className="w-4 h-4 text-[#A8A29A] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Buscar clientes por nome ou telefone..."
