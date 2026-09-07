@@ -1,5 +1,13 @@
-import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, SubscriptionPlan } from '../types';
+import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, SubscriptionPlan, LoyaltyConfig } from '../types';
 import { SUSHIOS_LOGO_DATA_URL } from '../components/SushiIcons';
+
+export const DEFAULT_LOYALTY_CONFIG: LoyaltyConfig = {
+  active: true,
+  pointsPerTenReais: 10,
+  pointsNeededForReward: 100,
+  rewardType: 'fixed',
+  rewardValue: 25
+};
 
 export const INITIAL_VISUAL_CONFIG: VisualConfig = {
   establishmentName: "Zushy",
@@ -20,7 +28,8 @@ export const INITIAL_VISUAL_CONFIG: VisualConfig = {
   operatingDaysList: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'],
   deliveryTime: "30-45 min",
   autoStatusByTime: false,
-  isStoreOpenManual: true
+  isStoreOpenManual: true,
+  loyaltyConfig: DEFAULT_LOYALTY_CONFIG
 };
 
 export const INITIAL_CATEGORIES: Category[] = [
@@ -649,7 +658,8 @@ export const BLANK_VISUAL_CONFIG: VisualConfig = {
   operatingDaysList: [],
   deliveryTime: "",
   autoStatusByTime: false,
-  isStoreOpenManual: false
+  isStoreOpenManual: false,
+  loyaltyConfig: DEFAULT_LOYALTY_CONFIG
 };
 
 export const BLANK_ANALYTICS: SalesAnalytics = {

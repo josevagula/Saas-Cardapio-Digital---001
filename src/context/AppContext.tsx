@@ -9,7 +9,8 @@ import {
   INITIAL_CUSTOMERS,
   INITIAL_ANALYTICS,
   BLANK_VISUAL_CONFIG,
-  BLANK_ANALYTICS
+  BLANK_ANALYTICS,
+  DEFAULT_LOYALTY_CONFIG
 } from '../data/mockData';
 import { useAuth } from './AuthContext';
 import {
@@ -734,7 +735,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const total = Math.max(0, subtotal + deliveryFee - discountAmount);
     const orderId = `LUV-${Math.floor(1000 + Math.random() * 9000)}`;
-    const pointsEarned = Math.floor(total / 10); // 1 point for every R$10 spent
+    // Driven by the restaurant's own Configuração de Prêmios (points per
+    // R$10 spent) — no points at all if the loyalty program is switched off.
+    const loyaltyConfig = visualConfig.loyaltyConfig ?? DEFAULT_LOYALTY_CONFIG;
+    const pointsEarned = loyaltyConfig.active ? Math.floor(total / 10) * loyaltyConfig.pointsPerTenReais : 0;
 
     const newOrder: Order = {
       id: orderId,

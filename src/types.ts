@@ -32,6 +32,18 @@ export interface VisualConfig {
     includeGengibre: boolean;
     napkinsPerItem: number;
   };
+  loyaltyConfig?: LoyaltyConfig;
+}
+
+// Rules for the Clientes & Fidelidade loyalty program — configured by the
+// restaurant in the "Configuração de Prêmios" tab, and used to calculate how
+// many points a completed order actually earns.
+export interface LoyaltyConfig {
+  active: boolean;
+  pointsPerTenReais: number; // points earned for every R$10 spent
+  pointsNeededForReward: number;
+  rewardType: 'fixed' | 'percentage';
+  rewardValue: number;
 }
 
 export interface Category {

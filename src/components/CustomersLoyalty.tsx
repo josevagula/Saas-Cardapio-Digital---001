@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { CustomerInfo } from '../types';
+import { CustomerInfo, LoyaltyConfig } from '../types';
+import { DEFAULT_LOYALTY_CONFIG } from '../data/mockData';
 import { 
   Users, 
   Gift, 
@@ -17,19 +18,23 @@ import {
 import { WasabiTag, SubtleSushiDivider, SushiRollIcon } from './SushiIcons';
 
 export default function CustomersLoyalty() {
-  const { customers, setCustomers, visualConfig } = useApp();
+  const { customers, setCustomers, visualConfig, setVisualConfig } = useApp();
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'config'>('list');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Loyalty Program Config state
-  const [pointsPerOrder, setPointsPerOrder] = useState('10');
-  const [pointsNeededForReward, setPointsNeededForReward] = useState('100');
-  const [rewardValue, setRewardValue] = useState('25');
-  const [rewardType, setRewardType] = useState<'fixed' | 'percentage'>('fixed');
-  const [activeLoyalty, setActiveLoyalty] = useState(true);
+  // Loyalty Program Config — mirrors visualConfig.loyaltyConfig (the value
+  // that actually drives points earned per order, see AppContext.createOrder)
+  // in local editable state so the form has something to bind inputs to
+  // before "Salvar Regras do Clube" persists it.
+  const savedLoyaltyConfig = visualConfig.loyaltyConfig ?? DEFAULT_LOYALTY_CONFIG;
+  const [pointsPerOrder, setPointsPerOrder] = useState(String(savedLoyaltyConfig.pointsPerTenReais));
+  const [pointsNeededForReward, setPointsNeededForReward] = useState(String(savedLoyaltyConfig.pointsNeededForReward));
+  const [rewardValue, setRewardValue] = useState(String(savedLoyaltyConfig.rewardValue));
+  const [rewardType, setRewardType] = useState<'fixed' | 'percentage'>(savedLoyaltyConfig.rewardType);
+  const [activeLoyalty, setActiveLoyalty] = useState(savedLoyaltyConfig.active);
 
   // Sanitize and filter customers
-  const cleanCustomers = customers.filter(c => c.name && !/^[0-9a-zA-Z]{3,6}$/.test(c.name) && c.name.length > 2 && c.name !== "23413" && c.name !== "12312" && c.name !== "gdfg");
+  const cleanCustomers = customers.filter(c => c.name && !/^[0-9a-zA-Z]{3,6}$/.test(c.name) && c.name.length > 2 && c.name !== "23413" && c.name !== "12312" && c.name !== "gdfg" && c.orderCount > 0);
 
   const filteredCustomers = cleanCustomers.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -38,6 +43,14 @@ export default function CustomersLoyalty() {
 
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
+    const newConfig: LoyaltyConfig = {
+      active: activeLoyalty,
+      pointsPerTenReais: parseFloat(pointsPerOrder) || 0,
+      pointsNeededForReward: parseFloat(pointsNeededForReward) || 0,
+      rewardType,
+      rewardValue: parseFloat(rewardValue) || 0
+    };
+    setVisualConfig(prev => ({ ...prev, loyaltyConfig: newConfig }));
     alert("Configurações do Programa de Fidelidade do Sushi Delivery atualizadas com sucesso!");
   };
 

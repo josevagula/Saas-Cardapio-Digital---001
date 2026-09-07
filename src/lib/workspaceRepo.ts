@@ -200,6 +200,7 @@ const visualConfigToRow = (v: VisualConfig, userId: string) => ({
   auto_status_by_time: v.autoStatusByTime ?? null,
   is_store_open_manual: v.isStoreOpenManual ?? null,
   auto_kit_config: v.autoKitConfig ?? null,
+  loyalty_config: v.loyaltyConfig ?? null,
   updated_at: new Date().toISOString()
 });
 
@@ -223,7 +224,8 @@ const rowToVisualConfig = (r: any): VisualConfig => ({
   deliveryTime: r.delivery_time ?? undefined,
   autoStatusByTime: r.auto_status_by_time ?? undefined,
   isStoreOpenManual: r.is_store_open_manual ?? undefined,
-  autoKitConfig: r.auto_kit_config ?? undefined
+  autoKitConfig: r.auto_kit_config ?? undefined,
+  loyaltyConfig: r.loyalty_config ?? undefined
 });
 
 // Upserts every current row and deletes any row still owned by this user
