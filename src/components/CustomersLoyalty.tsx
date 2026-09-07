@@ -138,7 +138,7 @@ export default function CustomersLoyalty() {
                   {filteredCustomers.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-[#A8A29A]">
-                        Nenhum cliente encontrado com este filtro.
+                        Nenhum cliente encontrado.
                       </td>
                     </tr>
                   ) : (
