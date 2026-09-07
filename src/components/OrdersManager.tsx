@@ -3,9 +3,8 @@ import { useApp } from '../context/AppContext';
 import { Order, OrderStatus } from '../types';
 import { safeNumber, formatCurrency, parseCashAmount } from '../utils/formatters';
 import { 
-  Check, 
-  Clock, 
-  Truck, 
+  Check,
+  Truck,
   ShoppingBag, 
   MessageSquare, 
   ChevronRight, 
@@ -137,11 +136,6 @@ export default function OrdersManager() {
               <span>Excluir Todos os Cancelados</span>
             </button>
           )}
-
-          <div className="flex items-center gap-1.5 bg-[#141210] px-3.5 py-2 rounded-xl border border-[#2A211A] text-[10px] text-slate-300 font-mono">
-            <Clock className="w-3.5 h-3.5 text-[#FB923C] shrink-0" />
-            <span>Fuso Local: Atendimento Ativo</span>
-          </div>
         </div>
       </div>
 
