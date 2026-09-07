@@ -31,12 +31,32 @@ export default function DashboardOverview() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  // Today's date, re-checked periodically so a dashboard left open across a
+  // day/month rollover (no new order needed to trigger it) still rolls
+  // Receita Mensal/Semanal/Diária over into the new month instead of
+  // freezing on whatever day the page happened to load.
+  const [todayKey, setTodayKey] = useState(() => new Date().toDateString());
+  useEffect(() => {
+    const checkDate = () => {
+      const current = new Date().toDateString();
+      setTodayKey(prev => (prev === current ? prev : current));
+    };
+    const interval = setInterval(checkDate, 60 * 1000);
+    document.addEventListener('visibilitychange', checkDate);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', checkDate);
+    };
+  }, []);
+
   // Real revenue/order figures derived directly from this account's actual
   // orders — never from the (separately-persisted, easily stale) analytics
   // snapshot — so the dashboard only ever counts what was really sold. Shared
   // with the Sushy AI sales analysis (see AppContext's analyzeAISales) so
-  // both always agree on what "real" means.
-  const realStats = useMemo(() => computeRealSalesSummary(orders), [orders]);
+  // both always agree on what "real" means. Monthly figures are always
+  // scoped to the 1st of the current calendar month, so they start over on
+  // their own as soon as a new month begins — no separate reset needed.
+  const realStats = useMemo(() => computeRealSalesSummary(orders), [orders, todayKey]);
 
   // Real orders placed within the currently selected period (same window as
   // the revenue chart below) — drives both the "Total de Pedidos" KPI and the
