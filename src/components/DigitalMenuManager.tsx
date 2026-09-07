@@ -23,8 +23,7 @@ import {
   Heart,
   Eye, 
   EyeOff, 
-  Tag, 
-  AlertCircle,
+  Tag,
   Download,
   Upload,
   Loader2,
@@ -43,8 +42,7 @@ export default function DigitalMenuManager() {
     reorderProductInCategory,
     addCategory,
     updateCategory,
-    deleteCategory,
-    generateAIDescription
+    deleteCategory
   } = useApp();
 
   const moveCategory = (index: number, direction: -1 | 1) => {
@@ -156,10 +154,6 @@ export default function DigitalMenuManager() {
   const [editCatName, setEditCatName] = useState('');
   const [editCatIcon, setEditCatIcon] = useState('🍽️');
 
-  // AI Generation States
-  const [generatingAI, setGeneratingAI] = useState(false);
-  const [aiResult, setAiResult] = useState<{ description: string; copy: string; keywords: string[] } | null>(null);
-
   // Reset fields
   const resetForm = () => {
     setName('');
@@ -171,7 +165,6 @@ export default function DigitalMenuManager() {
     setIngredients('');
     setTags('');
     setIsAvailable(true);
-    setAiResult(null);
     setExtras([]);
     setNewExtraName('');
     setNewExtraPrice('');
@@ -200,7 +193,6 @@ export default function DigitalMenuManager() {
     setIngredients(p.ingredients.join(', '));
     setTags(p.tags ? p.tags.join(', ') : '');
     setIsAvailable(p.isAvailable);
-    setAiResult(null);
     setExtras(p.extras || []);
     setNewExtraName('');
     setNewExtraPrice('');
@@ -293,34 +285,6 @@ export default function DigitalMenuManager() {
       if (!confirm(`Excluir a categoria "${cat.name}"?`)) return;
     }
     deleteCategory(cat.id);
-  };
-
-  // AI Integration: generate descriptions from title, category name, ingredients
-  const handleAIGeneration = async () => {
-    if (!name) {
-      alert("Por favor, digite o nome do produto primeiro.");
-      return;
-    }
-    setGeneratingAI(true);
-    try {
-      const cat = categories.find(c => c.id === categoryIds[0])?.name || "Comida";
-      const ingList = ingredients.split(',').map(i => i.trim()).filter(Boolean);
-      const data = await generateAIDescription(name, cat, ingList);
-      setAiResult(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setGeneratingAI(false);
-    }
-  };
-
-  const applyAIDescription = () => {
-    if (aiResult) {
-      setDescription(aiResult.description);
-      if (aiResult.keywords && aiResult.keywords.length > 0) {
-        setTags(aiResult.keywords.join(', '));
-      }
-    }
   };
 
   const filteredProducts = products
@@ -603,9 +567,7 @@ export default function DigitalMenuManager() {
             </div>
 
             {/* Split Grid Form */}
-            <form onSubmit={handleSaveProduct} className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Product Information Form */}
-              <div className="lg:col-span-7 space-y-4">
+            <form onSubmit={handleSaveProduct} className="flex-1 overflow-y-auto p-6 space-y-4 max-w-2xl">
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1.5">Nome do Prato*</label>
                   <input
@@ -778,21 +740,10 @@ export default function DigitalMenuManager() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-slate-300 block">Descrição do Produto</label>
-                    <button
-                      type="button"
-                      onClick={handleAIGeneration}
-                      disabled={generatingAI}
-                      className="text-xs font-semibold text-[#FB923C] hover:text-[#F97316] flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-orange-400 fill-orange-400" />
-                      <span>{generatingAI ? "Pensando..." : "Redigir com IA"}</span>
-                    </button>
-                  </div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Descrição do Produto</label>
                   <textarea
                     rows={4}
-                    placeholder="Escreva a descrição do produto ou utilize a inteligência artificial ao lado para gerar uma de alta qualidade..."
+                    placeholder="Escreva a descrição do produto..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     className="w-full px-3.5 py-2 text-sm input-sushi focus:outline-none transition-all resize-none leading-relaxed"
@@ -818,104 +769,6 @@ export default function DigitalMenuManager() {
                     Cancelar
                   </button>
                 </div>
-              </div>
-
-              {/* AI Assistant Sidebar Panel */}
-              <div className="lg:col-span-5 bg-[#0C0A08] rounded-2xl p-5 border border-[#2A211A] text-slate-300 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="w-4 h-4 text-[#FB923C] fill-[#FB923C]" />
-                    <h4 className="text-sm font-display font-bold text-[#F5F0EA] tracking-tight">Estúdio de Copywriter IA</h4>
-                  </div>
-
-                  {generatingAI && (
-                    <div className="py-8 text-center space-y-3">
-                      <div className="w-8 h-8 rounded-full border-2 border-[#F97316] border-t-transparent animate-spin mx-auto"></div>
-                      <p className="text-xs text-[#A8A29A] font-mono">Cozinhando sugestões perfeitas...</p>
-                    </div>
-                  )}
-
-                  {!generatingAI && !aiResult && (
-                    <div className="py-8 text-center text-xs text-[#A8A29A] border border-dashed border-[#2A211A] rounded-xl px-4">
-                      <AlertCircle className="w-6 h-6 mx-auto mb-2 text-[#A8A29A]/50" />
-                      <span>Insira o nome do produto e clique em "Redigir com IA" para obter textos persuasivos focados em delivery de alta conversão.</span>
-                    </div>
-                  )}
-
-                  {!generatingAI && aiResult && (
-                    <div className="space-y-4">
-                      {/* suggested description */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[10px] font-mono font-semibold text-[#FB923C] uppercase tracking-widest">Descrição Gourmet</span>
-                          <button
-                            type="button"
-                            onClick={applyAIDescription}
-                            className="text-xs font-semibold text-[#F97316] hover:text-white flex items-center gap-1 cursor-pointer"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Aplicar no Form</span>
-                          </button>
-                        </div>
-                        <p className="text-xs text-slate-300 bg-[#141210] p-3 rounded-xl border border-[#2A211A] leading-relaxed max-h-36 overflow-y-auto">
-                          {aiResult.description}
-                        </p>
-                      </div>
-
-                      {/* suggested copy */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[10px] font-mono font-semibold text-[#F97316] uppercase tracking-widest">Copy para WhatsApp</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(aiResult.copy);
-                              alert("Copy copiada para o clipboard!");
-                            }}
-                            className="text-xs font-semibold text-[#A8A29A] hover:text-white underline cursor-pointer"
-                          >
-                            Copiar Texto
-                          </button>
-                        </div>
-                        <p className="text-xs text-slate-300 bg-[#141210] p-3 rounded-xl border border-[#2A211A] leading-relaxed max-h-36 overflow-y-auto font-mono">
-                          {aiResult.copy}
-                        </p>
-                      </div>
-
-                      {/* SEO Tags */}
-                      <div>
-                        <span className="text-[10px] font-mono font-semibold text-orange-400 uppercase tracking-widest block mb-1.5">Palavras-Chave Recomendadas</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {aiResult.keywords.map((kw, idx) => (
-                            <span key={idx} className="bg-[#181512] text-slate-300 px-2 py-0.5 rounded-md text-[10px] border border-[#2A211A]">
-                              #{kw}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-[#2A211A] pt-4 mt-6 flex flex-col gap-2">
-                  <button
-                    type="submit"
-                    className="w-full btn-sushi-primary text-white py-2.5 rounded-xl text-sm font-bold shadow-md cursor-pointer transition-colors"
-                  >
-                    Salvar Alterações
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAddingProduct(false);
-                      setEditingProduct(null);
-                    }}
-                    className="w-full bg-[#181512] hover:bg-[#2A211A] text-slate-300 py-2 rounded-xl text-xs font-semibold cursor-pointer border border-[#2A211A] transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
             </form>
           </div>
         </div>
