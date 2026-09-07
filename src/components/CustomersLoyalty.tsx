@@ -139,8 +139,9 @@ export default function CustomersLoyalty() {
                     </tr>
                   ) : (
                     filteredCustomers.map(cust => {
-                      const progressPercent = Math.min(100, (cust.loyaltyPoints / parseFloat(pointsNeededForReward)) * 100);
-                      const canRedeem = cust.loyaltyPoints >= parseFloat(pointsNeededForReward);
+                      const goal = savedLoyaltyConfig.pointsNeededForReward;
+                      const progressPercent = Math.min(100, (cust.loyaltyPoints / goal) * 100);
+                      const canRedeem = cust.loyaltyPoints >= goal;
 
                       return (
                         <tr key={cust.id} className="hover:bg-[#181512] transition-colors">
