@@ -34,7 +34,7 @@ import {
 import { checkIsStoreOpen } from '../utils/storeStatus';
 
 export default function VisualCustomizer() {
-  const { visualConfig, setVisualConfig, currentPlan, categories } = useApp();
+  const { visualConfig, setVisualConfig, currentPlan, categories, isDemoMode } = useApp();
 
   const [establishmentName, setEstablishmentName] = useState(visualConfig.establishmentName);
   const [menuDescription, setMenuDescription] = useState(visualConfig.menuDescription || '');
@@ -145,6 +145,7 @@ export default function VisualCustomizer() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemoMode) return;
     try {
       const formattedSlug = menuSlug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
       setVisualConfig({
@@ -199,71 +200,76 @@ export default function VisualCustomizer() {
               <Sliders className="text-[#FB923C] w-5 h-5" />
               Configuração da Marca
             </h3>
-            <button
-              type="submit"
-              className="px-5 py-2.5 btn-sushi-primary text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer w-full sm:w-auto flex items-center justify-center gap-2"
-            >
-              <Check className="w-4 h-4" />
-              <span>Salvar Alterações</span>
-            </button>
+            {!isDemoMode && (
+              <button
+                type="submit"
+                className="px-5 py-2.5 btn-sushi-primary text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer w-full sm:w-auto flex items-center justify-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                <span>Salvar Alterações</span>
+              </button>
+            )}
           </div>
 
-          {/* Link do Cardápio Digital */}
-          <div className="bg-[#181512] p-4 rounded-xl border border-[#2A211A] space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#F5F0EA] flex items-center gap-1.5 uppercase tracking-wider">
-                <Globe className="w-4 h-4 text-[#FB923C]" /> Link do Cardápio Online
-              </span>
-              <span className="text-[10px] bg-[#1F1209] text-[#FB923C] border border-[#4A2A10] px-2 py-0.5 rounded-full font-bold font-mono">
-                Ativo
-              </span>
-            </div>
-            
-            <p className="text-xs text-[#A8A29A] leading-relaxed">
-              O seu cardápio está online e pode ser acessado de qualquer lugar. Altere a parte final abaixo para personalizar o seu link exclusivo.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1 flex items-center bg-[#0C0A08] border border-[#2A211A] rounded-xl overflow-hidden shadow-xs">
-                <span className="bg-[#141210] px-3 py-2 text-xs text-[#A8A29A] font-mono select-none border-r border-[#2A211A] shrink-0 truncate max-w-[150px] sm:max-w-none">
-                  ?menu=
+          {/* Link do Cardápio Digital — not shown in the demo: there is no real
+              account/domain behind it there, so the link would never resolve. */}
+          {!isDemoMode && (
+            <div className="bg-[#181512] p-4 rounded-xl border border-[#2A211A] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#F5F0EA] flex items-center gap-1.5 uppercase tracking-wider">
+                  <Globe className="w-4 h-4 text-[#FB923C]" /> Link do Cardápio Online
                 </span>
-                <input
-                  type="text"
-                  value={menuSlug}
-                  onChange={(e) => setMenuSlug(e.target.value.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-'))}
-                  placeholder="link-do-cardapio"
-                  className="w-full px-3 py-2 text-xs font-mono font-bold text-white bg-transparent focus:outline-none"
-                  title="Altere esta parte para mudar o link do seu cardápio"
-                />
+                <span className="text-[10px] bg-[#1F1209] text-[#FB923C] border border-[#4A2A10] px-2 py-0.5 rounded-full font-bold font-mono">
+                  Ativo
+                </span>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                    copied 
-                      ? 'bg-[#1F1209] text-[#FB923C] border-[#4A2A10]' 
-                      : 'bg-[#141210] text-slate-300 border-[#2A211A] hover:bg-[#181512]'
-                  }`}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{copied ? 'Copiado!' : 'Copiar'}</span>
-                </button>
+              <p className="text-xs text-[#A8A29A] leading-relaxed">
+                O seu cardápio está online e pode ser acessado de qualquer lugar. Altere a parte final abaixo para personalizar o seu link exclusivo.
+              </p>
 
-                <a
-                  href={`${window.location.origin}${window.location.pathname}?menu=${menuSlug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2 btn-sushi-primary text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 shadow-xs"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Testar</span>
-                </a>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1 flex items-center bg-[#0C0A08] border border-[#2A211A] rounded-xl overflow-hidden shadow-xs">
+                  <span className="bg-[#141210] px-3 py-2 text-xs text-[#A8A29A] font-mono select-none border-r border-[#2A211A] shrink-0 truncate max-w-[150px] sm:max-w-none">
+                    ?menu=
+                  </span>
+                  <input
+                    type="text"
+                    value={menuSlug}
+                    onChange={(e) => setMenuSlug(e.target.value.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-'))}
+                    placeholder="link-do-cardapio"
+                    className="w-full px-3 py-2 text-xs font-mono font-bold text-white bg-transparent focus:outline-none"
+                    title="Altere esta parte para mudar o link do seu cardápio"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      copied
+                        ? 'bg-[#1F1209] text-[#FB923C] border-[#4A2A10]'
+                        : 'bg-[#141210] text-slate-300 border-[#2A211A] hover:bg-[#181512]'
+                    }`}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{copied ? 'Copiado!' : 'Copiar'}</span>
+                  </button>
+
+                  <a
+                    href={`${window.location.origin}${window.location.pathname}?menu=${menuSlug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3.5 py-2 btn-sushi-primary text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 shadow-xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Testar</span>
+                  </a>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -661,21 +667,23 @@ export default function VisualCustomizer() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-[#2A211A] flex flex-col sm:flex-row items-center justify-between gap-4">
-            {saveSuccess ? (
-              <div className="w-full sm:w-auto flex items-center gap-2 px-3.5 py-2 bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] rounded-xl text-xs font-bold animate-fadeIn">
+          {!isDemoMode && (
+            <div className="pt-4 border-t border-[#2A211A] flex flex-col sm:flex-row items-center justify-between gap-4">
+              {saveSuccess ? (
+                <div className="w-full sm:w-auto flex items-center gap-2 px-3.5 py-2 bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] rounded-xl text-xs font-bold animate-fadeIn">
+                  <Check className="w-4 h-4" />
+                  <span>Identidade Visual e Horário salvos com sucesso!</span>
+                </div>
+              ) : <div />}
+              <button
+                type="submit"
+                className="w-full sm:w-auto px-6 py-3 btn-sushi-primary text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
+              >
                 <Check className="w-4 h-4" />
-                <span>Identidade Visual e Horário salvos com sucesso!</span>
-              </div>
-            ) : <div />}
-            <button
-              type="submit"
-              className="w-full sm:w-auto px-6 py-3 btn-sushi-primary text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Check className="w-4 h-4" />
-              <span>Salvar Alterações</span>
-            </button>
-          </div>
+                <span>Salvar Alterações</span>
+              </button>
+            </div>
+          )}
         </form>
 
         {/* Live Device Simulator Preview Panel */}
