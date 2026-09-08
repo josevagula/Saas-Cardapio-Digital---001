@@ -146,6 +146,7 @@ export default function DigitalMenuManager() {
   const [newExtraName, setNewExtraName] = useState('');
   const [newExtraPrice, setNewExtraPrice] = useState('');
   const [newExtraMaxQty, setNewExtraMaxQty] = useState('1');
+  const [editingExtraId, setEditingExtraId] = useState<string | null>(null);
 
   // Category Fields
   const [newCatName, setNewCatName] = useState('');
@@ -169,6 +170,7 @@ export default function DigitalMenuManager() {
     setNewExtraName('');
     setNewExtraPrice('');
     setNewExtraMaxQty('1');
+    setEditingExtraId(null);
   };
 
   const toggleFormCategory = (catId: string) => {
@@ -197,14 +199,36 @@ export default function DigitalMenuManager() {
     setNewExtraName('');
     setNewExtraPrice('');
     setNewExtraMaxQty('1');
+    setEditingExtraId(null);
   };
 
-  const handleAddExtra = () => {
+  const handleAddOrUpdateExtra = () => {
     const trimmedName = newExtraName.trim();
     const numPrice = safeNumber(newExtraPrice);
     const numMaxQty = Math.floor(safeNumber(newExtraMaxQty));
     if (!trimmedName || numPrice <= 0 || numMaxQty <= 0) return;
-    setExtras(prev => [...prev, { id: `extra-${Date.now()}-${Math.floor(Math.random() * 1000)}`, name: trimmedName, price: numPrice, maxQuantity: numMaxQty }]);
+    if (editingExtraId) {
+      setExtras(prev => prev.map(ex => ex.id === editingExtraId
+        ? { ...ex, name: trimmedName, price: numPrice, maxQuantity: numMaxQty }
+        : ex));
+      setEditingExtraId(null);
+    } else {
+      setExtras(prev => [...prev, { id: `extra-${Date.now()}-${Math.floor(Math.random() * 1000)}`, name: trimmedName, price: numPrice, maxQuantity: numMaxQty }]);
+    }
+    setNewExtraName('');
+    setNewExtraPrice('');
+    setNewExtraMaxQty('1');
+  };
+
+  const handleStartEditExtra = (ex: ProductExtra) => {
+    setEditingExtraId(ex.id);
+    setNewExtraName(ex.name);
+    setNewExtraPrice(ex.price.toString());
+    setNewExtraMaxQty(ex.maxQuantity.toString());
+  };
+
+  const handleCancelEditExtra = () => {
+    setEditingExtraId(null);
     setNewExtraName('');
     setNewExtraPrice('');
     setNewExtraMaxQty('1');
@@ -212,6 +236,17 @@ export default function DigitalMenuManager() {
 
   const handleRemoveExtra = (id: string) => {
     setExtras(prev => prev.filter(ex => ex.id !== id));
+    if (editingExtraId === id) handleCancelEditExtra();
+  };
+
+  const handleMoveExtra = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= extras.length) return;
+    setExtras(prev => {
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
@@ -684,20 +719,53 @@ export default function DigitalMenuManager() {
 
                   {extras.length > 0 && (
                     <div className="space-y-1.5 mb-2.5">
-                      {extras.map(ex => (
-                        <div key={ex.id} className="flex items-center justify-between gap-2 bg-[#181512] border border-[#2A211A] rounded-lg px-3 py-2">
+                      {extras.map((ex, idx) => (
+                        <div
+                          key={ex.id}
+                          className={`flex items-center justify-between gap-2 bg-[#181512] border rounded-lg px-3 py-2 ${
+                            editingExtraId === ex.id ? 'border-[#FB923C]' : 'border-[#2A211A]'
+                          }`}
+                        >
                           <div className="min-w-0 flex-1 text-xs">
                             <span className="font-semibold text-[#F5F0EA]">{ex.name}</span>
                             <span className="text-[#A8A29A] font-mono ml-2">R$ {ex.price.toFixed(2)} · até {ex.maxQuantity}x</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExtra(ex.id)}
-                            className="text-[#A8A29A] hover:text-red-400 p-1 rounded-md hover:bg-[#141210] transition-colors cursor-pointer shrink-0"
-                            title="Remover adicional"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveExtra(idx, -1)}
+                              disabled={idx === 0}
+                              className="text-[#A8A29A] hover:text-white p-1 rounded-md hover:bg-[#141210] transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Mover para cima"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveExtra(idx, 1)}
+                              disabled={idx === extras.length - 1}
+                              className="text-[#A8A29A] hover:text-white p-1 rounded-md hover:bg-[#141210] transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Mover para baixo"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditExtra(ex)}
+                              className="text-[#A8A29A] hover:text-[#FB923C] p-1 rounded-md hover:bg-[#141210] transition-colors cursor-pointer"
+                              title="Editar adicional"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExtra(ex.id)}
+                              className="text-[#A8A29A] hover:text-red-400 p-1 rounded-md hover:bg-[#141210] transition-colors cursor-pointer"
+                              title="Remover adicional"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -730,12 +798,22 @@ export default function DigitalMenuManager() {
                     />
                     <button
                       type="button"
-                      onClick={handleAddExtra}
+                      onClick={handleAddOrUpdateExtra}
                       className="flex items-center justify-center gap-1 px-3 py-2 bg-[#1F1209] text-[#FB923C] border border-[#4A2A10] hover:bg-[#2A180C] rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Adicionar</span>
+                      {editingExtraId ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                      <span>{editingExtraId ? 'Salvar' : 'Adicionar'}</span>
                     </button>
+                    {editingExtraId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditExtra}
+                        className="flex items-center justify-center gap-1 px-3 py-2 bg-[#181512] text-[#A8A29A] border border-[#2A211A] hover:bg-[#2A211A] hover:text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Cancelar</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
