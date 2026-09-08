@@ -26,7 +26,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) {
-  const { currentView, setCurrentView, visualConfig, currentPlan, planStatus, cancelPlan, setIsAdmin, setLoggedIn } = useApp();
+  const { currentView, setCurrentView, visualConfig, currentPlan, planStatus, cancelPlan, setIsAdmin, setLoggedIn, isDemoMode } = useApp();
   const { logout } = useAuth();
   const [copied, setCopied] = useState(false);
   const syncPending = useSyncPending();
@@ -138,43 +138,52 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
             <span>Visualizar Cardápio</span>
           </button>
 
-          <div className="bg-[#181512] rounded-xl p-3 border border-[#2A211A] space-y-2">
-            <div className="flex items-center justify-between">
+          {isDemoMode ? (
+            <div className="bg-[#181512] rounded-xl p-3 border border-[#2A211A] space-y-1.5">
               <span className="text-[10px] font-mono font-bold text-[#A8A29A] uppercase tracking-wider">Link do Cardápio</span>
-              <span className="w-2 h-2 rounded-full bg-[#F97316] animate-pulse" title="Servidor Online"></span>
+              <p className="text-[11px] text-[#8A837A] leading-relaxed">
+                Disponível só depois de criar sua conta — na demonstração, o link real ainda não existe. Use "Visualizar Cardápio" acima para ver a prévia com estes produtos.
+              </p>
             </div>
-            <div className="text-[11px] font-mono bg-[#0C0A08] p-2 rounded-lg border border-[#2A211A] text-[#FB923C] select-all truncate font-bold">
-              ?menu={activeSlug}
+          ) : (
+            <div className="bg-[#181512] rounded-xl p-3 border border-[#2A211A] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-[#A8A29A] uppercase tracking-wider">Link do Cardápio</span>
+                <span className="w-2 h-2 rounded-full bg-[#F97316] animate-pulse" title="Servidor Online"></span>
+              </div>
+              <div className="text-[11px] font-mono bg-[#0C0A08] p-2 rounded-lg border border-[#2A211A] text-[#FB923C] select-all truncate font-bold">
+                ?menu={activeSlug}
+              </div>
+              <div className="flex gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `${window.location.origin}${window.location.pathname}?menu=${activeSlug}`;
+                    navigator.clipboard.writeText(url);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                    copied
+                      ? 'bg-[#1F1209] text-[#FB923C] border-[#4A2A10]'
+                      : 'bg-[#141210] text-[#A8A29A] border-[#2A211A] hover:border-slate-600 hover:text-[#F5F0EA]'
+                  }`}
+                >
+                  <Copy className="w-3 h-3 text-[#A8A29A]" />
+                  <span>{copied ? 'Copiado!' : 'Copiar'}</span>
+                </button>
+                <a
+                  href={`${window.location.origin}${window.location.pathname}?menu=${activeSlug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white hover:opacity-90 transition-all shadow-sm cursor-pointer"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Testar</span>
+                </a>
+              </div>
             </div>
-            <div className="flex gap-1.5 pt-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  const url = `${window.location.origin}${window.location.pathname}?menu=${activeSlug}`;
-                  navigator.clipboard.writeText(url);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
-                  copied 
-                    ? 'bg-[#1F1209] text-[#FB923C] border-[#4A2A10]' 
-                    : 'bg-[#141210] text-[#A8A29A] border-[#2A211A] hover:border-slate-600 hover:text-[#F5F0EA]'
-                }`}
-              >
-                <Copy className="w-3 h-3 text-[#A8A29A]" />
-                <span>{copied ? 'Copiado!' : 'Copiar'}</span>
-              </button>
-              <a
-                href={`${window.location.origin}${window.location.pathname}?menu=${activeSlug}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white hover:opacity-90 transition-all shadow-sm cursor-pointer"
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span>Testar</span>
-              </a>
-            </div>
-          </div>
+          )}
         </div>
       </nav>
 
