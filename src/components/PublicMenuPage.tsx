@@ -760,7 +760,7 @@ export default function PublicMenuPage() {
                 placeholder="Pesquisar sushis, temakis, hots..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-xs rounded-2xl bg-[#161616] text-white border border-[#262626] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6A00] transition-colors"
+                className="w-full pl-10 pr-4 py-2 text-xs rounded-2xl bg-black text-white border border-[#262626] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6A00] transition-colors"
               />
             </div>
           </div>
@@ -774,7 +774,7 @@ export default function PublicMenuPage() {
                 <div
                   key={p.id}
                   onClick={() => handleOpenProduct(p)}
-                  className="bg-[#161616] border border-[#262626] rounded-2xl overflow-hidden hover:border-[#FF6A00]/60 transition-all flex flex-col justify-between group shadow-lg cursor-pointer"
+                  className="bg-black border border-[#262626] rounded-2xl overflow-hidden hover:border-[#FF6A00]/60 transition-all flex flex-col justify-between group shadow-lg cursor-pointer"
                 >
                   <div className="relative h-48 w-full bg-[#0A0A0A] overflow-hidden">
                     <img 
