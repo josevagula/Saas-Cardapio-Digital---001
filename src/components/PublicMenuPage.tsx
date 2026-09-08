@@ -297,6 +297,11 @@ export default function PublicMenuPage() {
     messageText += `${itemsText}\n\n`;
     messageText += `============================\n`;
     messageText += `💰 *EXTRATO FINANCEIRO:*\n`;
+    if (order.couponCode) {
+      const subtotalForMsg = Math.max(0, (order.total || 0) - (order.deliveryFee || 0) + (order.discountAmount || 0));
+      messageText += `Subtotal: R$ ${subtotalForMsg.toFixed(2).replace('.', ',')}\n`;
+      messageText += `🎟️ Cupom (${order.couponCode}): -R$ ${(order.discountAmount || 0).toFixed(2).replace('.', ',')}\n`;
+    }
     messageText += `*TOTAL A PAGAR: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}*\n`;
     messageText += `============================\n\n`;
     messageText += `🛵 *MEIO DE ENTREGA:*\n`;

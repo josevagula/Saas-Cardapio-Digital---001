@@ -73,6 +73,9 @@ export default function OrdersManager() {
       text += `- ${item.quantity}x ${item.product.name}${removedText}${extrasText}${notesText}\n`;
     });
 
+    if (order.couponCode) {
+      text += `\n🎟️ *Cupom aplicado:* ${order.couponCode}${order.discountAmount ? ` (-R$ ${formatCurrency(order.discountAmount)})` : ''}\n`;
+    }
     text += `\n*Total:* R$ ${formatCurrency(order.total)}\n`;
     let paymentFormatted = order.paymentMethod.replace('_', ' ').toUpperCase();
     if (order.paymentMethod === 'cash') {
@@ -256,6 +259,18 @@ export default function OrdersManager() {
                     {order.deliveryMethod === 'delivery' && (
                       <div className="text-slate-300 truncate mt-1">
                         📍 {order.customerAddress}
+                      </div>
+                    )}
+                    {order.couponCode && (
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-emerald-400 font-semibold">
+                          🎟️ Cupom: {order.couponCode}
+                        </span>
+                        {!!order.discountAmount && (
+                          <span className="text-emerald-400 font-semibold">
+                            - R$ {formatCurrency(order.discountAmount)}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
