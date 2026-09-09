@@ -104,18 +104,23 @@ export default function CustomersLoyalty() {
   // group internally ordered the same way the cardápio itself sorts
   // products within that category (categoryDisplayOrder). A product in
   // multiple categories intentionally shows up under each one, same as on
-  // the public menu.
-  const productsByCategory = categories.map(cat => ({
-    category: cat,
-    products: products
-      .filter(p => p.categoryIds.includes(cat.id))
-      .sort((a, b) => {
-        const orderA = a.categoryDisplayOrder?.[cat.id] ?? Number.MAX_SAFE_INTEGER;
-        const orderB = b.categoryDisplayOrder?.[cat.id] ?? Number.MAX_SAFE_INTEGER;
-        if (orderA !== orderB) return orderA - orderB;
-        return products.indexOf(a) - products.indexOf(b);
-      })
-  })).filter(group => group.products.length > 0);
+  // the public menu — except "Destaques", which is excluded from this
+  // picker on purpose (it's a curated cross-listing of items already shown
+  // under their real category, not a distinct set of products).
+  const productsByCategory = categories
+    .filter(cat => cat.name.trim().toLowerCase() !== 'destaques')
+    .map(cat => ({
+      category: cat,
+      products: products
+        .filter(p => p.categoryIds.includes(cat.id))
+        .sort((a, b) => {
+          const orderA = a.categoryDisplayOrder?.[cat.id] ?? Number.MAX_SAFE_INTEGER;
+          const orderB = b.categoryDisplayOrder?.[cat.id] ?? Number.MAX_SAFE_INTEGER;
+          if (orderA !== orderB) return orderA - orderB;
+          return products.indexOf(a) - products.indexOf(b);
+        })
+    }))
+    .filter(group => group.products.length > 0);
 
   const ledgerTypeLabel: Record<LoyaltyLedgerEntry['type'], string> = {
     earn: 'Pontos ganhos',
