@@ -51,9 +51,11 @@ export default function CustomersLoyalty() {
   // Only customers with at least one completed (delivered) order belong in
   // the loyalty club list — orderCount only increments on delivery (see
   // creditOrderLoyalty), so this deliberately excludes someone who merely
-  // placed an order that's still pending/cancelled. Also filters out
-  // obvious test/junk entries by name.
-  const cleanCustomers = customers.filter(c => c.name && !/^[0-9a-zA-Z]{3,6}$/.test(c.name) && c.name.length > 2 && c.name !== "23413" && c.name !== "12312" && c.name !== "gdfg" && c.orderCount > 0);
+  // placed an order that's still pending/cancelled. Also filters out a
+  // short list of exact known test-data names — deliberately NOT a
+  // "3-6 alphanumeric characters" pattern anymore, since that also matched
+  // (and hid) plenty of real short names like "Bod".
+  const cleanCustomers = customers.filter(c => c.name && c.name.length > 2 && c.name !== "23413" && c.name !== "12312" && c.name !== "gdfg" && c.orderCount > 0);
 
   const filteredCustomers = cleanCustomers.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
