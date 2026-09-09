@@ -89,6 +89,16 @@ export default function PublicMenuPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const isKomyCategoryStyle = visualConfig.categoryStyle === 'komy';
+  // "Modo Claro" (visualConfig.themeMode) was persisted/settable in
+  // Personalização but never actually applied here — the whole cardápio was
+  // hardcoded dark regardless of it. Scoped to the home screen (header,
+  // hero banner, category nav/search, product grid) for now, since that's
+  // what's visible without opening the cart/checkout. `t(dark, light)`
+  // returns whichever literal class string applies — both branches must
+  // stay literal (not built from interpolated hex values) so Tailwind's
+  // static scanner can see and generate them.
+  const isLight = visualConfig.themeMode === 'light';
+  const t = (dark: string, light: string) => (isLight ? light : dark);
 
   // Start the menu on the first configured category instead of "Todos os Pratos".
   // Categories may still be loading (async fetch for public menu links), so wait
@@ -483,15 +493,15 @@ export default function PublicMenuPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen font-sans bg-[#0A0A0A] text-white selection:bg-[#FF6A00] selection:text-white" id="sushi-public-menu">
-      
+    <div className={`flex-1 flex flex-col min-h-screen font-sans selection:bg-[#FF6A00] selection:text-white ${t('bg-[#0A0A0A] text-white', 'bg-white text-[#1A1A1A]')}`} id="sushi-public-menu">
+
       {/* ==================== 1. STICKY TOP NAVBAR ==================== */}
-      <header className="py-2.5 px-3.5 sm:py-3 sm:px-8 border-b border-[#22201D] flex items-center justify-between shrink-0 sticky top-0 z-30 bg-[#0F0D0B]/95 backdrop-blur-md">
+      <header className={`py-2.5 px-3.5 sm:py-3 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-30 backdrop-blur-md ${t('border-b border-[#22201D] bg-[#0F0D0B]/95', 'border-b border-[#E5E5E5] bg-white/95')}`}>
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           {!isPublicLink && (
             <button
               onClick={handleHeaderBack}
-              className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#262626] text-[#D1D5DB] hover:text-white hover:bg-[#181512] transition-colors shrink-0 cursor-pointer"
+              className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border transition-colors shrink-0 cursor-pointer ${t('border-[#262626] text-[#D1D5DB] hover:text-white hover:bg-[#181512]', 'border-[#E5E5E5] text-[#4B5563] hover:text-[#1A1A1A] hover:bg-[#F3F4F6]')}`}
               title="Voltar"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -500,10 +510,10 @@ export default function PublicMenuPage() {
           <img
             src={visualConfig.logoUrl}
             alt={visualConfig.establishmentName}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-[#262626] shrink-0"
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border shrink-0 ${t('border-[#262626]', 'border-[#E5E5E5]')}`}
           />
           <div className="min-w-0 leading-tight">
-            <p className="font-display font-black text-sm sm:text-base tracking-tight text-white uppercase truncate">
+            <p className={`font-display font-black text-sm sm:text-base tracking-tight uppercase truncate ${t('text-white', 'text-[#1A1A1A]')}`}>
               {visualConfig.establishmentName}
             </p>
             <p className="text-[10px] sm:text-[11px] font-mono font-semibold text-[#9CA3AF] tracking-wide truncate">
@@ -643,14 +653,14 @@ export default function PublicMenuPage() {
         <div className="flex-1 max-w-5xl mx-auto w-full p-4 md:p-6 space-y-6 pb-28">
           
           {/* ==================== 2. HERO BANNER HEADER ==================== */}
-          <div className="relative rounded-3xl overflow-hidden border border-[#262626] bg-[#0A0A0A] shadow-2xl min-h-[220px] sm:min-h-[250px] flex flex-col justify-between p-5 sm:p-7">
+          <div className={`relative rounded-3xl overflow-hidden shadow-2xl min-h-[220px] sm:min-h-[250px] flex flex-col justify-between p-5 sm:p-7 ${t('border border-[#262626] bg-[#0A0A0A]', 'border border-[#E5E5E5] bg-white')}`}>
             <div className="absolute inset-0 z-0">
               <img
                 src={visualConfig.bannerUrl}
                 alt={visualConfig.establishmentName}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-[#0A0A0A]/85"></div>
+              <div className={`absolute inset-0 ${t('bg-[#0A0A0A]/85', 'bg-white/80')}`}></div>
             </div>
 
             <div className="relative z-10 flex items-start justify-between gap-4">
@@ -674,15 +684,15 @@ export default function PublicMenuPage() {
                 </div>
               </div>
 
-              <div className="bg-[#161616]/90 backdrop-blur-md border border-[#262626] p-3 rounded-2xl flex flex-col gap-1.5 text-xs text-[#9CA3AF] shrink-0 shadow-lg">
+              <div className={`backdrop-blur-md p-3 rounded-2xl flex flex-col gap-1.5 text-xs text-[#9CA3AF] shrink-0 shadow-lg ${t('bg-[#161616]/90 border border-[#262626]', 'bg-white/90 border border-[#E5E5E5]')}`}>
                 <div className="flex items-center justify-center gap-2">
-                  <span className="font-bold text-white font-mono text-[11px]">
+                  <span className={`font-bold font-mono text-[11px] ${t('text-white', 'text-[#1A1A1A]')}`}>
                     Entrega
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-[#FF6A00]" />
-                  <span className="font-bold text-white font-mono text-[11px]">
+                  <span className={`font-bold font-mono text-[11px] ${t('text-white', 'text-[#1A1A1A]')}`}>
                     {visualConfig.deliveryTime || '30-45 min'}
                   </span>
                 </div>
@@ -690,7 +700,7 @@ export default function PublicMenuPage() {
             </div>
 
             <div className="relative z-10 mt-6 sm:mt-8">
-              <h2 className="text-2xl sm:text-4xl font-display font-black tracking-tight text-white uppercase drop-shadow-md">
+              <h2 className={`text-2xl sm:text-4xl font-display font-black tracking-tight uppercase drop-shadow-md ${t('text-white', 'text-[#1A1A1A]')}`}>
                 {visualConfig.establishmentName}
               </h2>
               <p className="text-xs sm:text-sm text-[#9CA3AF] font-medium mt-1 max-w-xl line-clamp-2">
@@ -703,7 +713,7 @@ export default function PublicMenuPage() {
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2">
 
             <div className={`flex-1 overflow-x-auto scrollbar-none ${
-              isKomyCategoryStyle ? 'bg-black rounded-full p-1.5' : 'pb-2'
+              isKomyCategoryStyle ? `rounded-full p-1.5 ${t('bg-black', 'bg-[#F3F4F6]')}` : 'pb-2'
             }`}>
               <div className="flex gap-2.5 w-fit min-w-full sm:min-w-0">
                 <button
@@ -713,12 +723,12 @@ export default function PublicMenuPage() {
                       ? `px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
                           activeCategory === 'all'
                             ? 'bg-[#FF6A00] text-black shadow-md'
-                            : 'bg-transparent text-[#9CA3AF] hover:text-white'
+                            : t('bg-transparent text-[#9CA3AF] hover:text-white', 'bg-transparent text-[#6B7280] hover:text-[#1A1A1A]')
                         }`
                       : `px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
                           activeCategory === 'all'
                             ? 'bg-[#FF6A00] text-white shadow-md'
-                            : 'bg-black border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
+                            : t('bg-black border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white', 'bg-white border border-[#E5E5E5] hover:bg-[#F3F4F6] text-[#6B7280] hover:text-[#1A1A1A]')
                         }`
                   }
                 >
@@ -736,12 +746,12 @@ export default function PublicMenuPage() {
                           ? `px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
                               isActive
                                 ? 'bg-[#FF6A00] text-black font-black shadow-md'
-                                : 'bg-transparent text-[#9CA3AF] hover:text-white'
+                                : t('bg-transparent text-[#9CA3AF] hover:text-white', 'bg-transparent text-[#6B7280] hover:text-[#1A1A1A]')
                             }`
                           : `px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
                               isActive
                                 ? 'bg-[#FF6A00] text-white font-black shadow-md'
-                                : 'bg-black border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
+                                : t('bg-black border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white', 'bg-white border border-[#E5E5E5] hover:bg-[#F3F4F6] text-[#6B7280] hover:text-[#1A1A1A]')
                             }`
                       }
                     >
@@ -760,7 +770,7 @@ export default function PublicMenuPage() {
                 placeholder="Pesquisar sushis, temakis, hots..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-xs rounded-2xl bg-black text-white border border-[#262626] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6A00] transition-colors"
+                className={`w-full pl-10 pr-4 py-2 text-xs rounded-2xl placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6A00] transition-colors ${t('bg-black text-white border border-[#262626]', 'bg-white text-[#1A1A1A] border border-[#E5E5E5]')}`}
               />
             </div>
           </div>
@@ -774,9 +784,9 @@ export default function PublicMenuPage() {
                 <div
                   key={p.id}
                   onClick={() => handleOpenProduct(p)}
-                  className="bg-black border border-[#262626] rounded-2xl overflow-hidden hover:border-[#FF6A00]/60 transition-all flex flex-col justify-between group shadow-lg cursor-pointer"
+                  className={`rounded-2xl overflow-hidden hover:border-[#FF6A00]/60 transition-all flex flex-col justify-between group shadow-lg cursor-pointer ${t('bg-black border border-[#262626]', 'bg-white border border-[#E5E5E5]')}`}
                 >
-                  <div className="relative h-48 w-full bg-[#0A0A0A] overflow-hidden">
+                  <div className={`relative h-48 w-full overflow-hidden ${t('bg-[#0A0A0A]', 'bg-[#F3F4F6]')}`}>
                     <img 
                       src={p.imageUrl} 
                       alt={p.name} 
@@ -803,7 +813,7 @@ export default function PublicMenuPage() {
 
                   <div className="p-4.5 flex-1 flex flex-col justify-between">
                     <div>
-                      <h4 className="font-bold text-base text-white group-hover:text-[#FF6A00] transition-colors leading-snug">
+                      <h4 className={`font-bold text-base group-hover:text-[#FF6A00] transition-colors leading-snug ${t('text-white', 'text-[#1A1A1A]')}`}>
                         {p.name}
                       </h4>
                       <p className="text-xs text-[#9CA3AF] line-clamp-2 mt-1.5 leading-relaxed font-normal">
@@ -811,7 +821,7 @@ export default function PublicMenuPage() {
                       </p>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-[#262626]/60 flex items-center justify-between gap-3">
+                    <div className={`mt-4 pt-3 flex items-center justify-between gap-3 ${t('border-t border-[#262626]/60', 'border-t border-[#E5E5E5]')}`}>
                       <div className="flex items-baseline gap-2">
                         {p.promoPrice && safeNumber(p.promoPrice) > 0 ? (
                           <>
