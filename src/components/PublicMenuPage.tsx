@@ -516,7 +516,7 @@ export default function PublicMenuPage() {
             <p className={`font-display font-black text-sm sm:text-base tracking-tight uppercase truncate ${t('text-white', 'text-[#1A1A1A]')}`}>
               {visualConfig.establishmentName}
             </p>
-            <p className="text-[10px] sm:text-[11px] font-mono font-semibold text-[#9CA3AF] tracking-wide truncate">
+            <p className={`text-[10px] sm:text-[11px] font-mono font-semibold tracking-wide truncate ${t('text-[#9CA3AF]', 'text-[#4B5563]')}`}>
               DELIVERY • CARDÁPIO DIGITAL
             </p>
           </div>
@@ -653,14 +653,17 @@ export default function PublicMenuPage() {
         <div className="flex-1 max-w-5xl mx-auto w-full p-4 md:p-6 space-y-6 pb-28">
           
           {/* ==================== 2. HERO BANNER HEADER ==================== */}
-          <div className={`relative rounded-3xl overflow-hidden shadow-2xl min-h-[220px] sm:min-h-[250px] flex flex-col justify-between p-5 sm:p-7 ${t('border border-[#262626] bg-[#0A0A0A]', 'border border-[#E5E5E5] bg-white')}`}>
+          {/* Deliberately NOT themed by light/dark mode — it's a photo with a
+              dark scrim and white text, same treatment either way, so picking
+              "claro" never washes the banner image out white. */}
+          <div className="relative rounded-3xl overflow-hidden border border-[#262626] bg-[#0A0A0A] shadow-2xl min-h-[220px] sm:min-h-[250px] flex flex-col justify-between p-5 sm:p-7">
             <div className="absolute inset-0 z-0">
               <img
                 src={visualConfig.bannerUrl}
                 alt={visualConfig.establishmentName}
                 className="w-full h-full object-cover"
               />
-              <div className={`absolute inset-0 ${t('bg-[#0A0A0A]/85', 'bg-white/80')}`}></div>
+              <div className="absolute inset-0 bg-[#0A0A0A]/85"></div>
             </div>
 
             <div className="relative z-10 flex items-start justify-between gap-4">
@@ -684,15 +687,15 @@ export default function PublicMenuPage() {
                 </div>
               </div>
 
-              <div className={`backdrop-blur-md p-3 rounded-2xl flex flex-col gap-1.5 text-xs text-[#9CA3AF] shrink-0 shadow-lg ${t('bg-[#161616]/90 border border-[#262626]', 'bg-white/90 border border-[#E5E5E5]')}`}>
+              <div className="bg-[#161616]/90 backdrop-blur-md border border-[#262626] p-3 rounded-2xl flex flex-col gap-1.5 text-xs text-[#9CA3AF] shrink-0 shadow-lg">
                 <div className="flex items-center justify-center gap-2">
-                  <span className={`font-bold font-mono text-[11px] ${t('text-white', 'text-[#1A1A1A]')}`}>
+                  <span className="font-bold text-white font-mono text-[11px]">
                     Entrega
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-[#FF6A00]" />
-                  <span className={`font-bold font-mono text-[11px] ${t('text-white', 'text-[#1A1A1A]')}`}>
+                  <span className="font-bold text-white font-mono text-[11px]">
                     {visualConfig.deliveryTime || '30-45 min'}
                   </span>
                 </div>
@@ -700,7 +703,7 @@ export default function PublicMenuPage() {
             </div>
 
             <div className="relative z-10 mt-6 sm:mt-8">
-              <h2 className={`text-2xl sm:text-4xl font-display font-black tracking-tight uppercase drop-shadow-md ${t('text-white', 'text-[#1A1A1A]')}`}>
+              <h2 className="text-2xl sm:text-4xl font-display font-black tracking-tight text-white uppercase drop-shadow-md">
                 {visualConfig.establishmentName}
               </h2>
               <p className="text-xs sm:text-sm text-[#9CA3AF] font-medium mt-1 max-w-xl line-clamp-2">
@@ -816,7 +819,7 @@ export default function PublicMenuPage() {
                       <h4 className={`font-bold text-base group-hover:text-[#FF6A00] transition-colors leading-snug ${t('text-white', 'text-[#1A1A1A]')}`}>
                         {p.name}
                       </h4>
-                      <p className="text-xs text-[#9CA3AF] line-clamp-2 mt-1.5 leading-relaxed font-normal">
+                      <p className={`text-xs line-clamp-2 mt-1.5 leading-relaxed font-normal ${t('text-[#9CA3AF]', 'text-[#4B5563]')}`}>
                         {p.description}
                       </p>
                     </div>
@@ -1091,27 +1094,27 @@ export default function PublicMenuPage() {
       {/* ==================== 6. CART SLIDE OVER DRAWER WITH HASHI & EXTRAS ==================== */}
       {isCartOpen && (
         <div className="fixed inset-0 bg-[#0A0A0A]/85 backdrop-blur-md z-50 flex justify-end animate-in fade-in duration-200">
-          <div className="w-full max-w-md h-full bg-[#161616] border-l border-[#262626] text-white flex flex-col justify-between shadow-2xl relative">
-            
-            <div className="p-5 border-b border-[#262626] flex items-center justify-between shrink-0">
+          <div className={`w-full max-w-md h-full flex flex-col justify-between shadow-2xl relative ${t('bg-[#161616] border-l border-[#262626] text-white', 'bg-white border-l border-[#E5E5E5] text-[#1A1A1A]')}`}>
+
+            <div className={`p-5 flex items-center justify-between shrink-0 ${t('border-b border-[#262626]', 'border-b border-[#E5E5E5]')}`}>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsCartOpen(false)}
-                  className="p-1.5 rounded-xl bg-[#262626] hover:bg-[#333] text-[#FF6A00] cursor-pointer transition-colors mr-1 flex items-center gap-1 text-xs font-bold"
+                  className={`p-1.5 rounded-xl text-[#FF6A00] cursor-pointer transition-colors mr-1 flex items-center gap-1 text-xs font-bold ${t('bg-[#262626] hover:bg-[#333]', 'bg-[#F3F4F6] hover:bg-[#E5E7EB]')}`}
                   title="Voltar ao Cardápio"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
                 <ShoppingBag className="w-5 h-5 text-[#FF6A00]" />
-                <h3 className="font-black text-base text-white">Seu Carrinho</h3>
+                <h3 className={`font-black text-base ${t('text-white', 'text-[#1A1A1A]')}`}>Seu Carrinho</h3>
                 <span className="bg-[#FF6A00]/20 text-[#FF6A00] border border-[#FF6A00]/40 font-mono font-bold text-xs px-2.5 py-0.5 rounded-full">
                   {totalCartCount} itens
                 </span>
               </div>
-              <button 
-                onClick={() => setIsCartOpen(false)} 
-                className="p-1.5 rounded-xl text-[#9CA3AF] hover:text-white hover:bg-[#262626] cursor-pointer transition-colors"
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className={`p-1.5 rounded-xl cursor-pointer transition-colors ${t('text-[#9CA3AF] hover:text-white hover:bg-[#262626]', 'text-[#6B7280] hover:text-[#1A1A1A] hover:bg-[#F3F4F6]')}`}
                 title="Fechar"
               >
                 <X className="w-5 h-5" />
@@ -1120,8 +1123,8 @@ export default function PublicMenuPage() {
 
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {cart.length === 0 ? (
-                <div className="py-16 text-center text-[#9CA3AF]">
-                  <SushiRollIcon size={48} className="text-[#262626] mx-auto mb-3" />
+                <div className={`py-16 text-center ${t('text-[#9CA3AF]', 'text-[#4B5563]')}`}>
+                  <SushiRollIcon size={48} className={`mx-auto mb-3 ${t('text-[#262626]', 'text-[#E5E7EB]')}`} />
                   <p className="text-sm font-medium">Seu carrinho está vazio.</p>
                 </div>
               ) : (
@@ -1129,16 +1132,16 @@ export default function PublicMenuPage() {
                   {/* Cart Items */}
                   <div className="space-y-3">
                     {cart.map(item => (
-                      <div key={item.product.id} className="p-3.5 bg-[#0F0E0C] border border-[#262626] rounded-2xl flex gap-3.5 items-center">
-                        <img 
-                          src={item.product.imageUrl} 
-                          alt={item.product.name} 
-                          className="w-16 h-16 rounded-xl object-cover bg-[#161616] shrink-0 border border-[#262626]"
+                      <div key={item.product.id} className={`p-3.5 rounded-2xl flex gap-3.5 items-center ${t('bg-[#0F0E0C] border border-[#262626]', 'bg-[#F9FAFB] border border-[#E5E5E5]')}`}>
+                        <img
+                          src={item.product.imageUrl}
+                          alt={item.product.name}
+                          className={`w-16 h-16 rounded-xl object-cover shrink-0 border ${t('bg-[#161616] border-[#262626]', 'bg-[#F3F4F6] border-[#E5E5E5]')}`}
                         />
                         <div className="min-w-0 flex-1 flex flex-col justify-between">
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-bold text-xs sm:text-sm text-white line-clamp-2 leading-snug">{item.product.name}</h4>
-                            <span className="font-mono font-bold text-xs sm:text-sm text-white whitespace-nowrap">
+                            <h4 className={`font-bold text-xs sm:text-sm line-clamp-2 leading-snug ${t('text-white', 'text-[#1A1A1A]')}`}>{item.product.name}</h4>
+                            <span className={`font-mono font-bold text-xs sm:text-sm whitespace-nowrap ${t('text-white', 'text-[#1A1A1A]')}`}>
                               R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity + extrasTotalForSelection(item.extras || [])).replace('.', ',')}
                             </span>
                           </div>
@@ -1165,32 +1168,32 @@ export default function PublicMenuPage() {
                                   setIsCartOpen(false);
                                   handleOpenProduct(item.product);
                                 }}
-                                className="flex items-center gap-1 text-[11px] font-semibold text-[#A09D96] hover:text-white bg-[#181614] border border-[#2A2724] px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                className={`flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${t('text-[#A09D96] hover:text-white bg-[#181614] border border-[#2A2724]', 'text-[#4B5563] hover:text-[#1A1A1A] bg-[#F3F4F6] border border-[#E5E5E5]')}`}
                               >
-                                <Edit2 className="w-3 h-3 text-[#A09D96]" />
+                                <Edit2 className={`w-3 h-3 ${t('text-[#A09D96]', 'text-[#4B5563]')}`} />
                                 <span>Editar</span>
                               </button>
 
                               <button
                                 onClick={() => removeFromCart(item.product.id)}
-                                className="text-[#8E8B85] hover:text-red-400 cursor-pointer transition-colors p-1"
+                                className={`cursor-pointer transition-colors p-1 ${t('text-[#8E8B85] hover:text-red-400', 'text-[#6B7280] hover:text-red-500')}`}
                                 title="Remover item"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
 
-                            <div className="bg-[#181614] border border-[#2A2724] rounded-lg px-2.5 py-1 flex items-center gap-3 text-white font-bold text-xs">
+                            <div className={`rounded-lg px-2.5 py-1 flex items-center gap-3 font-bold text-xs ${t('bg-[#181614] border border-[#2A2724] text-white', 'bg-[#F3F4F6] border border-[#E5E5E5] text-[#1A1A1A]')}`}>
                               <button
                                 onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
-                                className="text-[#8E8B85] hover:text-white cursor-pointer"
+                                className={`cursor-pointer ${t('text-[#8E8B85] hover:text-white', 'text-[#6B7280] hover:text-[#1A1A1A]')}`}
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
-                              <span className="font-mono text-xs text-white min-w-[14px] text-center">{item.quantity}</span>
+                              <span className={`font-mono text-xs min-w-[14px] text-center ${t('text-white', 'text-[#1A1A1A]')}`}>{item.quantity}</span>
                               <button
                                 onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
-                                className="text-[#8E8B85] hover:text-white cursor-pointer"
+                                className={`cursor-pointer ${t('text-[#8E8B85] hover:text-white', 'text-[#6B7280] hover:text-[#1A1A1A]')}`}
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
@@ -1202,15 +1205,15 @@ export default function PublicMenuPage() {
                   </div>
 
                   {/* Coupon Form */}
-                  <form onSubmit={handleApplyCoupon} className="border-t border-[#262626] pt-4">
-                    <label className="text-[10px] font-mono font-bold uppercase tracking-wider block mb-1.5 text-[#9CA3AF]">Cupom de Desconto</label>
+                  <form onSubmit={handleApplyCoupon} className={`pt-4 ${t('border-t border-[#262626]', 'border-t border-[#E5E5E5]')}`}>
+                    <label className={`text-[10px] font-mono font-bold uppercase tracking-wider block mb-1.5 ${t('text-[#9CA3AF]', 'text-[#4B5563]')}`}>Cupom de Desconto</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         placeholder="Ex: SUSHI10"
                         value={couponInput}
                         onChange={(e) => setCouponInput(e.target.value)}
-                        className="flex-1 bg-[#0A0A0A] border border-[#262626] text-white px-3 py-1.5 rounded-xl text-xs font-mono uppercase focus:outline-none focus:border-[#FF6A00]"
+                        className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-mono uppercase focus:outline-none focus:border-[#FF6A00] ${t('bg-[#0A0A0A] border border-[#262626] text-white', 'bg-[#F9FAFB] border border-[#E5E5E5] text-[#1A1A1A]')}`}
                       />
                       <button
                         type="submit"
@@ -1229,9 +1232,9 @@ export default function PublicMenuPage() {
                     )}
 
                     {appliedCoupon && (
-                      <div className="mt-2.5 flex items-center justify-between bg-[#0A0A0A] text-[#FF6A00] border border-[#FF6A00]/40 px-3 py-1.5 rounded-xl text-[10px] font-semibold">
+                      <div className={`mt-2.5 flex items-center justify-between text-[#FF6A00] border border-[#FF6A00]/40 px-3 py-1.5 rounded-xl text-[10px] font-semibold ${t('bg-[#0A0A0A]', 'bg-[#FFF7ED]')}`}>
                         <span>Cupom Ativo: <span className="font-mono font-bold">{appliedCoupon.code}</span></span>
-                        <button type="button" onClick={removeCoupon} className="underline hover:text-white">Remover</button>
+                        <button type="button" onClick={removeCoupon} className={`underline ${t('hover:text-white', 'hover:text-[#1A1A1A]')}`}>Remover</button>
                       </div>
                     )}
                   </form>
@@ -1240,11 +1243,11 @@ export default function PublicMenuPage() {
             </div>
 
             {/* Cart Drawer Footer */}
-            <div className="p-5 border-t border-[#262626] bg-[#0A0A0A] shrink-0 space-y-4">
-              <div className="space-y-2 text-xs text-[#9CA3AF]">
+            <div className={`p-5 shrink-0 space-y-4 ${t('border-t border-[#262626] bg-[#0A0A0A]', 'border-t border-[#E5E5E5] bg-[#F9FAFB]')}`}>
+              <div className={`space-y-2 text-xs ${t('text-[#9CA3AF]', 'text-[#4B5563]')}`}>
                 <div className="flex justify-between items-center">
                   <span>Subtotal</span>
-                  <span className="font-bold text-white font-mono text-sm">R$ {formatCurrency(subtotal).replace('.', ',')}</span>
+                  <span className={`font-bold font-mono text-sm ${t('text-white', 'text-[#1A1A1A]')}`}>R$ {formatCurrency(subtotal).replace('.', ',')}</span>
                 </div>
                 {deliveryMethod === 'delivery' && (
                   <div className="flex justify-between items-center">
@@ -1264,8 +1267,8 @@ export default function PublicMenuPage() {
                     <span className="font-bold font-mono">- R$ {formatCurrency(discountAmount).replace('.', ',')}</span>
                   </div>
                 )}
-                <div className="border-t border-[#262626] pt-2.5 flex justify-between items-center mt-2">
-                  <span className="text-white font-extrabold text-sm sm:text-base">Total do Pedido</span>
+                <div className={`pt-2.5 flex justify-between items-center mt-2 ${t('border-t border-[#262626]', 'border-t border-[#E5E5E5]')}`}>
+                  <span className={`font-extrabold text-sm sm:text-base ${t('text-white', 'text-[#1A1A1A]')}`}>Total do Pedido</span>
                   <span className="font-mono text-lg sm:text-xl font-black text-[#FF6A00]">
                     R$ {formatCurrency(finalTotal).replace('.', ',')}
                   </span>
@@ -1281,10 +1284,10 @@ export default function PublicMenuPage() {
 
                   <button
                     disabled
-                    className="w-full bg-[#1C1A18] text-[#6B6B6B] border border-[#2A2724] font-bold text-sm py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed shadow-inner"
+                    className={`w-full font-bold text-sm py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed shadow-inner ${t('bg-[#1C1A18] text-[#6B6B6B] border border-[#2A2724]', 'bg-[#F3F4F6] text-[#9CA3AF] border border-[#E5E5E5]')}`}
                   >
                     <span>Fechado no Momento</span>
-                    <ChevronRight className="w-4 h-4 text-[#6B6B6B]" />
+                    <ChevronRight className={`w-4 h-4 ${t('text-[#6B6B6B]', 'text-[#9CA3AF]')}`} />
                   </button>
                 </div>
               ) : (
@@ -1310,21 +1313,21 @@ export default function PublicMenuPage() {
       {/* ==================== 7. CHECKOUT WIZARD DIALOG (3 STEPS) ==================== */}
       {isCheckoutOpen && (
         <div className="fixed inset-0 bg-[#0A0A0A]/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-[20px] border border-[#262626] bg-[#161616] text-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className={`w-full max-w-lg rounded-[20px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${t('border border-[#262626] bg-[#161616] text-white', 'border border-[#E5E5E5] bg-white text-[#1A1A1A]')}`}>
             {/* Header */}
             <div className="p-5 pb-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={handleCheckoutHeaderBack}
-                  className="p-2 rounded-xl bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white cursor-pointer transition-colors shrink-0"
+                  className={`p-2 rounded-xl cursor-pointer transition-colors shrink-0 ${t('bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white', 'bg-[#F3F4F6] border border-[#E5E5E5] hover:bg-[#E5E7EB] text-[#1A1A1A]')}`}
                   title="Voltar"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div>
                   <p className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-[#FF6A00]">Checkout</p>
-                  <h3 className="font-display font-black text-lg text-white leading-tight">Finalizar Pedido</h3>
+                  <h3 className={`font-display font-black text-lg leading-tight ${t('text-white', 'text-[#1A1A1A]')}`}>Finalizar Pedido</h3>
                 </div>
               </div>
               <button
@@ -1332,7 +1335,7 @@ export default function PublicMenuPage() {
                   setIsCheckoutOpen(false);
                   setIsCartOpen(true);
                 }}
-                className="p-1.5 rounded-xl text-[#9CA3AF] hover:text-white hover:bg-[#262626] cursor-pointer transition-colors shrink-0"
+                className={`p-1.5 rounded-xl cursor-pointer transition-colors shrink-0 ${t('text-[#9CA3AF] hover:text-white hover:bg-[#262626]', 'text-[#6B7280] hover:text-[#1A1A1A] hover:bg-[#F3F4F6]')}`}
                 title="Voltar ao Carrinho"
               >
                 <X className="w-5 h-5" />
@@ -1350,14 +1353,14 @@ export default function PublicMenuPage() {
                   <div className="flex flex-col items-center gap-1.5 w-16">
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
-                        checkoutStep >= s.n ? 'bg-[#FF6A00] text-white' : 'bg-[#262626] text-[#6B7280]'
+                        checkoutStep >= s.n ? 'bg-[#FF6A00] text-white' : t('bg-[#262626] text-[#6B7280]', 'bg-[#E5E7EB] text-[#6B7280]')
                       }`}
                     >
                       {s.n}
                     </div>
                     <span
                       className={`text-[9px] font-bold uppercase tracking-wide text-center leading-tight ${
-                        checkoutStep >= s.n ? 'text-white' : 'text-[#6B7280]'
+                        checkoutStep >= s.n ? t('text-white', 'text-[#1A1A1A]') : 'text-[#6B7280]'
                       }`}
                     >
                       {s.label}
@@ -1366,7 +1369,7 @@ export default function PublicMenuPage() {
                   {idx < arr.length - 1 && (
                     <div
                       className={`h-0.5 flex-1 mt-4 rounded-full transition-colors ${
-                        checkoutStep > s.n ? 'bg-[#FF6A00]' : 'bg-[#262626]'
+                        checkoutStep > s.n ? 'bg-[#FF6A00]' : t('bg-[#262626]', 'bg-[#E5E7EB]')
                       }`}
                     />
                   )}
@@ -1374,7 +1377,7 @@ export default function PublicMenuPage() {
               ))}
             </div>
 
-            <form onSubmit={handleCheckoutSubmit} className="flex-1 overflow-y-auto p-5 pt-4 border-t border-[#262626] space-y-4">
+            <form onSubmit={handleCheckoutSubmit} className={`flex-1 overflow-y-auto p-5 pt-4 space-y-4 ${t('border-t border-[#262626]', 'border-t border-[#E5E5E5]')}`}>
               {checkoutError && (
                 <div className="bg-[#DC2626]/20 border border-[#DC2626]/40 text-[#DC2626] text-xs p-3 rounded-xl flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -1386,14 +1389,14 @@ export default function PublicMenuPage() {
               {checkoutStep === 1 && (
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-wide text-white flex items-center gap-1.5">
+                    <h4 className={`text-xs font-black uppercase tracking-wide flex items-center gap-1.5 ${t('text-white', 'text-[#1A1A1A]')}`}>
                       <span className="text-[#FF6A00]">1.</span>
                       <span>Seus Dados de Contato</span>
                     </h4>
-                    <div className="h-px bg-[#262626] mt-2 mb-4" />
+                    <div className={`h-px mt-2 mb-4 ${t('bg-[#262626]', 'bg-[#E5E5E5]')}`} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-mono font-bold uppercase tracking-wider block mb-1 text-[#93A5C4]">Nome Completo*</label>
+                        <label className={`text-[10px] font-mono font-bold uppercase tracking-wider block mb-1 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Nome Completo*</label>
                         <div className="relative">
                           <User className="w-3.5 h-3.5 text-[#6B7280] absolute left-3.5 top-3" />
                           <input
@@ -1402,13 +1405,13 @@ export default function PublicMenuPage() {
                             placeholder="Ex: João da Silva Santos"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs font-mono rounded-lg bg-[#141414] border border-[#262626] text-white placeholder-[#6B7280] focus:outline-none focus:border-[#FF6A00] transition-colors"
+                            className={`w-full pl-9 pr-3 py-2.5 text-xs font-mono rounded-lg focus:outline-none focus:border-[#FF6A00] transition-colors ${t('bg-[#141414] border border-[#262626] text-white placeholder-[#6B7280]', 'bg-white border border-[#E5E5E5] text-[#1A1A1A] placeholder-[#9CA3AF]')}`}
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-mono font-bold uppercase tracking-wider block mb-1 text-[#93A5C4]">Telefone/WhatsApp*</label>
+                        <label className={`text-[10px] font-mono font-bold uppercase tracking-wider block mb-1 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Telefone/WhatsApp*</label>
                         <div className="relative">
                           <Phone className="w-3.5 h-3.5 text-[#6B7280] absolute left-3.5 top-3" />
                           <input
@@ -1417,7 +1420,7 @@ export default function PublicMenuPage() {
                             placeholder="Ex: (11) 99999-8888"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs font-mono rounded-lg bg-[#141414] border border-[#262626] text-white placeholder-[#6B7280] focus:outline-none focus:border-[#FF6A00] transition-colors"
+                            className={`w-full pl-9 pr-3 py-2.5 text-xs font-mono rounded-lg focus:outline-none focus:border-[#FF6A00] transition-colors ${t('bg-[#141414] border border-[#262626] text-white placeholder-[#6B7280]', 'bg-white border border-[#E5E5E5] text-[#1A1A1A] placeholder-[#9CA3AF]')}`}
                           />
                         </div>
                       </div>
@@ -1425,7 +1428,7 @@ export default function PublicMenuPage() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-mono font-bold uppercase tracking-wider block mb-1.5 text-[#93A5C4]">Meio de Entrega</label>
+                    <label className={`text-[10px] font-mono font-bold uppercase tracking-wider block mb-1.5 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Meio de Entrega</label>
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { id: 'delivery', label: 'Delivery', emoji: '🛵' },
@@ -1438,7 +1441,7 @@ export default function PublicMenuPage() {
                           className={`py-2.5 text-xs rounded-lg border-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                             deliveryMethod === m.id
                               ? 'border-[#FF6A00] bg-[#FF6A00]/10 text-[#FF6A00] font-black'
-                              : 'border-[#262626] bg-[#141414] text-[#9CA3AF] font-bold hover:text-white'
+                              : t('border-[#262626] bg-[#141414] text-[#9CA3AF] font-bold hover:text-white', 'border-[#E5E5E5] bg-white text-[#4B5563] font-bold hover:text-[#1A1A1A]')
                           }`}
                         >
                           <span>{m.emoji}</span>
@@ -1450,7 +1453,7 @@ export default function PublicMenuPage() {
 
                   {deliveryMethod === 'delivery' ? (
                     <div>
-                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider block mb-1.5 text-[#93A5C4]">Endereço de Entrega</label>
+                      <label className={`text-[10px] font-mono font-bold uppercase tracking-wider block mb-1.5 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Endereço de Entrega</label>
                       <div className="relative">
                         <MapPin className="w-3.5 h-3.5 text-[#6B7280] absolute left-3.5 top-3" />
                         <input
@@ -1459,18 +1462,18 @@ export default function PublicMenuPage() {
                           placeholder="Ex: Rua das Flores, 123, Bairro Centro"
                           value={address}
                           onChange={(e) => setAddress(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2.5 text-xs font-mono rounded-lg bg-[#141414] border border-[#262626] text-white placeholder-[#6B7280] focus:outline-none focus:border-[#FF6A00] transition-colors"
+                          className={`w-full pl-9 pr-3 py-2.5 text-xs font-mono rounded-lg focus:outline-none focus:border-[#FF6A00] transition-colors ${t('bg-[#141414] border border-[#262626] text-white placeholder-[#6B7280]', 'bg-white border border-[#E5E5E5] text-[#1A1A1A] placeholder-[#9CA3AF]')}`}
                         />
                       </div>
                     </div>
                   ) : (
                     <div className="p-4 rounded-2xl bg-[#FF6A00]/10 border border-[#FF6A00]/30 space-y-1.5">
-                      <div className="flex items-center gap-2 text-white font-black text-sm">
+                      <div className={`flex items-center gap-2 font-black text-sm ${t('text-white', 'text-[#1A1A1A]')}`}>
                         <MapPin className="w-4 h-4 text-[#FF6A00] shrink-0" />
                         <span>Retirada no Local</span>
                       </div>
-                      <p className="text-xs text-white/90 font-semibold pl-6">{visualConfig.address || 'Endereço da loja não configurado'}</p>
-                      <p className="text-[11px] text-[#93A5C4] pl-6">Você será avisado por WhatsApp assim que o pedido estiver pronto para retirar.</p>
+                      <p className={`text-xs font-semibold pl-6 ${t('text-white/90', 'text-[#1A1A1A]/90')}`}>{visualConfig.address || 'Endereço da loja não configurado'}</p>
+                      <p className={`text-[11px] pl-6 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Você será avisado por WhatsApp assim que o pedido estiver pronto para retirar.</p>
                     </div>
                   )}
                 </div>
@@ -1480,11 +1483,11 @@ export default function PublicMenuPage() {
               {checkoutStep === 2 && (
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-wide text-white flex items-center gap-1.5">
+                    <h4 className={`text-xs font-black uppercase tracking-wide flex items-center gap-1.5 ${t('text-white', 'text-[#1A1A1A]')}`}>
                       <span className="text-[#FF6A00]">2.</span>
                       <span>Forma de Pagamento</span>
                     </h4>
-                    <div className="h-px bg-[#262626] mt-2 mb-4" />
+                    <div className={`h-px mt-2 mb-4 ${t('bg-[#262626]', 'bg-[#E5E5E5]')}`} />
                     <div className="grid grid-cols-3 gap-2">
                       {[
                         { id: 'pix', label: 'Pix', icon: Landmark },
@@ -1506,7 +1509,7 @@ export default function PublicMenuPage() {
                             className={`py-3 rounded-lg border-2 transition-colors cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                               isSelected
                                 ? 'border-[#FF6A00] bg-[#FF6A00]/10 text-[#FF6A00] font-black'
-                                : 'border-[#262626] bg-[#141414] text-[#9CA3AF] font-bold hover:text-white'
+                                : t('border-[#262626] bg-[#141414] text-[#9CA3AF] font-bold hover:text-white', 'border-[#E5E5E5] bg-white text-[#4B5563] font-bold hover:text-[#1A1A1A]')
                             }`}
                           >
                             <IconComp className="w-4.5 h-4.5" />
@@ -1523,8 +1526,8 @@ export default function PublicMenuPage() {
                         <>
                           <Info className="w-4 h-4 text-[#FF6A00] shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-xs font-black text-white">Como pagar via Pix</p>
-                            <p className="text-[11px] text-[#93A5C4] mt-0.5">
+                            <p className={`text-xs font-black ${t('text-white', 'text-[#1A1A1A]')}`}>Como pagar via Pix</p>
+                            <p className={`text-[11px] mt-0.5 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>
                               Ao confirmar, enviaremos um resumo do pedido por WhatsApp junto com a chave Pix para pagamento.
                             </p>
                           </div>
@@ -1533,8 +1536,8 @@ export default function PublicMenuPage() {
                         <>
                           <CreditCard className="w-4 h-4 text-[#FF6A00] shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-xs font-black text-white">Pagar na Entrega</p>
-                            <p className="text-[11px] text-[#93A5C4] mt-0.5">
+                            <p className={`text-xs font-black ${t('text-white', 'text-[#1A1A1A]')}`}>Pagar na Entrega</p>
+                            <p className={`text-[11px] mt-0.5 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>
                               Levamos a maquininha física até você. Aceitamos as principais bandeiras de crédito e débito.
                             </p>
                           </div>
@@ -1545,7 +1548,7 @@ export default function PublicMenuPage() {
 
                   {paymentMethod === 'cash' && (
                     <div className="p-3.5 rounded-xl bg-[#FF6A00]/10 border border-[#FF6A00]/30 space-y-3 animate-in fade-in duration-200">
-                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider block text-[#93A5C4]">
+                      <label className={`text-[10px] font-mono font-bold uppercase tracking-wider block ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>
                         Precisa de troco para o Entregador?*
                       </label>
                       <div className="grid grid-cols-2 gap-2">
@@ -1555,7 +1558,7 @@ export default function PublicMenuPage() {
                           className={`py-2 text-xs rounded-full border-2 transition-colors cursor-pointer ${
                             needsChange === true
                               ? 'border-[#FF6A00] bg-[#FF6A00]/20 text-[#FF6A00] font-black'
-                              : 'border-[#262626] bg-[#141414] text-[#9CA3AF] font-bold hover:text-white'
+                              : t('border-[#262626] bg-[#141414] text-[#9CA3AF] font-bold hover:text-white', 'border-[#E5E5E5] bg-white text-[#4B5563] font-bold hover:text-[#1A1A1A]')
                           }`}
                         >
                           Sim, Preciso
@@ -1570,7 +1573,7 @@ export default function PublicMenuPage() {
                           className={`py-2 text-xs rounded-full border-2 transition-colors cursor-pointer ${
                             needsChange === false
                               ? 'border-[#FF6A00] bg-[#FF6A00]/20 text-[#FF6A00] font-black'
-                              : 'border-[#262626] bg-[#141414] text-[#9CA3AF] font-bold hover:text-white'
+                              : t('border-[#262626] bg-[#141414] text-[#9CA3AF] font-bold hover:text-white', 'border-[#E5E5E5] bg-white text-[#4B5563] font-bold hover:text-[#1A1A1A]')
                           }`}
                         >
                           Não Preciso (Valor Exato)
@@ -1589,7 +1592,7 @@ export default function PublicMenuPage() {
 
                         return (
                           <div className="pt-1 space-y-2">
-                            <label className="text-[10px] font-mono font-bold uppercase tracking-wider block text-[#93A5C4]">
+                            <label className={`text-[10px] font-mono font-bold uppercase tracking-wider block ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>
                               Troco para quanto? (Valor da nota em dinheiro)*
                             </label>
                             <div className="relative">
@@ -1600,31 +1603,31 @@ export default function PublicMenuPage() {
                                 placeholder={`Ex: ${suggestedPlaceholder}`}
                                 value={changeAmount}
                                 onChange={(e) => setChangeAmount(e.target.value)}
-                                className={`w-full pl-10 pr-3 py-2.5 text-xs font-mono rounded-lg bg-[#141414] border text-white placeholder-[#6B7280] focus:outline-none transition-colors ${
+                                className={`w-full pl-10 pr-3 py-2.5 text-xs font-mono rounded-lg border focus:outline-none transition-colors ${t('bg-[#141414] text-white placeholder-[#6B7280]', 'bg-white text-[#1A1A1A] placeholder-[#9CA3AF]')} ${
                                   isTooLow
                                     ? 'border-red-500/80 focus:border-red-500'
                                     : isValidNumber
                                     ? 'border-emerald-500/80 focus:border-emerald-500'
-                                    : 'border-[#262626] focus:border-[#FF6A00]'
+                                    : t('border-[#262626] focus:border-[#FF6A00]', 'border-[#E5E5E5] focus:border-[#FF6A00]')
                                 }`}
                               />
                             </div>
 
-                            <div className="text-[11px] font-mono space-y-1 bg-[#0A0A0A] p-2.5 rounded-lg border border-[#222222]">
-                              <div className="flex justify-between text-[#9CA3AF]">
+                            <div className={`text-[11px] font-mono space-y-1 p-2.5 rounded-lg border ${t('bg-[#0A0A0A] border-[#222222]', 'bg-[#F9FAFB] border-[#E5E5E5]')}`}>
+                              <div className={`flex justify-between ${t('text-[#9CA3AF]', 'text-[#4B5563]')}`}>
                                 <span>Total do pedido:</span>
-                                <span className="font-bold text-white">R$ {formatCurrency(finalTotal).replace('.', ',')}</span>
+                                <span className={`font-bold ${t('text-white', 'text-[#1A1A1A]')}`}>R$ {formatCurrency(finalTotal).replace('.', ',')}</span>
                               </div>
 
                               {isTooLow && (
-                                <div className="text-red-400 font-bold flex items-center gap-1 pt-0.5 border-t border-[#262626]">
+                                <div className={`text-red-400 font-bold flex items-center gap-1 pt-0.5 border-t ${t('border-[#262626]', 'border-[#E5E5E5]')}`}>
                                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                                   <span>O valor deve ser de no mínimo R$ {formatCurrency(finalTotal).replace('.', ',')}</span>
                                 </div>
                               )}
 
                               {isValidNumber && !isTooLow && (
-                                <div className="text-emerald-400 font-bold flex items-center justify-between pt-0.5 border-t border-[#262626]">
+                                <div className={`text-emerald-400 font-bold flex items-center justify-between pt-0.5 border-t ${t('border-[#262626]', 'border-[#E5E5E5]')}`}>
                                   <span className="flex items-center gap-1">
                                     <Check className="w-3.5 h-3.5 shrink-0" />
                                     <span>Seu troco será:</span>
@@ -1644,17 +1647,17 @@ export default function PublicMenuPage() {
               {/* ---------- STEP 3: REVISÃO FINAL ---------- */}
               {checkoutStep === 3 && (
                 <div className="space-y-4 animate-in fade-in duration-200">
-                  <h4 className="text-xs font-black uppercase tracking-wide text-white">Revisão do Pedido</h4>
+                  <h4 className={`text-xs font-black uppercase tracking-wide ${t('text-white', 'text-[#1A1A1A]')}`}>Revisão do Pedido</h4>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border border-[#262626] bg-[#141414]">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border ${t('border-[#262626] bg-[#141414]', 'border-[#E5E5E5] bg-[#F9FAFB]')}`}>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#93A5C4]">Informações do Cliente</p>
-                      <p className="text-sm font-bold text-white">{name}</p>
-                      <p className="text-xs font-mono text-[#9CA3AF]">{phone}</p>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Informações do Cliente</p>
+                      <p className={`text-sm font-bold ${t('text-white', 'text-[#1A1A1A]')}`}>{name}</p>
+                      <p className={`text-xs font-mono ${t('text-[#9CA3AF]', 'text-[#4B5563]')}`}>{phone}</p>
                     </div>
-                    <div className="space-y-1 sm:border-l sm:border-[#262626] sm:pl-4">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#93A5C4]">Meio de Entrega</p>
-                      <p className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <div className={`space-y-1 sm:border-l sm:pl-4 ${t('sm:border-[#262626]', 'sm:border-[#E5E5E5]')}`}>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Meio de Entrega</p>
+                      <p className={`text-sm font-bold flex items-center gap-1.5 ${t('text-white', 'text-[#1A1A1A]')}`}>
                         {deliveryMethod === 'delivery' ? (
                           <MapPin className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
                         ) : (
@@ -1662,7 +1665,7 @@ export default function PublicMenuPage() {
                         )}
                         <span>{deliveryMethod === 'delivery' ? 'Entrega' : 'Retirada no Local'}</span>
                       </p>
-                      <p className="text-xs text-[#9CA3AF]">
+                      <p className={`text-xs ${t('text-[#9CA3AF]', 'text-[#4B5563]')}`}>
                         {deliveryMethod === 'delivery' ? (address || 'Endereço não informado') : (visualConfig.address || '-')}
                       </p>
                     </div>
@@ -1672,7 +1675,7 @@ export default function PublicMenuPage() {
                     <div className="w-5 h-5 rounded-full bg-[#22C55E]/20 flex items-center justify-center shrink-0">
                       <Check className="w-3 h-3 text-[#22C55E] stroke-[3]" />
                     </div>
-                    <span className="text-xs font-bold text-white">
+                    <span className={`text-xs font-bold ${t('text-white', 'text-[#1A1A1A]')}`}>
                       Método de Pagamento: <span className="text-[#22C55E]">
                         {paymentMethod === 'pix' ? 'Pix' : paymentMethod === 'credit_card' ? 'Cartão' : paymentMethod === 'debit_card' ? 'Cartão' : needsChange ? `Dinheiro (Troco para ${changeAmount || '?'})` : 'Dinheiro (Valor Exato)'}
                       </span>
@@ -1680,16 +1683,16 @@ export default function PublicMenuPage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#93A5C4] mb-1.5">Resumo dos Itens ({cart.length}x)</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Resumo dos Itens ({cart.length}x)</p>
                     <div className="space-y-1.5">
                       {cart.map((item, idx) => {
                         const price = safeNumber(item.product.promoPrice || item.product.price);
                         const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
                         const lineTotal = price * safeNumber(item.quantity, 1) + extrasTotal;
                         return (
-                          <div key={idx} className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#0A0A0A] border border-[#1f1f1f]">
-                            <span className="text-xs text-white font-semibold">{item.quantity}x {item.product.name}</span>
-                            <span className="text-xs font-mono font-bold text-white shrink-0">R$ {formatCurrency(lineTotal).replace('.', ',')}</span>
+                          <div key={idx} className={`flex items-center justify-between px-3 py-2 rounded-xl border ${t('bg-[#0A0A0A] border-[#1f1f1f]', 'bg-white border-[#E5E5E5]')}`}>
+                            <span className={`text-xs font-semibold ${t('text-white', 'text-[#1A1A1A]')}`}>{item.quantity}x {item.product.name}</span>
+                            <span className={`text-xs font-mono font-bold shrink-0 ${t('text-white', 'text-[#1A1A1A]')}`}>R$ {formatCurrency(lineTotal).replace('.', ',')}</span>
                           </div>
                         );
                       })}
@@ -1699,9 +1702,9 @@ export default function PublicMenuPage() {
               )}
 
               {/* ---------- FOOTER ---------- */}
-              <div className="pt-4 border-t border-[#262626] flex items-center justify-between gap-3">
+              <div className={`pt-4 flex items-center justify-between gap-3 ${t('border-t border-[#262626]', 'border-t border-[#E5E5E5]')}`}>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#93A5C4]">Total a ser pago</p>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Total a ser pago</p>
                   <p className="font-mono text-lg font-black text-[#FF6A00]">R$ {formatCurrency(finalTotal).replace('.', ',')}</p>
                 </div>
 
@@ -1709,7 +1712,7 @@ export default function PublicMenuPage() {
                   <button
                     type="button"
                     onClick={goToCheckoutStep2}
-                    className="px-6 py-2.5 rounded-full text-xs font-black cursor-pointer bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white transition-colors flex items-center gap-1.5"
+                    className={`px-6 py-2.5 rounded-full text-xs font-black cursor-pointer transition-colors flex items-center gap-1.5 ${t('bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white', 'bg-[#F3F4F6] border border-[#E5E5E5] hover:bg-[#E5E7EB] text-[#1A1A1A]')}`}
                   >
                     <span>Prosseguir</span>
                     <ChevronRight className="w-4 h-4" />
@@ -1721,14 +1724,14 @@ export default function PublicMenuPage() {
                     <button
                       type="button"
                       onClick={handleCheckoutHeaderBack}
-                      className="px-4 py-2.5 rounded-full text-xs font-black cursor-pointer bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white transition-colors"
+                      className={`px-4 py-2.5 rounded-full text-xs font-black cursor-pointer transition-colors ${t('bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white', 'bg-[#F3F4F6] border border-[#E5E5E5] hover:bg-[#E5E7EB] text-[#1A1A1A]')}`}
                     >
                       Voltar
                     </button>
                     <button
                       type="button"
                       onClick={goToCheckoutStep3}
-                      className="px-6 py-2.5 rounded-full text-xs font-black cursor-pointer bg-[#262626] border border-[#3a3a3a] hover:bg-[#333] text-white transition-colors flex items-center gap-1.5"
+                      className={`px-6 py-2.5 rounded-full text-xs font-black cursor-pointer transition-colors flex items-center gap-1.5 ${t('bg-[#262626] border border-[#3a3a3a] hover:bg-[#333] text-white', 'bg-[#E5E7EB] border border-[#D1D5DB] hover:bg-[#D1D5DB] text-[#1A1A1A]')}`}
                     >
                       <span>Prosseguir</span>
                       <ChevronRight className="w-4 h-4" />
@@ -1744,7 +1747,7 @@ export default function PublicMenuPage() {
                         setCheckoutError(null);
                         setCheckoutStep(2);
                       }}
-                      className="px-4 py-2.5 rounded-full text-xs font-black cursor-pointer bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white transition-colors"
+                      className={`px-4 py-2.5 rounded-full text-xs font-black cursor-pointer transition-colors ${t('bg-[#141414] border border-[#262626] hover:bg-[#1f1f1f] text-white', 'bg-[#F3F4F6] border border-[#E5E5E5] hover:bg-[#E5E7EB] text-[#1A1A1A]')}`}
                     >
                       Voltar
                     </button>
