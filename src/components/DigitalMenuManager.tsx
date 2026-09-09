@@ -703,7 +703,7 @@ export default function DigitalMenuManager() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Ingredientes (Separados por vírgula)</label>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Ingredientes que podem ser Removidos (Separados por vírgula)</label>
                   <input
                     type="text"
                     placeholder="Ex: Salmão, Cream Cheese, Arroz Shari, Cebolinha"
