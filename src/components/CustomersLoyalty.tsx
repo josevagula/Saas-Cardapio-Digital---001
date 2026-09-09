@@ -24,7 +24,7 @@ import {
 import { WasabiTag, SubtleSushiDivider, SushiRollIcon } from './SushiIcons';
 
 export default function CustomersLoyalty() {
-  const { customers, products, visualConfig, setVisualConfig, redeemReward, fetchCustomerLoyaltyHistory } = useApp();
+  const { customers, products, categories, visualConfig, setVisualConfig, redeemReward, fetchCustomerLoyaltyHistory } = useApp();
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'config'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   // Redemption is in-flight/feedback state per customer id — a customer
@@ -99,6 +99,23 @@ export default function CustomersLoyalty() {
     setHistoryEntries(await fetchCustomerLoyaltyHistory(cust.phone));
     setHistoryLoading(false);
   };
+
+  // Groups the product picker by category, in category order, with each
+  // group internally ordered the same way the cardápio itself sorts
+  // products within that category (categoryDisplayOrder). A product in
+  // multiple categories intentionally shows up under each one, same as on
+  // the public menu.
+  const productsByCategory = categories.map(cat => ({
+    category: cat,
+    products: products
+      .filter(p => p.categoryIds.includes(cat.id))
+      .sort((a, b) => {
+        const orderA = a.categoryDisplayOrder?.[cat.id] ?? Number.MAX_SAFE_INTEGER;
+        const orderB = b.categoryDisplayOrder?.[cat.id] ?? Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        return products.indexOf(a) - products.indexOf(b);
+      })
+  })).filter(group => group.products.length > 0);
 
   const ledgerTypeLabel: Record<LoyaltyLedgerEntry['type'], string> = {
     earn: 'Pontos ganhos',
@@ -350,8 +367,12 @@ export default function CustomersLoyalty() {
                     className="w-full px-3.5 py-2.5 text-xs input-sushi focus:outline-none"
                   >
                     <option value="" className="bg-[#141210]">Selecione um produto...</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id} className="bg-[#141210]">{p.name}</option>
+                    {productsByCategory.map(group => (
+                      <optgroup key={group.category.id} label={group.category.name} className="bg-[#141210]">
+                        {group.products.map(p => (
+                          <option key={p.id} value={p.id} className="bg-[#141210]">{p.name}</option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>
