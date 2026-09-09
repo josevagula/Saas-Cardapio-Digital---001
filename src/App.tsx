@@ -1,22 +1,29 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
-import DashboardOverview from './components/DashboardOverview';
-import DigitalMenuManager from './components/DigitalMenuManager';
-import OrdersManager from './components/OrdersManager';
-import CustomersLoyalty from './components/CustomersLoyalty';
-import FinancialManager from './components/FinancialManager';
-import AISmartAssistant from './components/AISmartAssistant';
-import VisualCustomizer from './components/VisualCustomizer';
-import PublicMenuPage from './components/PublicMenuPage';
-import MenuNotFoundPage from './components/MenuNotFoundPage';
-import LandingPages from './components/LandingPages';
-import LoginPage from './components/LoginPage';
-import TrialSignupPage from './components/TrialSignupPage';
 import PlanRenewalOverlay from './components/PlanRenewalOverlay';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Menu, Loader2 } from 'lucide-react';
 import { SushiLogoEmblem } from './components/SushiIcons';
+
+// Every one of these used to be a plain import, so visiting any single
+// screen (even the public cardápio a customer opens on their phone) pulled
+// down the whole app in one ~1.2MB bundle — the admin dashboard's charts,
+// Stripe/AI screens, and the landing page's animation library included.
+// Lazy-loading splits each into its own chunk that only loads when that
+// screen is actually shown.
+const DashboardOverview = lazy(() => import('./components/DashboardOverview'));
+const DigitalMenuManager = lazy(() => import('./components/DigitalMenuManager'));
+const OrdersManager = lazy(() => import('./components/OrdersManager'));
+const CustomersLoyalty = lazy(() => import('./components/CustomersLoyalty'));
+const FinancialManager = lazy(() => import('./components/FinancialManager'));
+const AISmartAssistant = lazy(() => import('./components/AISmartAssistant'));
+const VisualCustomizer = lazy(() => import('./components/VisualCustomizer'));
+const PublicMenuPage = lazy(() => import('./components/PublicMenuPage'));
+const MenuNotFoundPage = lazy(() => import('./components/MenuNotFoundPage'));
+const LandingPages = lazy(() => import('./components/LandingPages'));
+const LoginPage = lazy(() => import('./components/LoginPage'));
+const TrialSignupPage = lazy(() => import('./components/TrialSignupPage'));
 
 function LoadingScreen() {
   return (
@@ -44,9 +51,11 @@ export default function App() {
   if (!loggedIn) {
     return (
       <ErrorBoundary>
-        {publicView === 'login' && <LoginPage />}
-        {publicView === 'trial' && <TrialSignupPage />}
-        {publicView === 'landing' && <LandingPages />}
+        <Suspense fallback={<LoadingScreen />}>
+          {publicView === 'login' && <LoginPage />}
+          {publicView === 'trial' && <TrialSignupPage />}
+          {publicView === 'landing' && <LandingPages />}
+        </Suspense>
       </ErrorBoundary>
     );
   }
@@ -65,13 +74,17 @@ export default function App() {
     if (publicMenuNotFound) {
       return (
         <ErrorBoundary>
-          <MenuNotFoundPage />
+          <Suspense fallback={<LoadingScreen />}>
+            <MenuNotFoundPage />
+          </Suspense>
         </ErrorBoundary>
       );
     }
     return (
       <ErrorBoundary>
-        <PublicMenuPage />
+        <Suspense fallback={<LoadingScreen />}>
+          <PublicMenuPage />
+        </Suspense>
       </ErrorBoundary>
     );
   }
@@ -139,13 +152,15 @@ export default function App() {
 
           {/* Main Panel views */}
           <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
-            {currentView === 'dashboard' && <DashboardOverview />}
-            {currentView === 'menu_manager' && <DigitalMenuManager />}
-            {currentView === 'orders' && <OrdersManager />}
-            {currentView === 'customers' && <CustomersLoyalty />}
-            {currentView === 'financial' && <FinancialManager />}
-            {currentView === 'ai_assistant' && <AISmartAssistant />}
-            {currentView === 'customizer' && <VisualCustomizer />}
+            <Suspense fallback={<LoadingScreen />}>
+              {currentView === 'dashboard' && <DashboardOverview />}
+              {currentView === 'menu_manager' && <DigitalMenuManager />}
+              {currentView === 'orders' && <OrdersManager />}
+              {currentView === 'customers' && <CustomersLoyalty />}
+              {currentView === 'financial' && <FinancialManager />}
+              {currentView === 'ai_assistant' && <AISmartAssistant />}
+              {currentView === 'customizer' && <VisualCustomizer />}
+            </Suspense>
           </main>
         </div>
 
