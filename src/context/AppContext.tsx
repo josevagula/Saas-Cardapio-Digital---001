@@ -1169,6 +1169,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentView('dashboard');
   };
 
+  // The mock orders' createdAt values are frozen at a fixed past date, so a
+  // period filter (last 7 days, current month) compared against the real
+  // "now" would always find zero of them. Shifting every timestamp by the
+  // same offset — enough to land the most recent mock order right at "now"
+  // — keeps their relative spacing but makes them always look like they
+  // just happened, so Total de Pedidos has real orders to count no matter
+  // when someone opens the demo.
+  const rebaseDemoOrders = (): Order[] => {
+    const latestMockTimestamp = INITIAL_ORDERS.reduce(
+      (max, o) => Math.max(max, new Date(o.createdAt).getTime()),
+      0
+    );
+    const offset = Date.now() - latestMockTimestamp;
+    return INITIAL_ORDERS.map(o => ({
+      ...o,
+      createdAt: new Date(new Date(o.createdAt).getTime() + offset).toISOString()
+    }));
+  };
+
   // Shows the built-in mock dataset in the admin dashboard for prospects
   // trying the product from the landing page. Forces the demo dataset into
   // local state and flags isDemoMode so the sync effects above never read
@@ -1179,7 +1198,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVisualConfig(INITIAL_VISUAL_CONFIG);
     setCategories(INITIAL_CATEGORIES);
     setProducts(INITIAL_PRODUCTS);
-    setOrders(INITIAL_ORDERS);
+    setOrders(rebaseDemoOrders());
     setCoupons(INITIAL_COUPONS);
     setCustomers(INITIAL_CUSTOMERS);
     setAnalytics(INITIAL_ANALYTICS);

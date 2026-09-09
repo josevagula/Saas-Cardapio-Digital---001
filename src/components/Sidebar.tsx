@@ -189,19 +189,21 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
 
       {/* Footer Profile */}
       <div className="p-4 border-t border-[#2A211A] bg-[#0C0A08] space-y-3">
-        <div className="flex items-center gap-1.5 text-[10px] font-mono font-semibold" title={syncPending ? 'Salvando suas últimas alterações no servidor — não feche esta aba ainda.' : 'Todas as alterações já estão salvas no servidor.'}>
-          {syncPending ? (
-            <>
-              <Loader2 className="w-3 h-3 text-[#FB923C] animate-spin shrink-0" />
-              <span className="text-[#FB923C]">Salvando alterações...</span>
-            </>
-          ) : (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-              <span className="text-[#6B655C]">Tudo salvo</span>
-            </>
-          )}
-        </div>
+        {!isDemoMode && (
+          <div className="flex items-center gap-1.5 text-[10px] font-mono font-semibold" title={syncPending ? 'Salvando suas últimas alterações no servidor — não feche esta aba ainda.' : 'Todas as alterações já estão salvas no servidor.'}>
+            {syncPending ? (
+              <>
+                <Loader2 className="w-3 h-3 text-[#FB923C] animate-spin shrink-0" />
+                <span className="text-[#FB923C]">Salvando alterações...</span>
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                <span className="text-[#6B655C]">Tudo salvo</span>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <img 
@@ -238,25 +240,27 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           <span>Sair da Sessão</span>
         </button>
 
-        {planStatus === 'active' ? (
-          <button
-            onClick={() => {
-              if (window.confirm('Isso vai te levar até a página segura da Stripe para gerenciar ou cancelar sua assinatura. Continuar?')) {
-                cancelPlan().catch((err: any) => {
-                  window.alert(err.message || 'Não foi possível abrir o gerenciamento da assinatura agora. Tente novamente.');
-                });
-              }
-            }}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-[#6B655C] hover:text-red-400 transition-all font-semibold cursor-pointer"
-          >
-            <ShieldAlert className="w-3 h-3" />
-            <span>Cancelar assinatura</span>
-          </button>
-        ) : (
-          <div className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-red-400 font-bold">
-            <ShieldAlert className="w-3 h-3" />
-            <span>Assinatura cancelada</span>
-          </div>
+        {!isDemoMode && (
+          planStatus === 'active' ? (
+            <button
+              onClick={() => {
+                if (window.confirm('Isso vai te levar até a página segura da Stripe para gerenciar ou cancelar sua assinatura. Continuar?')) {
+                  cancelPlan().catch((err: any) => {
+                    window.alert(err.message || 'Não foi possível abrir o gerenciamento da assinatura agora. Tente novamente.');
+                  });
+                }
+              }}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-[#6B655C] hover:text-red-400 transition-all font-semibold cursor-pointer"
+            >
+              <ShieldAlert className="w-3 h-3" />
+              <span>Cancelar assinatura</span>
+            </button>
+          ) : (
+            <div className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-red-400 font-bold">
+              <ShieldAlert className="w-3 h-3" />
+              <span>Assinatura cancelada</span>
+            </div>
+          )
         )}
       </div>
     </aside>

@@ -23,8 +23,20 @@ export default function DashboardOverview() {
 
   // Chart view state and custom date ranges
   const [chartView, setChartView] = useState<'semanal' | 'mensal' | 'personalizado'>('semanal');
-  const [startDate, setStartDate] = useState('2026-07-01');
-  const [endDate, setEndDate] = useState('2026-07-07');
+  // The demo's mock orders are rebased (see rebaseDemoOrders in AppContext)
+  // to always land within the last couple of days of "now" — default the
+  // custom range there to match, instead of the fixed placeholder window
+  // real accounts start with.
+  const [startDate, setStartDate] = useState(() => {
+    if (!isDemoMode) return '2026-07-01';
+    const d = new Date();
+    d.setDate(d.getDate() - 2);
+    return d.toISOString().slice(0, 10);
+  });
+  const [endDate, setEndDate] = useState(() => {
+    if (!isDemoMode) return '2026-07-07';
+    return new Date().toISOString().slice(0, 10);
+  });
 
   // Format Currency
   const formatCurrency = (val: number) => {
@@ -76,14 +88,15 @@ export default function DashboardOverview() {
     }
     return ordersInRange(orders, new Date(startDate), new Date(endDate));
   };
-  const periodOrders = isDemoMode ? [] : getPeriodOrders();
+  const periodOrders = getPeriodOrders();
 
-  // KPI figures: the demo dataset keeps its intentionally impressive mock
-  // numbers, every real account only ever shows what it actually sold —
-  // Total de Pedidos tracks whichever period is selected above (semanal,
-  // mensal or personalizado), not the account's all-time order count.
+  // KPI figures: the demo dataset keeps its intentionally impressive
+  // revenue numbers, every real account only ever shows what it actually
+  // sold — but Total de Pedidos always tracks whichever period is selected
+  // above (semanal, mensal or personalizado), demo included, exactly like a
+  // real account would.
   const kpi = isDemoMode
-    ? { dailyRevenue: analytics.dailyRevenue, weeklyRevenue: analytics.weeklyRevenue, monthlyRevenue: analytics.monthlyRevenue, totalOrders: analytics.totalOrders, ticketAverage: analytics.ticketAverage }
+    ? { dailyRevenue: analytics.dailyRevenue, weeklyRevenue: analytics.weeklyRevenue, monthlyRevenue: analytics.monthlyRevenue, totalOrders: periodOrders.length, ticketAverage: analytics.ticketAverage }
     : { dailyRevenue: realStats.dailyRevenue, weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue, totalOrders: periodOrders.length, ticketAverage: realStats.ticketAverage };
 
   // Determine active chart data and total based on the selected view
@@ -287,18 +300,11 @@ export default function DashboardOverview() {
             {kpi.totalOrders}
           </h3>
           <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#F97316] font-bold">
-            {isDemoMode ? (
-              <>
-                <ArrowUpRight className="w-3 h-3" />
-                <span>+8.2% conversão</span>
-              </>
-            ) : (
-              <span className="text-[#A8A29A]">
-                {chartView === 'semanal' && 'Pedidos reais (7 dias)'}
-                {chartView === 'mensal' && 'Pedidos reais (mês corrente)'}
-                {chartView === 'personalizado' && 'Pedidos reais (período selecionado)'}
-              </span>
-            )}
+            <span className="text-[#A8A29A]">
+              {chartView === 'semanal' && 'Pedidos reais (7 dias)'}
+              {chartView === 'mensal' && 'Pedidos reais (mês corrente)'}
+              {chartView === 'personalizado' && 'Pedidos reais (período selecionado)'}
+            </span>
           </div>
         </div>
 
