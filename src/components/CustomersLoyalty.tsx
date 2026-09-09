@@ -48,11 +48,12 @@ export default function CustomersLoyalty() {
   const [activeLoyalty, setActiveLoyalty] = useState(savedLoyaltyConfig.active);
   const [justSaved, setJustSaved] = useState(false);
 
-  // Filters out obvious test/junk entries by name only — a customer must
-  // never disappear from this list just because their first order hasn't
-  // been delivered yet (orderCount only increments on delivery), so that is
-  // deliberately not a filter condition here.
-  const cleanCustomers = customers.filter(c => c.name && !/^[0-9a-zA-Z]{3,6}$/.test(c.name) && c.name.length > 2 && c.name !== "23413" && c.name !== "12312" && c.name !== "gdfg");
+  // Only customers with at least one completed (delivered) order belong in
+  // the loyalty club list — orderCount only increments on delivery (see
+  // creditOrderLoyalty), so this deliberately excludes someone who merely
+  // placed an order that's still pending/cancelled. Also filters out
+  // obvious test/junk entries by name.
+  const cleanCustomers = customers.filter(c => c.name && !/^[0-9a-zA-Z]{3,6}$/.test(c.name) && c.name.length > 2 && c.name !== "23413" && c.name !== "12312" && c.name !== "gdfg" && c.orderCount > 0);
 
   const filteredCustomers = cleanCustomers.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
