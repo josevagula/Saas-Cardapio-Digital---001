@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { compressImage } from '../utils/imageUtils';
-import { 
-  Palette, 
-  Smartphone, 
-  Upload, 
-  Check, 
-  Layout, 
-  Compass, 
-  Eye, 
-  Globe, 
+import { safeNumber, formatCurrency } from '../utils/formatters';
+import {
+  Palette,
+  Smartphone,
+  Upload,
+  Check,
+  Layout,
+  Compass,
+  Eye,
+  Globe,
   Sliders,
   Sparkles,
   MapPin,
@@ -29,12 +30,15 @@ import {
   Tag,
   Star,
   Heart,
-  Utensils
+  Utensils,
+  ShoppingCart,
+  Search,
+  ChevronRight
 } from 'lucide-react';
 import { checkIsStoreOpen } from '../utils/storeStatus';
 
 export default function VisualCustomizer() {
-  const { visualConfig, setVisualConfig, currentPlan, categories, isDemoMode } = useApp();
+  const { visualConfig, setVisualConfig, currentPlan, categories, products, isDemoMode } = useApp();
 
   const [establishmentName, setEstablishmentName] = useState(visualConfig.establishmentName);
   const [menuDescription, setMenuDescription] = useState(visualConfig.menuDescription || '');
@@ -693,7 +697,10 @@ export default function VisualCustomizer() {
             <p className="text-xs text-[#A8A29A]">Veja como fica no smartphone do cliente</p>
           </div>
 
-          {/* Smartphone Frame */}
+          {/* Smartphone Frame — mirrors the real PublicMenuPage's markup/classes
+              (not the primaryColor/themeMode pickers below, which the real
+              cardápio never actually applies) so this is what a customer
+              really sees, not an idealized mockup. */}
           <div className="w-[320px] h-[580px] rounded-[36px] bg-[#0C0A08] p-3 shadow-2xl border-[6px] border-[#2A211A] relative overflow-hidden flex flex-col justify-between">
             {/* Topnotch camera slot */}
             <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-24 h-4 bg-[#141210] rounded-full z-10 flex items-center justify-center">
@@ -701,100 +708,139 @@ export default function VisualCustomizer() {
             </div>
 
             {/* Inner frame mock cardápio */}
-            <div className={`flex-1 rounded-[28px] overflow-y-auto overflow-x-hidden flex flex-col relative ${
-              themeMode === 'dark' ? 'bg-[#0C0A08] text-slate-100' : 'bg-white text-slate-800'
-            }`}>
-              {/* header banner */}
-              <div className="h-24 relative bg-slate-800 shrink-0">
-                <img 
-                  src={bannerUrl || "https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=500"} 
-                  alt="Banner" 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/40"></div>
-
-                {/* mini logo */}
-                <div className="absolute -bottom-4 left-4">
-                  <img 
-                    src={logoUrl || "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=100"} 
-                    alt="Logo" 
-                    className="w-12 h-12 rounded-full border-2 border-[#2A211A] object-cover shadow-md"
+            <div className="flex-1 rounded-[28px] overflow-y-auto overflow-x-hidden flex flex-col relative bg-[#0A0A0A] text-white">
+              {/* sticky top navbar */}
+              <div className="py-2 px-2.5 border-b border-[#22201D] flex items-center justify-between shrink-0 sticky top-0 z-10 bg-[#0F0D0B]/95">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <img
+                    src={logoUrl || "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=100"}
+                    alt="Logo"
+                    className="w-6 h-6 rounded-full object-cover border border-[#262626] shrink-0"
                   />
+                  <div className="min-w-0 leading-tight">
+                    <p className="font-display font-black text-[9px] tracking-tight text-white uppercase truncate">
+                      {establishmentName}
+                    </p>
+                    <p className="text-[6px] font-mono font-semibold text-[#9CA3AF] tracking-wide truncate">
+                      DELIVERY • CARDÁPIO DIGITAL
+                    </p>
+                  </div>
+                </div>
+                <div className="px-2 py-1 rounded-full bg-[#FF5200] text-white font-extrabold text-[8px] flex items-center gap-1 shrink-0">
+                  <ShoppingCart className="w-2.5 h-2.5 fill-white text-white" />
+                  <span className="font-mono font-black">R$ 0,00</span>
                 </div>
               </div>
 
-              {/* Establishment info */}
-              <div className="pt-6 px-4">
-                <h4 className="text-sm font-display font-extrabold tracking-tight" style={{ color: primaryColor }}>
-                  {establishmentName}
-                </h4>
-                <p className="text-[9px] text-[#A8A29A] truncate mt-0.5">
-                  📍 {address}
-                </p>
-
-                {/* categories preview — reflects the real categories and the chosen style/color live */}
-                <div className={`mt-4 flex gap-1.5 overflow-x-auto scrollbar-none ${
-                  categoryStyle === 'komy' ? 'bg-black rounded-full p-1' : ''
-                }`}>
-                  {categories.map(cat => {
-                    const isActive = previewActiveCategoryId === cat.id;
-                    return (
-                      <button
-                        type="button"
-                        key={cat.id}
-                        onClick={() => setPreviewActiveCategoryId(cat.id)}
-                        style={isActive ? { backgroundColor: primaryColor } : undefined}
-                        className={
-                          categoryStyle === 'komy'
-                            ? `px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
-                                isActive ? 'text-black shadow-sm' : 'bg-transparent text-[#9CA3AF]'
-                              }`
-                            : `px-2.5 py-1 rounded-full text-[8px] font-bold whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
-                                isActive
-                                  ? 'text-white shadow-sm'
-                                  : 'bg-black border border-[#262626] text-[#9CA3AF]'
-                              }`
-                        }
-                      >
-                        {renderPreviewCatIcon(cat.icon)}
-                        <span>{cat.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* simulated menu section */}
-                <div className="mt-6">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Combinados Sushi</span>
-                    <span className="w-8 h-0.5" style={{ backgroundColor: primaryColor }}></span>
+              <div className="p-2.5 space-y-3">
+                {/* hero banner */}
+                <div className="relative rounded-2xl overflow-hidden border border-[#262626] bg-[#0A0A0A] min-h-[110px] flex flex-col justify-between p-2.5">
+                  <div className="absolute inset-0 z-0">
+                    <img
+                      src={bannerUrl || "https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=500"}
+                      alt="Banner"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-[#0A0A0A]/85"></div>
                   </div>
 
-                  {/* item mock */}
-                  <div className={`p-2.5 rounded-xl border border-dashed flex gap-3 ${
-                    themeMode === 'dark' ? 'bg-[#141210] border-[#2A211A]' : 'bg-slate-50 border-slate-200'
+                  <div className="relative z-10 flex items-start justify-between gap-2">
+                    <div className={`text-[6px] font-bold px-1.5 py-0.5 rounded-full flex items-center shrink-0 ${
+                      isCurrentlyOpen
+                        ? 'bg-[#22C55E]/20 border border-[#22C55E]/40 text-[#22C55E]'
+                        : 'bg-[#EF4444]/20 border border-[#EF4444]/60 text-[#EF4444]'
+                    }`}>
+                      <span className="font-bold tracking-tight uppercase">
+                        {isCurrentlyOpen ? 'Aberto' : 'Fechado'}
+                      </span>
+                    </div>
+                    <div className="bg-[#161616]/90 border border-[#262626] px-1.5 py-1 rounded-lg flex items-center gap-1 text-[6px] text-[#9CA3AF] shrink-0">
+                      <Clock className="w-2 h-2 text-[#FF6A00]" />
+                      <span className="font-bold text-white font-mono">{deliveryTime || '30-45 min'}</span>
+                    </div>
+                  </div>
+
+                  <div className="relative z-10 mt-3">
+                    <h2 className="text-[13px] font-display font-black tracking-tight text-white uppercase leading-tight">
+                      {establishmentName}
+                    </h2>
+                    <p className="text-[7px] text-[#9CA3AF] font-medium mt-0.5 line-clamp-2">
+                      {menuDescription || 'Especialistas em culinária japonesa, temakis crocantes e combinados artesanais.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* categories + search — reflects the real categories and the chosen style live */}
+                <div className="space-y-2">
+                  <div className={`flex gap-1.5 overflow-x-auto scrollbar-none ${
+                    categoryStyle === 'komy' ? 'bg-black rounded-full p-1' : ''
                   }`}>
-                    <div className="w-12 h-12 rounded-lg bg-slate-800 shrink-0 overflow-hidden">
-                      <img 
-                        src="https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=100" 
-                        alt="Sushi" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h5 className="text-[11px] font-bold truncate">Combo Tokio Premium (32p)</h5>
-                      <p className="text-[9px] text-[#A8A29A] line-clamp-1 leading-snug">Sashimi de salmão, uramaki e hossomaki...</p>
-                      <p className="text-xs font-bold font-mono mt-1" style={{ color: primaryColor }}>R$ 89,90</p>
-                    </div>
+                    {categories.map(cat => {
+                      const isActive = previewActiveCategoryId === cat.id;
+                      return (
+                        <button
+                          type="button"
+                          key={cat.id}
+                          onClick={() => setPreviewActiveCategoryId(cat.id)}
+                          className={
+                            categoryStyle === 'komy'
+                              ? `px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
+                                  isActive ? 'bg-[#FF6A00] text-black shadow-sm' : 'bg-transparent text-[#9CA3AF]'
+                                }`
+                              : `px-2.5 py-1 rounded-full text-[8px] font-bold whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
+                                  isActive
+                                    ? 'bg-[#FF6A00] text-white shadow-sm'
+                                    : 'bg-black border border-[#262626] text-[#9CA3AF]'
+                                }`
+                          }
+                        >
+                          {renderPreviewCatIcon(cat.icon)}
+                          <span>{cat.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-2.5 h-2.5 text-[#9CA3AF] absolute left-2 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      readOnly
+                      placeholder="Pesquisar produtos..."
+                      className="w-full pl-6 pr-2.5 py-1.5 text-[8px] rounded-xl bg-black text-white border border-[#262626] placeholder-[#9CA3AF]"
+                    />
                   </div>
                 </div>
 
-                {/* Simulated delivery badge */}
-                <div className={`p-3 rounded-xl mt-6 flex justify-between items-center border ${
-                  themeMode === 'dark' ? 'bg-[#141210] border-[#2A211A]' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <span className="text-[9px] font-semibold text-[#A8A29A]">Entrega rápida:</span>
-                  <span className="text-xs font-bold font-mono" style={{ color: primaryColor }}>R$ {(parseFloat(deliveryFee) || 0).toFixed(2)}</span>
+                {/* product cards — the real products, same card layout as the live cardápio */}
+                <div className="space-y-2.5">
+                  {(products.length > 0 ? products.slice(0, 2) : [null, null]).map((p, idx) => (
+                    <div
+                      key={p ? p.id : idx}
+                      className="bg-black border border-[#262626] rounded-xl overflow-hidden flex flex-col"
+                    >
+                      <div className="relative h-20 w-full bg-[#0A0A0A] overflow-hidden">
+                        {p && (
+                          <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="p-2 flex flex-col gap-1.5">
+                        <div>
+                          <h5 className="font-bold text-[9px] text-white truncate">{p ? p.name : 'Seu produto aparece aqui'}</h5>
+                          <p className="text-[7px] text-[#9CA3AF] line-clamp-1 mt-0.5">{p ? p.description : 'Cadastre produtos em Cardápio para vê-los aqui.'}</p>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#262626]/60">
+                          <span className="text-[10px] font-black font-mono text-[#FF6A00]">
+                            {p ? `R$ ${formatCurrency(p.promoPrice && safeNumber(p.promoPrice) > 0 ? p.promoPrice : p.price)}` : '—'}
+                          </span>
+                          <span className="bg-[#FF6A00] text-white text-[7px] font-bold px-2 py-1 rounded-lg flex items-center gap-0.5 shrink-0">
+                            <span>Adicionar</span>
+                            <ChevronRight className="w-2 h-2 text-white" />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
