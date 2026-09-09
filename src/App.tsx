@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import PlanRenewalOverlay from './components/PlanRenewalOverlay';
@@ -37,6 +37,22 @@ function LoadingScreen() {
 export default function App() {
   const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, workspaceReady, authLoading, publicMenuNotFound } = useApp();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Dashboard/PublicMenuPage are lazy chunks that would otherwise only start
+  // downloading once workspaceReady flips true (they're not referenced by
+  // any JSX before that), stacking their fetch time *after* the data fetch
+  // instead of overlapping it. Both are the very first screen shown after
+  // login/opening a menu link, so kick off their download the moment we
+  // know which branch applies — in parallel with fetchWorkspace/
+  // fetchPublicMenuBySlug — so the chunk is usually already cached by the
+  // time Suspense would need it. Must run before any early return below, per
+  // the Rules of Hooks.
+  useEffect(() => {
+    if (loggedIn && isAdmin) import('./components/DashboardOverview');
+  }, [loggedIn, isAdmin]);
+  useEffect(() => {
+    if (loggedIn && !isAdmin) import('./components/PublicMenuPage');
+  }, [loggedIn, isAdmin]);
 
   // 0. A dashboard URL (e.g. reloading /dashboard/pedidos) whose Supabase
   // session is still being verified: keep showing the loading screen instead
