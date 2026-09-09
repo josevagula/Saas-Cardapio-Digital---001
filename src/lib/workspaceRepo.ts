@@ -455,6 +455,111 @@ export async function assignOrderNumber(ownerId: string, orderId: string) {
   if (error) throw new Error(`Failed to assign order number: ${error.message}`);
 }
 
+// Admin-only loyalty mutations (credit/reverse/redeem) — atomic single-row
+// updates in the database, not a client-side recompute + bulk resync of the
+// whole customers table, so two admin sessions crediting different orders
+// at the same moment can never clobber each other's points. Each call
+// passes an idempotencyKey unique to that one logical event (built once per
+// invocation, reused across retries of the same event) so a retried network
+// call can never double-apply — see the loyalty_ledger migration.
+export async function creditOrderLoyaltyRpc(
+  ownerId: string,
+  orderId: string,
+  customerName: string,
+  customerPhone: string,
+  points: number,
+  idempotencyKey: string
+): Promise<number> {
+  const { data, error } = await supabase.rpc('credit_order_loyalty', {
+    p_user_id: ownerId,
+    p_order_id: orderId,
+    p_customer_name: customerName,
+    p_customer_phone: customerPhone,
+    p_points: points,
+    p_idempotency_key: idempotencyKey
+  });
+  if (error) throw new Error(`Failed to credit loyalty points: ${error.message}`);
+  return data as number;
+}
+
+export async function reverseOrderLoyaltyRpc(
+  ownerId: string,
+  orderId: string,
+  customerPhone: string,
+  points: number,
+  idempotencyKey: string
+): Promise<number> {
+  const { data, error } = await supabase.rpc('reverse_order_loyalty', {
+    p_user_id: ownerId,
+    p_order_id: orderId,
+    p_customer_phone: customerPhone,
+    p_points: points,
+    p_idempotency_key: idempotencyKey
+  });
+  if (error) throw new Error(`Failed to reverse loyalty points: ${error.message}`);
+  return data as number;
+}
+
+// Throws with message 'insufficient_points' if the balance no longer covers
+// the reward's cost at the moment the update actually runs (e.g. it was
+// just redeemed by a concurrent request) — the caller shows that as a
+// clean "not enough points" message rather than a generic failure.
+export async function redeemLoyaltyRewardRpc(
+  ownerId: string,
+  customerPhone: string,
+  pointsCost: number,
+  rewardLabel: string,
+  rewardValue: number,
+  rewardType: string,
+  idempotencyKey: string
+): Promise<number> {
+  const { data, error } = await supabase.rpc('redeem_loyalty_reward', {
+    p_user_id: ownerId,
+    p_customer_phone: customerPhone,
+    p_points_cost: pointsCost,
+    p_reward_label: rewardLabel,
+    p_reward_value: rewardValue,
+    p_reward_type: rewardType,
+    p_idempotency_key: idempotencyKey
+  });
+  if (error) throw new Error(error.message.includes('insufficient_points') ? 'insufficient_points' : `Failed to redeem reward: ${error.message}`);
+  return data as number;
+}
+
+export interface LoyaltyLedgerEntry {
+  id: number;
+  customerPhone: string;
+  orderId: string | null;
+  type: 'earn' | 'reversal' | 'redeem';
+  pointsDelta: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  rewardSnapshot: { label: string; value: number; type: string } | null;
+  createdAt: string;
+}
+
+export async function fetchLoyaltyLedger(ownerId: string, customerPhone: string): Promise<LoyaltyLedgerEntry[]> {
+  const { data, error } = await supabase
+    .from('loyalty_ledger')
+    .select('*')
+    .eq('user_id', ownerId)
+    .eq('customer_phone', customerPhone)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw new Error(`Failed to load loyalty history: ${error.message}`);
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    customerPhone: r.customer_phone,
+    orderId: r.order_id,
+    type: r.type,
+    pointsDelta: r.points_delta,
+    balanceBefore: r.balance_before,
+    balanceAfter: r.balance_after,
+    rewardSnapshot: r.reward_snapshot,
+    createdAt: r.created_at
+  }));
+}
+
 export async function syncVisualConfig(userId: string, visualConfig: VisualConfig) {
   const { error } = await supabase.from('visual_configs').upsert(visualConfigToRow(visualConfig, userId), { onConflict: 'user_id' });
   if (error) throw new Error(`Failed to save visual config to Supabase: ${error.message}`);

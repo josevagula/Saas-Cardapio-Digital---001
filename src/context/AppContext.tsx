@@ -21,6 +21,11 @@ import {
   incrementProductSales,
   recordCustomerOrder,
   assignOrderNumber,
+  creditOrderLoyaltyRpc,
+  reverseOrderLoyaltyRpc,
+  redeemLoyaltyRewardRpc,
+  fetchLoyaltyLedger,
+  type LoyaltyLedgerEntry,
   syncCategories,
   syncProducts,
   syncOrders,
@@ -35,6 +40,7 @@ import { retryUntilSuccess, getSyncPendingCount } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { API_BASE } from '../lib/apiBase';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
+import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption } from '../utils/loyalty';
 
 // Maps a raw Stripe subscription_status value (trialing, active, past_due,
 // canceled, unpaid, incomplete, incomplete_expired…) onto the simple
@@ -158,6 +164,8 @@ interface AppContextType {
   reorderProductInCategory: (productId: string, direction: -1 | 1, categoryId: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   deleteOrder: (orderId: string) => void;
+  redeemReward: (customerPhone: string) => Promise<{ success: boolean; message: string }>;
+  fetchCustomerLoyaltyHistory: (customerPhone: string) => Promise<LoyaltyLedgerEntry[]>;
   addCoupon: (coupon: Coupon) => void;
   addCategory: (category: Omit<Category, 'id'>) => void;
   updateCategory: (category: Category) => void;
@@ -737,8 +745,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const orderId = `LUV-${Math.floor(1000 + Math.random() * 9000)}`;
     // Driven by the restaurant's own Configuração de Prêmios (points per
     // R$10 spent) — no points at all if the loyalty program is switched off.
+    // This is only a checkout-time snapshot for the order's own record —
+    // creditOrderLoyalty recomputes from the CURRENT config when the order
+    // is actually delivered, since that's the one moment points are earned.
     const loyaltyConfig = visualConfig.loyaltyConfig ?? DEFAULT_LOYALTY_CONFIG;
-    const pointsEarned = loyaltyConfig.active ? Math.floor(total / 10) * loyaltyConfig.pointsPerTenReais : 0;
+    const pointsEarned = calculatePointsEarned(total, loyaltyConfig);
 
     const newOrder: Order = {
       id: orderId,
@@ -1015,9 +1026,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // rate the restaurant changes after the order was placed still applies —
   // the order's own record is updated to match so a later reversal (see
   // reverseOrderLoyalty) claws back exactly what was credited here.
+  //
+  // Local state updates immediately (optimistic, and the only path at all
+  // in demo mode). For a real account, the authoritative mutation is the
+  // atomic credit_order_loyalty RPC — a single-row DB update, not a
+  // recompute-then-resync-the-whole-customers-table — so two admin sessions
+  // crediting different orders at once can never overwrite each other's
+  // points. idempotencyKey is generated once per call and reused by every
+  // retry of THIS crediting event, so a retried network call can never
+  // double-credit; a genuinely new delivery of the same order later in its
+  // life (delivered -> reverted -> delivered again) still earns again.
   const creditOrderLoyalty = (order: Order) => {
     const loyaltyConfig = visualConfig.loyaltyConfig ?? DEFAULT_LOYALTY_CONFIG;
-    const pointsToCredit = loyaltyConfig.active ? Math.floor(order.total / 10) * loyaltyConfig.pointsPerTenReais : 0;
+    const pointsToCredit = calculatePointsEarned(order.total, loyaltyConfig);
+    const idempotencyKey = `${order.id}:earn:${Date.now()}`;
 
     setCustomers(prev => {
       const existing = prev.find(c => c.phone === order.customerPhone);
@@ -1047,16 +1069,87 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, pointsEarned: pointsToCredit } : o));
+
+    if (userId && !isDemoMode) {
+      retryUntilSuccess(() =>
+        creditOrderLoyaltyRpc(userId, order.id, order.customerName, order.customerPhone, pointsToCredit, idempotencyKey)
+          .then(authoritativeBalance => {
+            setCustomers(prev => prev.map(c => c.phone === order.customerPhone ? { ...c, loyaltyPoints: authoritativeBalance } : c));
+          })
+      );
+    }
   };
 
   // The inverse of creditOrderLoyalty — claws back what a delivered order
   // earned, for when it's cancelled/deleted or reverted to an earlier stage.
+  // Same optimistic-local + atomic-RPC-reconciles-the-real-balance shape.
   const reverseOrderLoyalty = (order: Order) => {
+    const idempotencyKey = `${order.id}:reversal:${Date.now()}`;
+
     setCustomers(prev => prev.map(c =>
       c.phone === order.customerPhone
         ? { ...c, loyaltyPoints: Math.max(0, c.loyaltyPoints - order.pointsEarned), orderCount: Math.max(0, c.orderCount - 1) }
         : c
     ));
+
+    if (userId && !isDemoMode) {
+      retryUntilSuccess(() =>
+        reverseOrderLoyaltyRpc(userId, order.id, order.customerPhone, order.pointsEarned, idempotencyKey)
+          .then(authoritativeBalance => {
+            setCustomers(prev => prev.map(c => c.phone === order.customerPhone ? { ...c, loyaltyPoints: authoritativeBalance } : c));
+          })
+      );
+    }
+  };
+
+  // Redeems the currently configured reward for one customer — spends
+  // exactly pointsNeededForReward, never the whole balance, so points
+  // earned beyond the goal carry over toward the next one. For a real
+  // account this is one atomic, conditional DB update (only succeeds if the
+  // balance still covers the cost at the moment it runs), so two redeem
+  // clicks — or two staff members redeeming at once — can't over-redeem a
+  // balance that only covers one. Returns success/message so the UI can
+  // show exactly what happened, the same shape as applyCouponCode.
+  const redeemReward = async (customerPhone: string): Promise<{ success: boolean; message: string }> => {
+    const loyaltyConfig = visualConfig.loyaltyConfig ?? DEFAULT_LOYALTY_CONFIG;
+    const customer = customers.find(c => c.phone === customerPhone);
+    if (!customer) return { success: false, message: 'Cliente não encontrado.' };
+    if (!hasUnlockedReward(customer.loyaltyPoints, loyaltyConfig)) {
+      return { success: false, message: 'Este cliente ainda não atingiu a meta de pontos.' };
+    }
+
+    const rewardLabel = loyaltyConfig.rewardType === 'fixed'
+      ? `R$ ${loyaltyConfig.rewardValue.toFixed(2)} de desconto`
+      : `${loyaltyConfig.rewardValue}% de desconto`;
+
+    if (!userId || isDemoMode) {
+      const newBalance = pointsAfterRedemption(customer.loyaltyPoints, loyaltyConfig);
+      setCustomers(prev => prev.map(c => c.phone === customerPhone ? { ...c, loyaltyPoints: newBalance } : c));
+      return { success: true, message: `Prêmio resgatado: ${rewardLabel}.` };
+    }
+
+    const idempotencyKey = `redeem:${customerPhone}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    try {
+      const newBalance = await redeemLoyaltyRewardRpc(
+        userId, customerPhone, loyaltyConfig.pointsNeededForReward, rewardLabel,
+        loyaltyConfig.rewardValue, loyaltyConfig.rewardType, idempotencyKey
+      );
+      setCustomers(prev => prev.map(c => c.phone === customerPhone ? { ...c, loyaltyPoints: newBalance } : c));
+      return { success: true, message: `Prêmio resgatado: ${rewardLabel}.` };
+    } catch (err: any) {
+      if (err?.message === 'insufficient_points') {
+        return { success: false, message: 'Saldo insuficiente no momento do resgate — os pontos podem já ter sido usados.' };
+      }
+      return { success: false, message: 'Não foi possível resgatar agora. Tente novamente em alguns instantes.' };
+    }
+  };
+
+  // Every points movement for one customer (earned, reversed, redeemed) —
+  // read on demand (opening the history panel), not kept in memory for
+  // every customer at once. Demo mode has no server-side ledger to read.
+  const fetchCustomerLoyaltyHistory = async (customerPhone: string): Promise<LoyaltyLedgerEntry[]> => {
+    if (!userId || isDemoMode) return [];
+    return fetchLoyaltyLedger(userId, customerPhone);
   };
 
   // Reverses everything an order added when it was placed — it must count
@@ -1272,6 +1365,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       updateOrderStatus,
       deleteOrder,
+      redeemReward,
+      fetchCustomerLoyaltyHistory,
       addCoupon,
       addCategory,
       updateCategory,
