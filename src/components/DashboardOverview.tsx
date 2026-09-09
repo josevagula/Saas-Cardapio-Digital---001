@@ -24,13 +24,14 @@ export default function DashboardOverview() {
   // Chart view state and custom date ranges
   const [chartView, setChartView] = useState<'semanal' | 'mensal' | 'personalizado'>('semanal');
   // The demo's mock orders are rebased (see rebaseDemoOrders in AppContext)
-  // to always land within the last couple of days of "now" — default the
-  // custom range there to match, instead of the fixed placeholder window
-  // real accounts start with.
+  // to spread across the last 30 days — default the custom range to that
+  // same 30-day window, instead of the fixed placeholder window real
+  // accounts start with, so Personalizado shows a distinct (wider) total
+  // than Semanal/Mensal instead of covering the same handful of orders.
   const [startDate, setStartDate] = useState(() => {
     if (!isDemoMode) return '2026-07-01';
     const d = new Date();
-    d.setDate(d.getDate() - 2);
+    d.setDate(d.getDate() - 29);
     return d.toISOString().slice(0, 10);
   });
   const [endDate, setEndDate] = useState(() => {

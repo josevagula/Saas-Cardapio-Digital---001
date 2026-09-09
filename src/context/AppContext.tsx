@@ -1171,21 +1171,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // The mock orders' createdAt values are frozen at a fixed past date, so a
   // period filter (last 7 days, current month) compared against the real
-  // "now" would always find zero of them. Shifting every timestamp by the
-  // same offset — enough to land the most recent mock order right at "now"
-  // — keeps their relative spacing but makes them always look like they
-  // just happened, so Total de Pedidos has real orders to count no matter
-  // when someone opens the demo.
+  // "now" would always find zero of them. Spreading them evenly across the
+  // last 30 days (oldest mock order ~30 days ago, newest right at "now")
+  // instead of shifting them all by the same offset means the semanal,
+  // mensal and personalizado (last 30 days, see its default range below)
+  // tabs each cover a different slice of them and actually show different
+  // totals — a flat shift left every order within the same single day, so
+  // every tab summed the exact same orders and Total de Pedidos never
+  // changed between them.
   const rebaseDemoOrders = (): Order[] => {
-    const latestMockTimestamp = INITIAL_ORDERS.reduce(
-      (max, o) => Math.max(max, new Date(o.createdAt).getTime()),
-      0
+    const sorted = [...INITIAL_ORDERS].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
-    const offset = Date.now() - latestMockTimestamp;
-    return INITIAL_ORDERS.map(o => ({
-      ...o,
-      createdAt: new Date(new Date(o.createdAt).getTime() + offset).toISOString()
-    }));
+    const now = new Date();
+    const spanDays = 29; // oldest order lands 29 days ago, newest lands today
+    return sorted.map((o, idx) => {
+      const daysAgo = sorted.length > 1
+        ? Math.round(spanDays * (1 - idx / (sorted.length - 1)))
+        : 0;
+      const original = new Date(o.createdAt);
+      const rebased = new Date(now);
+      rebased.setDate(now.getDate() - daysAgo);
+      rebased.setHours(original.getHours(), original.getMinutes(), original.getSeconds(), 0);
+      return { ...o, createdAt: rebased.toISOString() };
+    });
   };
 
   // Shows the built-in mock dataset in the admin dashboard for prospects
