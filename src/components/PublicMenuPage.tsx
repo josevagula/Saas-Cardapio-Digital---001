@@ -871,9 +871,12 @@ export default function PublicMenuPage() {
 
         return (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-in fade-in duration-200">
-            <div className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-[#24201C] bg-[#0F0D0B] text-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-              
-              {/* Top Banner Image with Gradient & Floating Badge & Title Overlay */}
+            <div className={`w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${t('border border-[#24201C] bg-[#0F0D0B] text-white', 'border border-[#E5E5E5] bg-white text-black')}`}>
+
+              {/* Top Banner Image with Gradient & Floating Badge & Title Overlay — kept
+                  dark (scrim + white text) regardless of theme, same as the hero
+                  banner: it's a photo, not a solid surface, so "claro" shouldn't
+                  wash it out. */}
               <div className="h-56 sm:h-64 relative bg-[#080706] shrink-0 overflow-hidden">
                 <img 
                   src={selectedProduct.imageUrl} 
@@ -923,18 +926,18 @@ export default function PublicMenuPage() {
 
               {/* Scrollable Content Body */}
               <div className="p-4 sm:p-5 space-y-5 overflow-y-auto max-h-[50vh] scrollbar-thin scrollbar-thumb-[#24201C]">
-                
+
                 {/* REMOVER INGREDIENTES Section */}
                 {availableIngredients.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-baseline gap-1.5">
-                      <h4 className="font-extrabold text-xs tracking-wider text-white uppercase">REMOVER INGREDIENTES</h4>
-                      <span className="text-[#8E8B85] text-xs font-normal">(opcional)</span>
+                      <h4 className={`font-extrabold text-xs tracking-wider uppercase ${t('text-white', 'text-black')}`}>REMOVER INGREDIENTES</h4>
+                      <span className={`text-xs font-normal ${t('text-[#8E8B85]', 'text-black')}`}>(opcional)</span>
                     </div>
-                    <p className="text-[#A09D96] text-xs">
+                    <p className={`text-xs ${t('text-[#A09D96]', 'text-black')}`}>
                       Selecione o que você gostaria de retirar do seu prato:
                     </p>
-                    
+
                     <div className="flex flex-wrap gap-2 pt-1">
                       {availableIngredients.map((ing, idx) => {
                         const isRemoved = removedIngredients.includes(ing);
@@ -946,7 +949,7 @@ export default function PublicMenuPage() {
                             className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-2 ${
                               isRemoved
                                 ? 'bg-red-950/40 border border-red-600/70 text-red-400'
-                                : 'bg-[#181614] border border-[#2A2724] hover:border-[#3E3A35] text-white'
+                                : t('bg-[#181614] border border-[#2A2724] hover:border-[#3E3A35] text-white', 'bg-[#F3F4F6] border border-[#E5E5E5] hover:border-[#D1D5DB] text-black')
                             }`}
                           >
                             <span className={isRemoved ? 'line-through' : ''}>
@@ -964,10 +967,10 @@ export default function PublicMenuPage() {
                 {selectedProduct.extras && selectedProduct.extras.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-baseline gap-1.5">
-                      <h4 className="font-extrabold text-xs tracking-wider text-white uppercase">ADICIONAIS</h4>
-                      <span className="text-[#8E8B85] text-xs font-normal">(opcional)</span>
+                      <h4 className={`font-extrabold text-xs tracking-wider uppercase ${t('text-white', 'text-black')}`}>ADICIONAIS</h4>
+                      <span className={`text-xs font-normal ${t('text-[#8E8B85]', 'text-black')}`}>(opcional)</span>
                     </div>
-                    <p className="text-[#A09D96] text-xs">
+                    <p className={`text-xs ${t('text-[#A09D96]', 'text-black')}`}>
                       Capriche no seu pedido com um extra:
                     </p>
 
@@ -977,29 +980,29 @@ export default function PublicMenuPage() {
                         return (
                           <div
                             key={extra.id}
-                            className="flex items-center justify-between gap-3 bg-[#181614] border border-[#2A2724] rounded-xl px-3.5 py-2.5"
+                            className={`flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 ${t('bg-[#181614] border border-[#2A2724]', 'bg-[#F3F4F6] border border-[#E5E5E5]')}`}
                           >
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold text-white truncate">{extra.name}</p>
-                              <p className="text-[10px] text-[#A09D96] font-mono">
+                              <p className={`text-xs font-semibold truncate ${t('text-white', 'text-black')}`}>{extra.name}</p>
+                              <p className={`text-[10px] font-mono ${t('text-[#A09D96]', 'text-black')}`}>
                                 + R$ {formatCurrency(extra.price).replace('.', ',')} · até {extra.maxQuantity}x
                               </p>
                             </div>
-                            <div className="flex items-center gap-3 shrink-0 bg-[#0F0D0B] border border-[#2A2724] rounded-full px-2.5 py-1">
+                            <div className={`flex items-center gap-3 shrink-0 rounded-full px-2.5 py-1 ${t('bg-[#0F0D0B] border border-[#2A2724]', 'bg-white border border-[#E5E5E5]')}`}>
                               <button
                                 type="button"
                                 onClick={() => setExtraQuantity(extra, current - 1)}
                                 disabled={current === 0}
-                                className="text-[#8E8B85] hover:text-white transition-colors cursor-pointer p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                                className={`transition-colors cursor-pointer p-0.5 disabled:opacity-30 disabled:cursor-not-allowed ${t('text-[#8E8B85] hover:text-white', 'text-black hover:text-black')}`}
                               >
                                 <Minus className="w-3.5 h-3.5" />
                               </button>
-                              <span className="font-mono font-black text-white text-xs min-w-[14px] text-center">{current}</span>
+                              <span className={`font-mono font-black text-xs min-w-[14px] text-center ${t('text-white', 'text-black')}`}>{current}</span>
                               <button
                                 type="button"
                                 onClick={() => setExtraQuantity(extra, current + 1)}
                                 disabled={current >= extra.maxQuantity}
-                                className="text-[#8E8B85] hover:text-white transition-colors cursor-pointer p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                                className={`transition-colors cursor-pointer p-0.5 disabled:opacity-30 disabled:cursor-not-allowed ${t('text-[#8E8B85] hover:text-white', 'text-black hover:text-black')}`}
                               >
                                 <Plus className="w-3.5 h-3.5" />
                               </button>
@@ -1013,20 +1016,20 @@ export default function PublicMenuPage() {
 
                 {/* OBSERVAÇÕES ESPECIAIS Section */}
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-extrabold text-white uppercase tracking-wider">
+                  <div className={`flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider ${t('text-white', 'text-black')}`}>
                     <ClipboardList className="w-4 h-4 text-[#FF5200]" />
                     <span>OBSERVAÇÕES ESPECIAIS</span>
                   </div>
 
-                  <div className="bg-[#181614] border border-[#2A2724] rounded-2xl p-3.5 focus-within:border-[#FF5200] transition-colors">
+                  <div className={`rounded-2xl p-3.5 focus-within:border-[#FF5200] transition-colors ${t('bg-[#181614] border border-[#2A2724]', 'bg-[#F3F4F6] border border-[#E5E5E5]')}`}>
                     <textarea
                       maxLength={140}
                       placeholder="Ex: Ponto da carne mal passado, extra molho verde, mandar sachê de geleia de pimenta..."
                       value={productNotes}
                       onChange={(e) => setProductNotes(e.target.value)}
-                      className="w-full bg-transparent text-white text-xs placeholder-[#6B6863] focus:outline-none resize-none h-16 leading-relaxed"
+                      className={`w-full bg-transparent text-xs focus:outline-none resize-none h-16 leading-relaxed ${t('text-white placeholder-[#6B6863]', 'text-black placeholder-[#9CA3AF]')}`}
                     />
-                    <div className="text-[10px] font-mono text-[#6B6863] text-right mt-1">
+                    <div className={`text-[10px] font-mono text-right mt-1 ${t('text-[#6B6863]', 'text-black')}`}>
                       {productNotes.length}/140 caracteres
                     </div>
                   </div>
@@ -1035,30 +1038,30 @@ export default function PublicMenuPage() {
               </div>
 
               {/* Footer Action Bar */}
-              <div className="p-4 bg-[#12100E] border-t border-[#22201D] flex flex-col gap-3 shrink-0">
+              <div className={`p-4 flex flex-col gap-3 shrink-0 ${t('bg-[#12100E] border-t border-[#22201D]', 'bg-white border-t border-[#E5E5E5]')}`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-[#8E8B85] text-xs font-medium block">Valor Unitário</span>
-                    <span className="text-xl font-mono font-black text-white">
+                    <span className={`text-xs font-medium block ${t('text-[#8E8B85]', 'text-black')}`}>Valor Unitário</span>
+                    <span className={`text-xl font-mono font-black ${t('text-white', 'text-black')}`}>
                       R$ {formatCurrency(selectedProduct.promoPrice || selectedProduct.price).replace('.', ',')}
                     </span>
                   </div>
 
-                  <div className="bg-[#181614] border border-[#2A2724] rounded-full px-3 py-1.5 flex items-center gap-3.5 text-white text-sm font-bold">
+                  <div className={`rounded-full px-3 py-1.5 flex items-center gap-3.5 text-sm font-bold ${t('bg-[#181614] border border-[#2A2724] text-white', 'bg-[#F3F4F6] border border-[#E5E5E5] text-black')}`}>
                     <button
                       type="button"
                       onClick={() => setProductQuantity(q => Math.max(1, q - 1))}
-                      className="text-[#8E8B85] hover:text-white transition-colors cursor-pointer p-0.5"
+                      className={`transition-colors cursor-pointer p-0.5 ${t('text-[#8E8B85] hover:text-white', 'text-black hover:text-black')}`}
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="font-mono font-black text-white text-sm min-w-[20px] text-center">
+                    <span className={`font-mono font-black text-sm min-w-[20px] text-center ${t('text-white', 'text-black')}`}>
                       {productQuantity}x
                     </span>
                     <button
                       type="button"
                       onClick={() => setProductQuantity(q => q + 1)}
-                      className="text-[#8E8B85] hover:text-white transition-colors cursor-pointer p-0.5"
+                      className={`transition-colors cursor-pointer p-0.5 ${t('text-[#8E8B85] hover:text-white', 'text-black hover:text-black')}`}
                     >
                       <Plus className="w-4 h-4" />
                     </button>
