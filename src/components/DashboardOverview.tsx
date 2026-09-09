@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardOverview() {
-  const { analytics, products, orders, visualConfig, isDemoMode } = useApp();
+  const { products, orders, visualConfig, isDemoMode } = useApp();
 
   // Chart view state and custom date ranges
   const [chartView, setChartView] = useState<'semanal' | 'mensal' | 'personalizado'>('semanal');
@@ -91,55 +91,25 @@ export default function DashboardOverview() {
   };
   const periodOrders = getPeriodOrders();
 
-  // KPI figures: the demo dataset keeps its intentionally impressive
-  // revenue numbers, every real account only ever shows what it actually
-  // sold — but Total de Pedidos always tracks whichever period is selected
-  // above (semanal, mensal or personalizado), demo included, exactly like a
-  // real account would.
-  const kpi = isDemoMode
-    ? { dailyRevenue: analytics.dailyRevenue, weeklyRevenue: analytics.weeklyRevenue, monthlyRevenue: analytics.monthlyRevenue, totalOrders: periodOrders.length, ticketAverage: analytics.ticketAverage }
-    : { dailyRevenue: realStats.dailyRevenue, weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue, totalOrders: periodOrders.length, ticketAverage: realStats.ticketAverage };
+  // KPI figures: always computed from real orders (the demo's own rebased
+  // mock orders included) so Receita Mensal, Hoje, Ticket Médio and Total
+  // de Pedidos all agree with each other and with the revenue chart below,
+  // instead of the demo showing a fixed, disconnected "impressive" number
+  // that didn't match how many orders (or how much revenue) were actually
+  // behind it.
+  const kpi = { dailyRevenue: realStats.dailyRevenue, weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue, totalOrders: periodOrders.length, ticketAverage: realStats.ticketAverage };
 
-  // Determine active chart data and total based on the selected view
+  // Determine active chart data and total based on the selected view —
+  // always real orders, demo included (see kpi above).
   let displayedChartData: { date: string; amount: number }[] = [];
   let displayedTotal = 0;
 
   if (chartView === 'semanal') {
-    displayedChartData = isDemoMode ? analytics.revenueHistory : realStats.weeklyHistory;
+    displayedChartData = realStats.weeklyHistory;
     displayedTotal = kpi.weeklyRevenue;
   } else if (chartView === 'mensal') {
-    displayedChartData = isDemoMode ? [
-      { date: '01/07', amount: 1250 },
-      { date: '04/07', amount: 1800 },
-      { date: '08/07', amount: 1450 },
-      { date: '12/07', amount: 2200 },
-      { date: '16/07', amount: 1950 },
-      { date: '20/07', amount: 2600 },
-      { date: '24/07', amount: 2100 },
-      { date: '28/07', amount: 3100 },
-      { date: '30/07', amount: 3400 },
-    ] : realStats.monthlyHistory;
+    displayedChartData = realStats.monthlyHistory;
     displayedTotal = kpi.monthlyRevenue;
-  } else if (isDemoMode) {
-    // Custom date range mock distribution — demo only.
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const dataList = [];
-    let sum = 0;
-    const daysDiff = Math.min(31, Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1));
-
-    for (let i = 0; i < daysDiff; i++) {
-      const current = new Date(start);
-      current.setDate(start.getDate() + i);
-      const dayStr = current.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      // Generate a stable visual pseudo-random amount based on date factors
-      const seed = (current.getDate() * 23 + current.getMonth() * 37) % 6;
-      const amount = 180 + seed * 135 + (i % 4) * 55;
-      dataList.push({ date: dayStr, amount });
-      sum += amount;
-    }
-    displayedChartData = dataList;
-    displayedTotal = sum;
   } else {
     // Custom date range: real orders placed within the selected window.
     const days = revenueHistoryByDay(orders, new Date(startDate), new Date(endDate));
@@ -150,7 +120,7 @@ export default function DashboardOverview() {
   // Only ever built from orders that were actually placed and paid — a
   // payment method with zero real orders in the period simply doesn't
   // appear, instead of a fixed 4-way mock split.
-  const paymentDistribution = isDemoMode ? analytics.paymentDistribution : (() => {
+  const paymentDistribution = (() => {
     const totals: Record<string, number> = {};
     periodOrders.forEach(o => {
       // Credit and debit card are merged into a single "Cartão" slice —
