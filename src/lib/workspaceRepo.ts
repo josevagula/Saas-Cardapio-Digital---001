@@ -15,17 +15,20 @@ import type {
 // real, persistent, and isolated per account instead of living only in
 // browser localStorage.
 
-// display_order comes from this category's position in the array being
-// synced, not from anything on the Category type itself — the app's single
-// source of truth for category order is the categories array's own order
-// (what the reorder buttons in Cardápio shuffle), so this just persists
-// that position instead of tracking it twice.
-const categoryToRow = (c: Category, userId: string, displayOrder: number) => ({
+// TEMPORARILY REVERTED (2026-09-09): this used to also write a
+// display_order column persisting the categories array's position — but the
+// migration that adds that column (supabase/migrations/20260909120000_
+// category_display_order.sql) hasn't been applied to production yet, so
+// every account's upsert was failing with "column does not exist",
+// stranding the whole app on the loading screen (fetchWorkspace retries
+// forever on error). Restore the display_order field/param here once that
+// migration is confirmed applied, and restore the matching .order() calls
+// below and in fetchWorkspace/fetchPublicMenuBySlug.
+const categoryToRow = (c: Category, userId: string) => ({
   id: c.id,
   user_id: userId,
   name: c.name,
-  icon: c.icon,
-  display_order: displayOrder
+  icon: c.icon
 });
 
 const rowToCategory = (r: any): Category => ({
@@ -268,7 +271,7 @@ export async function fetchWorkspace(userId: string): Promise<{
   subscriptionStatus: string;
 }> {
   const [categoriesRes, productsRes, ordersRes, couponsRes, customersRes, visualConfigRes, analyticsRes, profileRes] = await Promise.all([
-    supabase.from('categories').select('*').eq('user_id', userId).order('display_order', { ascending: true }),
+    supabase.from('categories').select('*').eq('user_id', userId),
     // Real ordering is per-category (category_display_order) and applied
     // client-side wherever products are filtered down to one category — a
     // flat cross-category order-by can't reflect that. This just keeps the
@@ -324,7 +327,7 @@ export async function fetchSubscriptionStatus(userId: string): Promise<string> {
 }
 
 export const syncCategories = (userId: string, categories: Category[]) =>
-  syncRows('categories', userId, categories.map((c, i) => categoryToRow(c, userId, i)), 'id', 'id');
+  syncRows('categories', userId, categories.map(c => categoryToRow(c, userId)), 'id', 'id');
 
 export const syncProducts = (userId: string, products: Product[]) =>
   syncRows('products', userId, products.map(p => productToRow(p, userId)), 'id', 'id');
@@ -383,7 +386,7 @@ export async function fetchPublicMenuBySlug(slug: string): Promise<{
 
   const userId = configRow.user_id as string;
   const [categoriesRes, productsRes, couponsRes] = await Promise.all([
-    supabase.from('categories').select('*').eq('user_id', userId).order('display_order', { ascending: true }),
+    supabase.from('categories').select('*').eq('user_id', userId),
     // Real ordering is per-category (category_display_order) and applied
     // client-side wherever products are filtered down to one category — a
     // flat cross-category order-by can't reflect that. This just keeps the
