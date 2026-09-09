@@ -54,6 +54,12 @@ export default function VisualCustomizer() {
   const [categoryStyle, setCategoryStyle] = useState<'default' | 'komy'>(visualConfig.categoryStyle || 'default');
   const [previewActiveCategoryId, setPreviewActiveCategoryId] = useState<string>(categories[0]?.id || 'all');
 
+  // Drives the phone preview below live, off the unsaved `themeMode` state
+  // (not visualConfig.themeMode) so flipping the dropdown updates the mockup
+  // immediately — same light/dark rules as PublicMenuPage's home screen.
+  const isLight = themeMode === 'light';
+  const tPrev = (dark: string, light: string) => (isLight ? light : dark);
+
   const renderPreviewCatIcon = (iconName: string = '') => {
     const className = "w-2.5 h-2.5";
     switch ((iconName || '').toLowerCase()) {
@@ -698,9 +704,11 @@ export default function VisualCustomizer() {
           </div>
 
           {/* Smartphone Frame — mirrors the real PublicMenuPage's markup/classes
-              (not the primaryColor/themeMode pickers below, which the real
-              cardápio never actually applies) so this is what a customer
-              really sees, not an idealized mockup. */}
+              (not the primaryColor picker below, which the real cardápio
+              never actually applies) so this is what a customer really sees,
+              not an idealized mockup. themeMode IS applied here, same as on
+              the real home screen — the hero banner stays untouched by it on
+              purpose (dark scrim + white text always), matching PublicMenuPage. */}
           <div className="w-[320px] h-[580px] rounded-[36px] bg-[#0C0A08] p-3 shadow-2xl border-[6px] border-[#2A211A] relative overflow-hidden flex flex-col justify-between">
             {/* Topnotch camera slot */}
             <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-24 h-4 bg-[#141210] rounded-full z-10 flex items-center justify-center">
@@ -708,20 +716,20 @@ export default function VisualCustomizer() {
             </div>
 
             {/* Inner frame mock cardápio */}
-            <div className="flex-1 rounded-[28px] overflow-y-auto overflow-x-hidden flex flex-col relative bg-[#0A0A0A] text-white">
+            <div className={`flex-1 rounded-[28px] overflow-y-auto overflow-x-hidden flex flex-col relative ${tPrev('bg-[#0A0A0A] text-white', 'bg-white text-[#1A1A1A]')}`}>
               {/* sticky top navbar */}
-              <div className="py-2 px-2.5 border-b border-[#22201D] flex items-center justify-between shrink-0 sticky top-0 z-10 bg-[#0F0D0B]/95">
+              <div className={`py-2 px-2.5 flex items-center justify-between shrink-0 sticky top-0 z-10 ${tPrev('border-b border-[#22201D] bg-[#0F0D0B]/95', 'border-b border-[#E5E5E5] bg-white/95')}`}>
                 <div className="flex items-center gap-1.5 min-w-0">
                   <img
                     src={logoUrl || "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=100"}
                     alt="Logo"
-                    className="w-6 h-6 rounded-full object-cover border border-[#262626] shrink-0"
+                    className={`w-6 h-6 rounded-full object-cover border shrink-0 ${tPrev('border-[#262626]', 'border-[#E5E5E5]')}`}
                   />
                   <div className="min-w-0 leading-tight">
-                    <p className="font-display font-black text-[9px] tracking-tight text-white uppercase truncate">
+                    <p className={`font-display font-black text-[9px] tracking-tight uppercase truncate ${tPrev('text-white', 'text-[#1A1A1A]')}`}>
                       {establishmentName}
                     </p>
-                    <p className="text-[6px] font-mono font-semibold text-[#9CA3AF] tracking-wide truncate">
+                    <p className={`text-[6px] font-mono font-semibold tracking-wide truncate ${tPrev('text-[#9CA3AF]', 'text-[#4B5563]')}`}>
                       DELIVERY • CARDÁPIO DIGITAL
                     </p>
                   </div>
@@ -773,7 +781,7 @@ export default function VisualCustomizer() {
                 {/* categories + search — reflects the real categories and the chosen style live */}
                 <div className="space-y-2">
                   <div className={`flex gap-1.5 overflow-x-auto scrollbar-none ${
-                    categoryStyle === 'komy' ? 'bg-black rounded-full p-1' : ''
+                    categoryStyle === 'komy' ? `rounded-full p-1 ${tPrev('bg-black', 'bg-[#F3F4F6]')}` : ''
                   }`}>
                     {categories.map(cat => {
                       const isActive = previewActiveCategoryId === cat.id;
@@ -785,12 +793,12 @@ export default function VisualCustomizer() {
                           className={
                             categoryStyle === 'komy'
                               ? `px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
-                                  isActive ? 'bg-[#FF6A00] text-black shadow-sm' : 'bg-transparent text-[#9CA3AF]'
+                                  isActive ? 'bg-[#FF6A00] text-black shadow-sm' : tPrev('bg-transparent text-[#9CA3AF]', 'bg-transparent text-[#6B7280]')
                                 }`
                               : `px-2.5 py-1 rounded-full text-[8px] font-bold whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
                                   isActive
                                     ? 'bg-[#FF6A00] text-white shadow-sm'
-                                    : 'bg-black border border-[#262626] text-[#9CA3AF]'
+                                    : tPrev('bg-black border border-[#262626] text-[#9CA3AF]', 'bg-white border border-[#E5E5E5] text-[#6B7280]')
                                 }`
                           }
                         >
@@ -807,7 +815,7 @@ export default function VisualCustomizer() {
                       type="text"
                       readOnly
                       placeholder="Pesquisar produtos..."
-                      className="w-full pl-6 pr-2.5 py-1.5 text-[8px] rounded-xl bg-black text-white border border-[#262626] placeholder-[#9CA3AF]"
+                      className={`w-full pl-6 pr-2.5 py-1.5 text-[8px] rounded-xl placeholder-[#9CA3AF] ${tPrev('bg-black text-white border border-[#262626]', 'bg-white text-[#1A1A1A] border border-[#E5E5E5]')}`}
                     />
                   </div>
                 </div>
@@ -817,19 +825,19 @@ export default function VisualCustomizer() {
                   {(products.length > 0 ? products.slice(0, 2) : [null, null]).map((p, idx) => (
                     <div
                       key={p ? p.id : idx}
-                      className="bg-black border border-[#262626] rounded-xl overflow-hidden flex flex-col"
+                      className={`rounded-xl overflow-hidden flex flex-col ${tPrev('bg-black border border-[#262626]', 'bg-white border border-[#E5E5E5]')}`}
                     >
-                      <div className="relative h-20 w-full bg-[#0A0A0A] overflow-hidden">
+                      <div className={`relative h-20 w-full overflow-hidden ${tPrev('bg-[#0A0A0A]', 'bg-[#F3F4F6]')}`}>
                         {p && (
                           <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
                         )}
                       </div>
                       <div className="p-2 flex flex-col gap-1.5">
                         <div>
-                          <h5 className="font-bold text-[9px] text-white truncate">{p ? p.name : 'Seu produto aparece aqui'}</h5>
-                          <p className="text-[7px] text-[#9CA3AF] line-clamp-1 mt-0.5">{p ? p.description : 'Cadastre produtos em Cardápio para vê-los aqui.'}</p>
+                          <h5 className={`font-bold text-[9px] truncate ${tPrev('text-white', 'text-[#1A1A1A]')}`}>{p ? p.name : 'Seu produto aparece aqui'}</h5>
+                          <p className={`text-[7px] line-clamp-1 mt-0.5 ${tPrev('text-[#9CA3AF]', 'text-[#4B5563]')}`}>{p ? p.description : 'Cadastre produtos em Cardápio para vê-los aqui.'}</p>
                         </div>
-                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#262626]/60">
+                        <div className={`flex items-center justify-between gap-2 pt-1 border-t ${tPrev('border-[#262626]/60', 'border-[#E5E5E5]')}`}>
                           <span className="text-[10px] font-black font-mono text-[#FF6A00]">
                             {p ? `R$ ${formatCurrency(p.promoPrice && safeNumber(p.promoPrice) > 0 ? p.promoPrice : p.price)}` : '—'}
                           </span>
