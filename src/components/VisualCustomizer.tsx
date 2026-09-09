@@ -514,8 +514,8 @@ export default function VisualCustomizer() {
                 {/* mini preview */}
                 <div className="flex gap-1.5 overflow-hidden">
                   <span className="px-2.5 py-1 rounded-full text-[9px] font-black bg-[#F97316] text-white shrink-0">⭐ Destaques</span>
-                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-[#161616] border border-[#262626] text-[#9CA3AF] shrink-0">🍣 Sushi</span>
-                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-[#161616] border border-[#262626] text-[#9CA3AF] shrink-0">🥤 Bebidas</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-black border border-[#262626] text-[#9CA3AF] shrink-0">🍣 Sushi</span>
+                  <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-black border border-[#262626] text-[#9CA3AF] shrink-0">🥤 Bebidas</span>
                 </div>
               </button>
 
@@ -752,7 +752,7 @@ export default function VisualCustomizer() {
                             : `px-2.5 py-1 rounded-full text-[8px] font-bold whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 transition-all ${
                                 isActive
                                   ? 'text-white shadow-sm'
-                                  : 'bg-[#161616] border border-[#262626] text-[#9CA3AF]'
+                                  : 'bg-black border border-[#262626] text-[#9CA3AF]'
                               }`
                         }
                       >

@@ -718,7 +718,7 @@ export default function PublicMenuPage() {
                       : `px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
                           activeCategory === 'all'
                             ? 'bg-[#FF6A00] text-white shadow-md'
-                            : 'bg-[#161616] border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
+                            : 'bg-black border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
                         }`
                   }
                 >
@@ -741,7 +741,7 @@ export default function PublicMenuPage() {
                           : `px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
                               isActive
                                 ? 'bg-[#FF6A00] text-white font-black shadow-md'
-                                : 'bg-[#161616] border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
+                                : 'bg-black border border-[#262626] hover:bg-[#1F1F1F] text-[#9CA3AF] hover:text-white'
                             }`
                       }
                     >
