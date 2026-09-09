@@ -42,8 +42,11 @@ export interface LoyaltyConfig {
   active: boolean;
   pointsPerTenReais: number; // points earned for every R$10 spent
   pointsNeededForReward: number;
-  rewardType: 'fixed' | 'percentage';
+  rewardType: 'fixed' | 'percentage' | 'product';
   rewardValue: number;
+  // Only set when rewardType is 'product' — the product given away for free
+  // once the customer redeems the reward.
+  rewardProductId?: string;
 }
 
 export interface Category {

@@ -1118,9 +1118,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: 'Este cliente ainda não atingiu a meta de pontos.' };
     }
 
+    const rewardProduct = loyaltyConfig.rewardType === 'product'
+      ? products.find(p => p.id === loyaltyConfig.rewardProductId)
+      : undefined;
     const rewardLabel = loyaltyConfig.rewardType === 'fixed'
       ? `R$ ${loyaltyConfig.rewardValue.toFixed(2)} de desconto`
-      : `${loyaltyConfig.rewardValue}% de desconto`;
+      : loyaltyConfig.rewardType === 'percentage'
+      ? `${loyaltyConfig.rewardValue}% de desconto`
+      : `Produto grátis: ${rewardProduct?.name ?? 'produto removido'}`;
+    const rewardValue = loyaltyConfig.rewardType === 'product' ? (rewardProduct?.price ?? 0) : loyaltyConfig.rewardValue;
 
     if (!userId || isDemoMode) {
       const newBalance = pointsAfterRedemption(customer.loyaltyPoints, loyaltyConfig);
@@ -1132,7 +1138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const newBalance = await redeemLoyaltyRewardRpc(
         userId, customerPhone, loyaltyConfig.pointsNeededForReward, rewardLabel,
-        loyaltyConfig.rewardValue, loyaltyConfig.rewardType, idempotencyKey
+        rewardValue, loyaltyConfig.rewardType, idempotencyKey
       );
       setCustomers(prev => prev.map(c => c.phone === customerPhone ? { ...c, loyaltyPoints: newBalance } : c));
       return { success: true, message: `Prêmio resgatado: ${rewardLabel}.` };

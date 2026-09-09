@@ -24,7 +24,7 @@ import {
 import { WasabiTag, SubtleSushiDivider, SushiRollIcon } from './SushiIcons';
 
 export default function CustomersLoyalty() {
-  const { customers, visualConfig, setVisualConfig, redeemReward, fetchCustomerLoyaltyHistory } = useApp();
+  const { customers, products, visualConfig, setVisualConfig, redeemReward, fetchCustomerLoyaltyHistory } = useApp();
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'config'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   // Redemption is in-flight/feedback state per customer id — a customer
@@ -44,7 +44,8 @@ export default function CustomersLoyalty() {
   const [pointsPerOrder, setPointsPerOrder] = useState(String(savedLoyaltyConfig.pointsPerTenReais));
   const [pointsNeededForReward, setPointsNeededForReward] = useState(String(savedLoyaltyConfig.pointsNeededForReward));
   const [rewardValue, setRewardValue] = useState(String(savedLoyaltyConfig.rewardValue));
-  const [rewardType, setRewardType] = useState<'fixed' | 'percentage'>(savedLoyaltyConfig.rewardType);
+  const [rewardType, setRewardType] = useState<'fixed' | 'percentage' | 'product'>(savedLoyaltyConfig.rewardType);
+  const [rewardProductId, setRewardProductId] = useState(savedLoyaltyConfig.rewardProductId ?? '');
   const [activeLoyalty, setActiveLoyalty] = useState(savedLoyaltyConfig.active);
   const [justSaved, setJustSaved] = useState(false);
 
@@ -69,7 +70,8 @@ export default function CustomersLoyalty() {
       pointsPerTenReais: parseFloat(pointsPerOrder) || 0,
       pointsNeededForReward: parseFloat(pointsNeededForReward) || 0,
       rewardType,
-      rewardValue: parseFloat(rewardValue) || 0
+      rewardValue: parseFloat(rewardValue) || 0,
+      ...(rewardType === 'product' ? { rewardProductId } : {})
     };
     setVisualConfig(prev => ({ ...prev, loyaltyConfig: newConfig }));
     setJustSaved(true);
@@ -335,23 +337,44 @@ export default function CustomersLoyalty() {
                 >
                   <option value="fixed" className="bg-[#141210]">Desconto Fixo em Reais (R$)</option>
                   <option value="percentage" className="bg-[#141210]">Desconto Percentual (%)</option>
+                  <option value="product" className="bg-[#141210]">Produto Grátis</option>
                 </select>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Valor do Desconto Concedido</label>
-                <input
-                  type="number"
-                  value={rewardValue}
-                  onChange={(e) => setRewardValue(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs input-sushi focus:outline-none font-mono"
-                />
-              </div>
+              {rewardType === 'product' ? (
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Produto Concedido</label>
+                  <select
+                    value={rewardProductId}
+                    onChange={(e) => setRewardProductId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs input-sushi focus:outline-none"
+                  >
+                    <option value="" className="bg-[#141210]">Selecione um produto...</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id} className="bg-[#141210]">{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Valor do Desconto Concedido</label>
+                  <input
+                    type="number"
+                    value={rewardValue}
+                    onChange={(e) => setRewardValue(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs input-sushi focus:outline-none font-mono"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="p-4 bg-[#181512] rounded-xl border border-[#2A211A] text-xs text-[#A8A29A]">
               <p>
-                <strong className="text-[#F5F0EA]">Exemplo de Experiência:</strong> A cada R$ 100 em compras de sushi, o cliente acumula {parseFloat(pointsPerOrder) * 10} pontos. Atingindo a meta de {pointsNeededForReward} pontos, ele desbloqueia {rewardType === 'fixed' ? `R$ ${rewardValue}` : `${rewardValue}%`} de desconto no próximo pedido!
+                <strong className="text-[#F5F0EA]">Exemplo de Experiência:</strong> A cada R$ 100 em compras de sushi, o cliente acumula {parseFloat(pointsPerOrder) * 10} pontos. Atingindo a meta de {pointsNeededForReward} pontos, ele desbloqueia {
+                  rewardType === 'fixed' ? `R$ ${rewardValue} de desconto`
+                  : rewardType === 'percentage' ? `${rewardValue}% de desconto`
+                  : `${products.find(p => p.id === rewardProductId)?.name ?? 'um produto'} grátis`
+                } no próximo pedido!
               </p>
             </div>
 
