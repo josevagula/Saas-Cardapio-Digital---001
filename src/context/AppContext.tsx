@@ -24,6 +24,8 @@ import {
   creditOrderLoyaltyRpc,
   reverseOrderLoyaltyRpc,
   redeemLoyaltyRewardRpc,
+  syncOrderRevenueRpc,
+  removeOrderRevenueRpc,
   fetchLoyaltyLedger,
   type LoyaltyLedgerEntry,
   syncCategories,
@@ -1102,6 +1104,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Módulo Financeiro: which Receita category an order's own deliveryMethod
+  // maps to (types.ts: 'delivery' | 'pickup' | 'dine_in').
+  const revenueCategoryForOrder = (order: Order): 'delivery' | 'balcao' | 'salao' =>
+    order.deliveryMethod === 'delivery' ? 'delivery' : order.deliveryMethod === 'dine_in' ? 'salao' : 'balcao';
+
+  // Mirrors a just-delivered order into the Receitas ledger — the one moment
+  // a Receita is generated automatically (see updateOrderStatus below,
+  // alongside creditOrderLoyalty; same reasoning: no payment gateway is
+  // integrated, so "pago" means the money was actually collected on
+  // delivery/pickup, not merely that the order was placed). Demo mode never
+  // touches Supabase, same rule as every other real-account-only mutation
+  // here. The RPC itself is idempotent (upsert keyed on order_id), so a
+  // retried call — or two admin tabs marking the same order delivered at
+  // once — can never create a duplicate revenue.
+  const syncOrderRevenue = (order: Order) => {
+    if (!userId || isDemoMode) return;
+    retryUntilSuccess(() =>
+      syncOrderRevenueRpc(
+        userId,
+        order.id,
+        `Pedido #${order.orderNumber ?? order.id}`,
+        revenueCategoryForOrder(order),
+        order.total,
+        order.paymentMethod,
+        new Date().toISOString().slice(0, 10)
+      ).then(() => {})
+    );
+  };
+
+  // The inverse — removes the automatic revenue when an order that had
+  // reached 'delivered' is cancelled or reverted to an earlier stage. Never
+  // touches a revenue the owner has manually adopted (is_manual_override).
+  const removeOrderRevenue = (order: Order) => {
+    if (!userId || isDemoMode) return;
+    retryUntilSuccess(() => removeOrderRevenueRpc(userId, order.id));
+  };
+
   // Redeems the currently configured reward for one customer — spends
   // exactly pointsNeededForReward, never the whole balance, so points
   // earned beyond the goal carry over toward the next one. For a real
@@ -1168,9 +1207,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return item ? { ...p, salesCount: Math.max(0, p.salesCount - item.quantity) } : p;
     }));
 
-    // Loyalty was only ever credited once the order reached 'delivered'.
+    // Loyalty/Receita were only ever credited once the order reached 'delivered'.
     if (order.status === 'delivered') {
       reverseOrderLoyalty(order);
+      removeOrderRevenue(order);
     }
 
     setAnalytics(prev => {
@@ -1194,16 +1234,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (order && status !== order.status) {
       if (status === 'cancelled') {
-        // Reverses products/analytics/loyalty together (loyalty only if the
-        // order had actually reached 'delivered').
+        // Reverses products/analytics/loyalty/receita together (loyalty and
+        // receita only if the order had actually reached 'delivered').
         reverseOrderMetrics(order);
       } else if (status === 'delivered') {
-        // The order just completed — this is the one moment loyalty is earned.
+        // The order just completed — this is the one moment loyalty is
+        // earned and a Receita is generated (see syncOrderRevenue above).
         creditOrderLoyalty(order);
+        syncOrderRevenue(order);
       } else if (order.status === 'delivered') {
         // Reverted from 'delivered' back to an earlier stage — claw back the
-        // loyalty it had earned.
+        // loyalty it had earned and remove the automatic Receita.
         reverseOrderLoyalty(order);
+        removeOrderRevenue(order);
       }
     }
 

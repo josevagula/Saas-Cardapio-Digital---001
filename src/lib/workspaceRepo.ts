@@ -6,7 +6,15 @@ import type {
   Coupon,
   CustomerInfo,
   VisualConfig,
-  SalesAnalytics
+  SalesAnalytics,
+  Revenue,
+  Expense,
+  CashAdjustment,
+  FinanceSettings,
+  FinancialTransaction,
+  CashFlowDay,
+  DreReport,
+  DreBreakdown
 } from '../types';
 
 // Maps this app's camelCase domain types to/from the snake_case Supabase
@@ -535,6 +543,44 @@ export async function redeemLoyaltyRewardRpc(
   return data as number;
 }
 
+// Financeiro: mirrors an order's revenue the moment it reaches 'delivered'
+// (see updateOrderStatus in AppContext.tsx) — an atomic upsert keyed on
+// (user_id, order_id), so retries/duplicate calls for the same order never
+// create a second revenue row (see 20260910233526_financial_module.sql).
+// Never overwrites a revenue the owner has manually edited/adopted.
+export async function syncOrderRevenueRpc(
+  ownerId: string,
+  orderId: string,
+  description: string,
+  category: string,
+  amount: number,
+  paymentMethod: string,
+  occurredAt: string
+): Promise<string> {
+  const { data, error } = await supabase.rpc('sync_order_revenue', {
+    p_user_id: ownerId,
+    p_order_id: orderId,
+    p_description: description,
+    p_category: category,
+    p_amount: amount,
+    p_payment_method: paymentMethod,
+    p_occurred_at: occurredAt
+  });
+  if (error) throw new Error(`Failed to sync order revenue: ${error.message}`);
+  return data as string;
+}
+
+// The inverse — removes the automatic revenue when an order is cancelled or
+// reverted from 'delivered' to an earlier stage. No-op if the revenue was
+// manually adopted by the owner (is_manual_override = true).
+export async function removeOrderRevenueRpc(ownerId: string, orderId: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_order_revenue', {
+    p_user_id: ownerId,
+    p_order_id: orderId
+  });
+  if (error) throw new Error(`Failed to remove order revenue: ${error.message}`);
+}
+
 export interface LoyaltyLedgerEntry {
   id: number;
   customerPhone: string;
@@ -567,6 +613,291 @@ export async function fetchLoyaltyLedger(ownerId: string, customerPhone: string)
     rewardSnapshot: r.reward_snapshot,
     createdAt: r.created_at
   }));
+}
+
+// DRE-only: total value of reward redemptions in a date range (across every
+// customer), for the "Benefícios Fidelidade / Resgates de pontos" deduction
+// line — separate from fetchLoyaltyLedger above, which is scoped to one
+// customer for the Clientes & Fidelidade history panel.
+export async function fetchLoyaltyRedemptionsTotal(ownerId: string, range: { start: string; end: string }): Promise<number> {
+  const { data, error } = await supabase
+    .from('loyalty_ledger')
+    .select('reward_snapshot')
+    .eq('user_id', ownerId)
+    .eq('type', 'redeem')
+    .gte('created_at', `${range.start}T00:00:00`)
+    .lte('created_at', `${range.end}T23:59:59`);
+  if (error) throw new Error(`Failed to load loyalty redemptions: ${error.message}`);
+  return (data || []).reduce((sum: number, r: any) => sum + Number(r.reward_snapshot?.value ?? 0), 0);
+}
+
+// --- Módulo Financeiro ---
+// Deliberately NOT part of fetchWorkspace/syncRows (unlike coupons/
+// customers, which are small and always fully in memory): revenues and
+// expenses accumulate indefinitely over an account's life, so each screen
+// fetches only the period it's showing and writes one row at a time — same
+// reasoning as fetchLoyaltyLedger just above, and why orders itself is
+// append/update-only rather than full-list synced.
+
+export interface DateRange { start: string; end: string }
+
+const rowToRevenue = (r: any): Revenue => ({
+  id: r.id,
+  description: r.description,
+  category: r.category,
+  amount: Number(r.amount),
+  occurredAt: r.occurred_at,
+  paymentMethod: r.payment_method ?? undefined,
+  origin: r.origin,
+  orderId: r.order_id ?? undefined,
+  isManualOverride: r.is_manual_override,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at
+});
+
+export async function fetchRevenues(userId: string, range?: DateRange): Promise<Revenue[]> {
+  let query = supabase.from('revenues').select('*').eq('user_id', userId);
+  if (range) query = query.gte('occurred_at', range.start).lte('occurred_at', range.end);
+  const { data, error } = await query.order('occurred_at', { ascending: false });
+  if (error) throw new Error(`Failed to load revenues: ${error.message}`);
+  return (data || []).map(rowToRevenue);
+}
+
+export async function createRevenue(userId: string, revenue: Omit<Revenue, 'id' | 'origin' | 'isManualOverride' | 'createdAt' | 'updatedAt'>): Promise<Revenue> {
+  const { data, error } = await supabase
+    .from('revenues')
+    .insert({
+      user_id: userId,
+      description: revenue.description,
+      category: revenue.category,
+      amount: revenue.amount,
+      occurred_at: revenue.occurredAt,
+      payment_method: revenue.paymentMethod ?? null,
+      origin: 'manual'
+    })
+    .select('*')
+    .single();
+  if (error) throw new Error(`Failed to create revenue: ${error.message}`);
+  return rowToRevenue(data);
+}
+
+// Editing an automatic (pedido_automatico) revenue adopts it — future order
+// status syncs (see sync_order_revenue) will then leave it alone instead of
+// silently overwriting the owner's edit.
+export async function updateRevenue(userId: string, id: string, patch: Partial<Pick<Revenue, 'description' | 'category' | 'amount' | 'occurredAt' | 'paymentMethod'>>, adopt: boolean): Promise<Revenue> {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.description !== undefined) row.description = patch.description;
+  if (patch.category !== undefined) row.category = patch.category;
+  if (patch.amount !== undefined) row.amount = patch.amount;
+  if (patch.occurredAt !== undefined) row.occurred_at = patch.occurredAt;
+  if (patch.paymentMethod !== undefined) row.payment_method = patch.paymentMethod;
+  if (adopt) row.is_manual_override = true;
+
+  const { data, error } = await supabase.from('revenues').update(row).eq('id', id).eq('user_id', userId).select('*').single();
+  if (error) throw new Error(`Failed to update revenue: ${error.message}`);
+  return rowToRevenue(data);
+}
+
+export async function deleteRevenue(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('revenues').delete().eq('id', id).eq('user_id', userId);
+  if (error) throw new Error(`Failed to delete revenue: ${error.message}`);
+}
+
+const rowToExpense = (r: any): Expense => ({
+  id: r.id,
+  description: r.description,
+  category: r.category,
+  amount: Number(r.amount),
+  dueDate: r.due_date,
+  paidDate: r.paid_date ?? undefined,
+  status: r.status,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at
+});
+
+export async function fetchExpenses(userId: string, range?: DateRange): Promise<Expense[]> {
+  let query = supabase.from('expenses').select('*').eq('user_id', userId);
+  if (range) query = query.gte('due_date', range.start).lte('due_date', range.end);
+  const { data, error } = await query.order('due_date', { ascending: false });
+  if (error) throw new Error(`Failed to load expenses: ${error.message}`);
+  return (data || []).map(rowToExpense);
+}
+
+export async function createExpense(userId: string, expense: Pick<Expense, 'description' | 'category' | 'amount' | 'dueDate'>): Promise<Expense> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .insert({
+      user_id: userId,
+      description: expense.description,
+      category: expense.category,
+      amount: expense.amount,
+      due_date: expense.dueDate
+    })
+    .select('*')
+    .single();
+  if (error) throw new Error(`Failed to create expense: ${error.message}`);
+  return rowToExpense(data);
+}
+
+export async function updateExpense(userId: string, id: string, patch: Partial<Pick<Expense, 'description' | 'category' | 'amount' | 'dueDate'>>): Promise<Expense> {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.description !== undefined) row.description = patch.description;
+  if (patch.category !== undefined) row.category = patch.category;
+  if (patch.amount !== undefined) row.amount = patch.amount;
+  if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
+
+  const { data, error } = await supabase.from('expenses').update(row).eq('id', id).eq('user_id', userId).select('*').single();
+  if (error) throw new Error(`Failed to update expense: ${error.message}`);
+  return rowToExpense(data);
+}
+
+export async function markExpensePaid(userId: string, id: string, paidDate: string): Promise<Expense> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .update({ status: 'pago', paid_date: paidDate, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select('*')
+    .single();
+  if (error) throw new Error(`Failed to mark expense as paid: ${error.message}`);
+  return rowToExpense(data);
+}
+
+// Reopens a paid expense back to pendente (e.g. marked paid by mistake).
+export async function markExpenseUnpaid(userId: string, id: string): Promise<Expense> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .update({ status: 'pendente', paid_date: null, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select('*')
+    .single();
+  if (error) throw new Error(`Failed to reopen expense: ${error.message}`);
+  return rowToExpense(data);
+}
+
+export async function deleteExpense(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('expenses').delete().eq('id', id).eq('user_id', userId);
+  if (error) throw new Error(`Failed to delete expense: ${error.message}`);
+}
+
+const rowToCashAdjustment = (r: any): CashAdjustment => ({
+  id: r.id,
+  description: r.description,
+  amount: Number(r.amount),
+  occurredAt: r.occurred_at,
+  createdAt: r.created_at
+});
+
+export async function fetchCashAdjustments(userId: string, range?: DateRange): Promise<CashAdjustment[]> {
+  let query = supabase.from('cash_adjustments').select('*').eq('user_id', userId);
+  if (range) query = query.gte('occurred_at', range.start).lte('occurred_at', range.end);
+  const { data, error } = await query.order('occurred_at', { ascending: false });
+  if (error) throw new Error(`Failed to load cash adjustments: ${error.message}`);
+  return (data || []).map(rowToCashAdjustment);
+}
+
+export async function createCashAdjustment(userId: string, adjustment: Pick<CashAdjustment, 'description' | 'amount' | 'occurredAt'>): Promise<CashAdjustment> {
+  const { data, error } = await supabase
+    .from('cash_adjustments')
+    .insert({ user_id: userId, description: adjustment.description, amount: adjustment.amount, occurred_at: adjustment.occurredAt })
+    .select('*')
+    .single();
+  if (error) throw new Error(`Failed to create cash adjustment: ${error.message}`);
+  return rowToCashAdjustment(data);
+}
+
+export async function deleteCashAdjustment(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('cash_adjustments').delete().eq('id', id).eq('user_id', userId);
+  if (error) throw new Error(`Failed to delete cash adjustment: ${error.message}`);
+}
+
+export async function fetchFinancialTransactions(userId: string, range?: DateRange): Promise<FinancialTransaction[]> {
+  let query = supabase.from('financial_transactions').select('*').eq('user_id', userId);
+  if (range) query = query.gte('occurred_at', range.start).lte('occurred_at', range.end);
+  const { data, error } = await query.order('occurred_at', { ascending: false }).order('id', { ascending: false });
+  if (error) throw new Error(`Failed to load financial timeline: ${error.message}`);
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    direction: r.direction,
+    amount: Number(r.amount),
+    source: r.source,
+    sourceId: r.source_id,
+    description: r.description,
+    category: r.category ?? undefined,
+    occurredAt: r.occurred_at,
+    createdAt: r.created_at
+  }));
+}
+
+export async function fetchCashFlowDaily(userId: string, range?: DateRange): Promise<CashFlowDay[]> {
+  let query = supabase.from('cash_flow_daily').select('*').eq('user_id', userId);
+  if (range) query = query.gte('occurred_at', range.start).lte('occurred_at', range.end);
+  const { data, error } = await query.order('occurred_at', { ascending: true });
+  if (error) throw new Error(`Failed to load cash flow: ${error.message}`);
+  return (data || []).map((r: any) => ({
+    occurredAt: r.occurred_at,
+    inflow: Number(r.inflow),
+    outflow: Number(r.outflow),
+    net: Number(r.net)
+  }));
+}
+
+const DEFAULT_FINANCE_SETTINGS: FinanceSettings = {
+  initialBalance: 0,
+  initialBalanceDate: new Date().toISOString().slice(0, 10),
+  cogsPercent: 35,
+  updatedAt: new Date().toISOString()
+};
+
+export async function fetchFinanceSettings(userId: string): Promise<FinanceSettings> {
+  const { data, error } = await supabase.from('finance_settings').select('*').eq('user_id', userId).maybeSingle();
+  if (error) throw new Error(`Failed to load finance settings: ${error.message}`);
+  if (!data) return DEFAULT_FINANCE_SETTINGS;
+  return {
+    initialBalance: Number(data.initial_balance),
+    initialBalanceDate: data.initial_balance_date,
+    cogsPercent: Number(data.cogs_percent),
+    updatedAt: data.updated_at
+  };
+}
+
+export async function saveFinanceSettings(userId: string, settings: Pick<FinanceSettings, 'initialBalance' | 'initialBalanceDate' | 'cogsPercent'>): Promise<void> {
+  const { error } = await supabase.from('finance_settings').upsert({
+    user_id: userId,
+    initial_balance: settings.initialBalance,
+    initial_balance_date: settings.initialBalanceDate,
+    cogs_percent: settings.cogsPercent,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+  if (error) throw new Error(`Failed to save finance settings: ${error.message}`);
+}
+
+export async function fetchDreReports(userId: string): Promise<DreReport[]> {
+  const { data, error } = await supabase.from('dre_reports').select('*').eq('user_id', userId).order('period_start', { ascending: false });
+  if (error) throw new Error(`Failed to load DRE history: ${error.message}`);
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    periodType: r.period_type,
+    periodStart: r.period_start,
+    periodEnd: r.period_end,
+    breakdown: r.breakdown as DreBreakdown,
+    generatedAt: r.generated_at
+  }));
+}
+
+// "Fechar período" — snapshots the live-computed DRE so it survives future
+// edits to the underlying revenues/expenses without shifting retroactively.
+export async function saveDreSnapshot(userId: string, periodType: DreReport['periodType'], periodStart: string, periodEnd: string, breakdown: DreBreakdown): Promise<void> {
+  const { error } = await supabase.from('dre_reports').upsert({
+    user_id: userId,
+    period_type: periodType,
+    period_start: periodStart,
+    period_end: periodEnd,
+    breakdown,
+    generated_at: new Date().toISOString()
+  }, { onConflict: 'user_id,period_type,period_start' });
+  if (error) throw new Error(`Failed to save DRE snapshot: ${error.message}`);
 }
 
 export async function syncVisualConfig(userId: string, visualConfig: VisualConfig) {

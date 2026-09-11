@@ -190,6 +190,103 @@ export interface Coupon {
   active: boolean;
 }
 
+// --- Módulo Financeiro (Receitas, Despesas, Fluxo de Caixa, DRE) ---
+// See supabase/migrations/20260910233526_financial_module.sql.
+
+export type RevenueCategory = 'pedidos_online' | 'delivery' | 'balcao' | 'salao' | 'outros';
+
+export interface Revenue {
+  id: string;
+  description: string;
+  category: RevenueCategory;
+  amount: number;
+  occurredAt: string; // YYYY-MM-DD
+  paymentMethod?: PaymentMethod | string;
+  origin: 'manual' | 'pedido_automatico';
+  orderId?: string;
+  isManualOverride: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ExpenseCategory =
+  | 'aluguel' | 'fornecedores' | 'funcionarios' | 'marketing' | 'energia'
+  | 'agua' | 'internet' | 'impostos' | 'equipamentos' | 'outros';
+
+export type ExpenseStatus = 'pendente' | 'pago';
+
+export interface Expense {
+  id: string;
+  description: string;
+  category: ExpenseCategory;
+  amount: number;
+  dueDate: string; // YYYY-MM-DD
+  paidDate?: string;
+  status: ExpenseStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CashAdjustment {
+  id: string;
+  description: string;
+  amount: number; // signed: positive = entrada, negative = saída
+  occurredAt: string;
+  createdAt: string;
+}
+
+export interface FinanceSettings {
+  initialBalance: number;
+  initialBalanceDate: string;
+  cogsPercent: number;
+  updatedAt: string;
+}
+
+export interface FinancialTransaction {
+  id: number;
+  direction: 'in' | 'out';
+  amount: number;
+  source: 'revenue' | 'expense' | 'adjustment';
+  sourceId: string;
+  description: string;
+  category?: string;
+  occurredAt: string;
+  createdAt: string;
+}
+
+export interface CashFlowDay {
+  occurredAt: string;
+  inflow: number;
+  outflow: number;
+  net: number;
+}
+
+export type DrePeriodType = 'mensal' | 'trimestral' | 'anual';
+
+export interface DreBreakdown {
+  receitaBruta: number;
+  descontos: number;
+  cupons: number;
+  cashback: number;
+  beneficiosFidelidade: number;
+  receitaLiquida: number;
+  custos: number;
+  lucroBruto: number;
+  despesasOperacionais: number;
+  resultadoOperacional: number;
+  impostos: number;
+  lucroLiquido: number;
+}
+
+export interface DreReport {
+  id: string;
+  periodType: DrePeriodType;
+  periodStart: string;
+  periodEnd: string;
+  breakdown: DreBreakdown;
+  generatedAt: string;
+}
+
 export type VIPTier = 'Bronze' | 'Prata' | 'Ouro' | 'Diamond';
 
 export interface CustomerInfo {

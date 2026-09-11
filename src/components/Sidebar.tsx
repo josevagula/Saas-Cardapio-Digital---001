@@ -36,7 +36,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
     { id: 'orders', label: 'Pedidos', icon: HashiIcon, badge: 'Ao Vivo' },
     { id: 'menu_manager', label: 'Cardápio', icon: SushiRollIcon },
     { id: 'customers', label: 'Clientes & Fidelidade', icon: Users },
-    { id: 'financial', label: 'Financeiro & Cupons', icon: TrendingUp },
+    { id: 'financial', label: 'Financeiro', icon: TrendingUp },
     { id: 'customizer', label: 'Personalização', icon: Palette },
     { id: 'ai_assistant', label: 'Sushi AI Studio', icon: Sparkles, highlight: true },
   ];
