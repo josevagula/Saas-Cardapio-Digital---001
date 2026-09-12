@@ -1,12 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { useAuth } from '../../context/AuthContext';
 import { Coupon } from '../../types';
-import { safeNumber, formatCurrency } from '../../utils/formatters';
-import { computeRealSalesSummary, PAYMENT_METHOD_LABELS } from '../../utils/salesStats';
-import { fetchFinanceSettings, saveFinanceSettings } from '../../lib/workspaceRepo';
+import { formatCurrency } from '../../utils/formatters';
 import {
-  TrendingUp,
   Percent,
   Trash2,
   Plus,
@@ -14,9 +10,7 @@ import {
 } from 'lucide-react';
 
 export default function CouponsManager() {
-  const { coupons, addCoupon, setCoupons, analytics, orders, isDemoMode } = useApp();
-  const { user } = useAuth();
-  const userId = user?.id ?? null;
+  const { coupons, addCoupon, setCoupons } = useApp();
 
   // Form Coupon states
   const [code, setCode] = useState('');
@@ -24,56 +18,6 @@ export default function CouponsManager() {
   const [value, setValue] = useState('');
   const [minOrderValue, setMinOrderValue] = useState('');
   const [isFirstPurchaseOnly, setIsFirstPurchaseOnly] = useState(false);
-
-  // Profit Margin Calculator (Cost of Goods Sold - COGS) — persisted in
-  // finance_settings (Módulo Financeiro) instead of resetting every session.
-  const [cogsPercent, setCogsPercent] = useState('35');
-
-  useEffect(() => {
-    if (!userId || isDemoMode) return;
-    fetchFinanceSettings(userId).then(s => setCogsPercent(s.cogsPercent.toString())).catch(() => {});
-  }, [userId, isDemoMode]);
-
-  const handleCogsChange = (val: string) => {
-    setCogsPercent(val);
-    if (!userId || isDemoMode) return;
-    const parsed = parseFloat(val);
-    if (isNaN(parsed)) return;
-    fetchFinanceSettings(userId)
-      .then(s => saveFinanceSettings(userId, { ...s, cogsPercent: parsed }))
-      .catch(() => {});
-  };
-
-  // The demo dataset keeps its mock figures; every real account is
-  // calculated strictly off its own real orders, never the
-  // separately-persisted analytics snapshot (which can go stale).
-  const realSummary = useMemo(() => computeRealSalesSummary(orders), [orders]);
-  const revenue = isDemoMode ? analytics.monthlyRevenue : realSummary.monthlyRevenue;
-  const ticketAverage = isDemoMode ? analytics.ticketAverage : realSummary.ticketAverage;
-  const cogs = (revenue * parseFloat(cogsPercent)) / 100;
-  const estimatedProfit = revenue - cogs;
-
-  // Most-used real payment method by revenue share — no mock fallback text,
-  // since an account with no orders yet simply has no champion.
-  const championPaymentMethod = useMemo(() => {
-    if (isDemoMode) return 'Pix (55%)';
-    const totals: Record<string, number> = {};
-    orders.filter(o => o.status !== 'cancelled').forEach(o => {
-      totals[o.paymentMethod] = (totals[o.paymentMethod] || 0) + o.total;
-    });
-    const entries = Object.entries(totals);
-    if (entries.length === 0) return 'Sem pedidos ainda';
-    entries.sort((a, b) => b[1] - a[1]);
-    const [method, amount] = entries[0];
-    const total = entries.reduce((sum, [, v]) => sum + v, 0);
-    const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
-    return `${PAYMENT_METHOD_LABELS[method] || method} (${pct}%)`;
-  }, [isDemoMode, orders]);
-
-  // Real count of orders that actually used a coupon code — not a fixed
-  // mock number, since there's no separate "redemptions" counter kept
-  // anywhere else in the app.
-  const redeemedCouponsCount = isDemoMode ? 42 : orders.filter(o => !!o.couponCode && o.status !== 'cancelled').length;
 
   const handleCreateCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,82 +55,6 @@ export default function CouponsManager() {
 
   return (
     <div>
-      {/* Financial calculations and profit estimator */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        <div className="lg:col-span-2 bg-[#141210] p-7 rounded-2xl border border-[#2A211A] shadow-xs flex flex-col justify-between">
-          <div>
-            <h3 className="text-base font-display font-extrabold text-[#F5F0EA] mb-4 flex items-center gap-2">
-              <TrendingUp className="text-[#FB923C] w-5 h-5" />
-              Estimador de Lucro Líquido Real
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Custo Médio de Insumos (Food Cost %)</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={cogsPercent}
-                    onChange={(e) => handleCogsChange(e.target.value)}
-                    className="w-full pl-3.5 pr-12 py-2.5 text-sm input-sushi focus:outline-none font-mono"
-                  />
-                  <span className="absolute right-3.5 top-3 text-xs text-[#A8A29A] font-semibold font-mono">%</span>
-                </div>
-                <p className="text-[10px] text-[#A8A29A] mt-1">Geralmente, restaurantes operam entre 30% a 40% de custo de matéria-prima.</p>
-              </div>
-
-              <div className="space-y-3 bg-[#0C0A08] p-4 rounded-xl border border-[#2A211A]">
-                <div className="flex justify-between text-xs text-slate-300">
-                  <span>Receita Bruta Acumulada:</span>
-                  <span className="font-bold text-white font-mono">R$ {formatCurrency(revenue)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-slate-300">
-                  <span>Custo Estimado Insumos:</span>
-                  <span className="font-bold text-red-400 font-mono">- R$ {formatCurrency(cogs)}</span>
-                </div>
-                <div className="border-t border-[#2A211A] pt-2 flex justify-between text-sm font-extrabold text-white">
-                  <span>Lucro Operacional Líquido:</span>
-                  <span className="text-[#F97316] font-mono">R$ {formatCurrency(estimatedProfit)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 bg-[#1F1209] rounded-xl border border-[#4A2A10] text-xs text-slate-300 flex gap-2.5">
-            <TrendingUp className="w-5 h-5 text-[#FB923C] shrink-0 mt-0.5" />
-            <span>
-              Sua margem líquida estimada de lucro é de <strong className="text-white">{100 - parseFloat(cogsPercent)}%</strong>! Para elevar essa margem, use a inteligência artificial da Sushi para criar combos integrando bebidas e sobremesas, que possuem custos de insumo menores.
-            </span>
-          </div>
-        </div>
-
-        {/* Financial KPI Ledger card */}
-        <div className="bg-[#141210] text-slate-100 p-7 rounded-2xl border border-[#2A211A] shadow-xs flex flex-col justify-between">
-          <div>
-            <h4 className="text-xs font-mono text-[#FB923C] uppercase tracking-widest font-bold">Ledger Consolidado</h4>
-            <h3 className="text-3xl font-display font-extrabold text-[#F5F0EA] mt-2 font-mono">
-              R$ {formatCurrency(estimatedProfit)}
-            </h3>
-            <p className="text-xs text-[#A8A29A] mt-1">Saldo líquido mensal estimado</p>
-          </div>
-
-          <div className="space-y-2 border-t border-[#2A211A] pt-4 mt-6 text-xs">
-            <div className="flex justify-between text-slate-300">
-              <span>Método Campeão:</span>
-              <span className="text-white font-mono font-bold">{championPaymentMethod}</span>
-            </div>
-            <div className="flex justify-between text-slate-300">
-              <span>Ticket Médio Geral:</span>
-              <span className="text-white font-mono font-bold">R$ {formatCurrency(ticketAverage)}</span>
-            </div>
-            <div className="flex justify-between text-slate-300">
-              <span>Cupons Resgatados:</span>
-              <span className="text-white font-mono font-bold">{redeemedCouponsCount} resgates</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Coupons Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Creator Panel */}
