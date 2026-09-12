@@ -227,6 +227,16 @@ export default function OrdersManager() {
                         <div className="flex-1">
                           <span className="font-bold text-[#F97316] font-mono mr-1">{item.quantity}x</span>
                           <span className="font-medium text-slate-200">{item.product.name}</span>
+                          {item.comboFlavors && item.comboFlavors.length > 0 && (
+                            <p className="text-[10px] text-[#FB923C] font-bold mt-0.5 ml-5">
+                              🍣 Sabores: {item.comboFlavors.map(f => `${f.pieces}x ${f.flavorName}`).join(', ')}
+                            </p>
+                          )}
+                          {item.halfAndHalf && (
+                            <p className="text-[10px] text-[#FB923C] font-bold mt-0.5 ml-5">
+                              🍣 Meio a Meio: {item.halfAndHalf.flavor1} / {item.halfAndHalf.flavor2}
+                            </p>
+                          )}
                           {item.removedIngredients && item.removedIngredients.length > 0 && (
                             <p className="text-[10px] text-red-400 font-bold mt-0.5 ml-5 flex items-center gap-1">
                               <span>⛔ RETIRAR:</span>
