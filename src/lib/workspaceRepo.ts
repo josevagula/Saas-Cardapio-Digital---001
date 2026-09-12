@@ -122,7 +122,7 @@ const orderToRow = (o: Order, userId: string) => ({
   // value and clobber the number the RPC had just assigned.
 });
 
-const rowToOrder = (r: any): Order => ({
+export const rowToOrder = (r: any): Order => ({
   id: r.id,
   customerName: r.customer_name,
   customerPhone: r.customer_phone,
@@ -218,6 +218,7 @@ const visualConfigToRow = (v: VisualConfig, userId: string) => ({
   is_store_open_manual: v.isStoreOpenManual ?? null,
   auto_kit_config: v.autoKitConfig ?? null,
   loyalty_config: v.loyaltyConfig ?? null,
+  printing_config: v.printingConfig ?? null,
   updated_at: new Date().toISOString()
 });
 
@@ -242,7 +243,8 @@ const rowToVisualConfig = (r: any): VisualConfig => ({
   autoStatusByTime: r.auto_status_by_time ?? undefined,
   isStoreOpenManual: r.is_store_open_manual ?? undefined,
   autoKitConfig: r.auto_kit_config ?? undefined,
-  loyaltyConfig: r.loyalty_config ?? undefined
+  loyaltyConfig: r.loyalty_config ?? undefined,
+  printingConfig: r.printing_config ?? undefined
 });
 
 // Upserts every current row and deletes any row still owned by this user

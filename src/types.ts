@@ -33,6 +33,7 @@ export interface VisualConfig {
     napkinsPerItem: number;
   };
   loyaltyConfig?: LoyaltyConfig;
+  printingConfig?: PrintingConfig;
 }
 
 // Rules for the Clientes & Fidelidade loyalty program — configured by the
@@ -47,6 +48,41 @@ export interface LoyaltyConfig {
   // Only set when rewardType is 'product' — the product given away for free
   // once the customer redeems the reward.
   rewardProductId?: string;
+}
+
+// --- Sistema de Impressão Automática (Bluetooth/ESC-POS) ---
+// See supabase/migrations/20260912140000_printing_config_and_orders_realtime.sql.
+
+export type PrinterRole = 'geral' | 'cozinha' | 'balcao' | 'delivery';
+
+// The Bluetooth device id itself is intentionally NOT part of this profile —
+// it's only meaningful within the browser/device that paired it (Web
+// Bluetooth device permissions don't sync across devices), so it's kept in
+// localStorage instead (see lib/printing/printService.ts). This profile is
+// the shareable metadata: name/role/paper size, synced like any other
+// visualConfig field so every device shows the same printer list.
+export interface PrinterProfile {
+  id: string;
+  name: string;
+  role: PrinterRole;
+  paperWidth: 58 | 80;
+  createdAt: string;
+  lastConnectedAt?: string;
+}
+
+export interface PrintingConfig {
+  autoPrintOnReceived: boolean;
+  autoPrintOnConfirmed: boolean;
+  printObservacoes: boolean;
+  printTelefone: boolean;
+  printEndereco: boolean;
+  printFormaPagamento: boolean;
+  autoCutPaper: boolean;
+  // 'ascii' (default, safe on every printer) transliterates á/ã/ç/etc. to
+  // plain letters; 'cp860' sends the real accented bytes for printers
+  // confirmed (via "Imprimir Teste") to support the Portuguese code page.
+  accentMode: 'ascii' | 'cp860';
+  printers: PrinterProfile[];
 }
 
 export interface Category {

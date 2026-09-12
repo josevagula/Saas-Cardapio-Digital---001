@@ -1,3 +1,13 @@
+import { Order } from '../types';
+
+// The sequential number is assigned in the background shortly after
+// checkout (see assignOrderNumber in AppContext), so it may briefly be
+// missing on a just-placed order — falls back to the legacy random id
+// (still relabelled LUV->PED) rather than showing a blank code.
+export function formatOrderCode(order: Order): string {
+  return order.orderNumber != null ? `PED-${String(order.orderNumber).padStart(4, '0')}` : order.id.replace('LUV', 'PED');
+}
+
 export function safeNumber(val: any, fallback = 0): number {
   if (val === null || val === undefined) return fallback;
   const num = typeof val === 'number' ? val : parseFloat(String(val));

@@ -35,14 +35,18 @@ import {
   syncCoupons,
   syncCustomers,
   syncVisualConfig,
-  syncAnalytics
+  syncAnalytics,
+  rowToOrder
 } from '../lib/workspaceRepo';
+import { supabase } from '../lib/supabase';
 import { startCheckout, openBillingPortal } from '../lib/billing';
 import { retryUntilSuccess, getSyncPendingCount } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { API_BASE } from '../lib/apiBase';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
 import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption } from '../utils/loyalty';
+import { formatOrderCode } from '../utils/formatters';
+import { handleOrderReceivedForPrinting, handleOrderConfirmedForPrinting } from '../lib/printing/printBridge';
 
 // Maps a raw Stripe subscription_status value (trialing, active, past_due,
 // canceled, unpaid, incomplete, incomplete_expired…) onto the simple
@@ -63,6 +67,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   customers: '/dashboard/clientes-fidelidade',
   financial: '/dashboard/financeiro-cupons',
   analytics_advanced: '/dashboard/analytics',
+  printing: '/dashboard/impressao',
   customizer: '/dashboard/personalizacao',
   ai_assistant: '/dashboard/ai-studio'
 };
@@ -601,6 +606,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     safeSetLocalStorage(scopedKey('orders'), orders);
   }, [orders, workspaceReady, userId, isDemoMode, publicMenuSlug]);
+
+  // Live "a new order just landed" signal — added for the Impressão module's
+  // "Impressão automática ao receber pedido" (see lib/printing/printBridge.ts):
+  // a customer places an order from their OWN browser, so without this the
+  // admin's dashboard would only learn about it on a manual reload. Purely
+  // additive — it only adds an order the admin doesn't already have and
+  // patches an existing one's status; it never changes what createOrder or
+  // updateOrderStatus themselves do. visualConfigRef always holds the latest
+  // printingConfig without forcing this effect (and the realtime channel) to
+  // resubscribe every time visualConfig changes for an unrelated reason.
+  const visualConfigRef = useRef(visualConfig);
+  useEffect(() => { visualConfigRef.current = visualConfig; }, [visualConfig]);
+
+  useEffect(() => {
+    if (!isAdmin || !userId || isDemoMode || publicMenuSlug) return;
+    const channel = supabase
+      .channel(`orders-live-${userId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, (payload: any) => {
+        const incoming = rowToOrder(payload.new);
+        setOrders(prev => (prev.some(o => o.id === incoming.id) ? prev : [incoming, ...prev]));
+        handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, (payload: any) => {
+        const updated = rowToOrder(payload.new);
+        setOrders(prev => prev.map(o => (o.id === updated.id ? updated : o)));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAdmin, userId, isDemoMode, publicMenuSlug]);
 
   useEffect(() => {
     if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
@@ -1248,6 +1282,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // loyalty it had earned and remove the automatic Receita.
         reverseOrderLoyalty(order);
         removeOrderRevenue(order);
+      }
+
+      // "Confirmado" — staff just accepted a pending order. Side effect only
+      // (matches the pattern already established above for loyalty/receita);
+      // does not change the status transition itself.
+      if (status === 'preparing' && order.status === 'received') {
+        handleOrderConfirmedForPrinting({ ...order, status }, formatOrderCode(order), visualConfig.printingConfig);
       }
     }
 

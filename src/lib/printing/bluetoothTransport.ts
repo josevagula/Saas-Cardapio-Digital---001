@@ -1,0 +1,187 @@
+// Web Bluetooth transport for ESC/POS thermal printers.
+//
+// HONEST COMPATIBILITY NOTE (read before touching this file): Web Bluetooth
+// only talks to Bluetooth LE (GATT) devices. A printer that is Bluetooth
+// Classic/SPP-only (common on some older 58mm printers) is NOT reachable
+// from any browser — there is no web API for classic RFCOMM sockets. This
+// is a browser/OS platform limitation, not something fixable in this app.
+// Web Bluetooth is also only implemented in Chromium browsers (Chrome/Edge/
+// Opera, desktop + Android) — it does not exist in Safari/iOS at all. Both
+// limitations are surfaced to the user in PrintingManager's UI copy instead
+// of being silently swallowed.
+//
+// Compatible with "múltiplas impressoras" (kitchen/counter/delivery): each
+// PrinterProfile gets its own BluetoothPrinterTransport instance, and
+// nothing here assumes a single global connection.
+
+export type PrinterConnectionStatus = 'conectado' | 'desconectado' | 'reconectando';
+
+export interface PrinterTransport {
+  isConnected(): boolean;
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  write(data: Uint8Array): Promise<void>;
+  onStatusChange(cb: (status: PrinterConnectionStatus) => void): () => void;
+}
+
+// Known GATT service UUIDs used by generic/off-brand BLE thermal printers in
+// the wild. Web Bluetooth only exposes services listed here (or in a scan
+// filter) even if the physical device advertises more — a printer using a
+// UUID outside this list simply won't be found, which is reported to the
+// user as a compatibility gap rather than a silent failure.
+const KNOWN_PRINTER_SERVICE_UUIDS = [
+  '000018f0-0000-1000-8000-00805f9b34fb', // common generic "printer" service
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC/Microchip transparent UART (very common in cheap BLE printer modules)
+  '0000ff00-0000-1000-8000-00805f9b34fb', // common vendor custom range
+  '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10 style BLE UART, used by many generic modules (incl. printers)
+  'e7810a71-73ae-499d-8c15-faa9aef0c3f2'  // alternate UART-style printer service seen on some modules
+];
+
+export function isWebBluetoothSupported(): boolean {
+  return typeof navigator !== 'undefined' && !!(navigator as any).bluetooth;
+}
+
+const WRITE_CHUNK_SIZE = 180;
+const WRITE_CHUNK_DELAY_MS = 20;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function findWritableCharacteristic(server: BluetoothRemoteGATTServer): Promise<{ characteristic: BluetoothRemoteGATTCharacteristic; withoutResponse: boolean } | null> {
+  const services = await server.getPrimaryServices().catch(() => [] as BluetoothRemoteGATTService[]);
+  for (const service of services) {
+    const characteristics = await service.getCharacteristics().catch(() => [] as BluetoothRemoteGATTCharacteristic[]);
+    for (const characteristic of characteristics) {
+      if (characteristic.properties.writeWithoutResponse) {
+        return { characteristic, withoutResponse: true };
+      }
+      if (characteristic.properties.write) {
+        return { characteristic, withoutResponse: false };
+      }
+    }
+  }
+  return null;
+}
+
+export class BluetoothPrinterTransport implements PrinterTransport {
+  readonly deviceId: string;
+  readonly deviceName: string;
+  private device: BluetoothDevice;
+  private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
+  private writeWithoutResponse = false;
+  private status: PrinterConnectionStatus = 'desconectado';
+  private listeners = new Set<(status: PrinterConnectionStatus) => void>();
+  private reconnectAttempts = 0;
+  private manuallyDisconnected = false;
+
+  constructor(device: BluetoothDevice) {
+    this.device = device;
+    this.deviceId = device.id;
+    this.deviceName = device.name || 'Impressora Bluetooth';
+    device.addEventListener('gattserverdisconnected', this.handleGattDisconnected);
+  }
+
+  isConnected(): boolean {
+    return this.status === 'conectado';
+  }
+
+  onStatusChange(cb: (status: PrinterConnectionStatus) => void): () => void {
+    this.listeners.add(cb);
+    return () => this.listeners.delete(cb);
+  }
+
+  private setStatus(status: PrinterConnectionStatus) {
+    this.status = status;
+    this.listeners.forEach(cb => cb(status));
+  }
+
+  async connect(): Promise<void> {
+    this.manuallyDisconnected = false;
+    if (!this.device.gatt) throw new Error('Este dispositivo não expõe uma conexão GATT.');
+    const server = await this.device.gatt.connect();
+    const found = await findWritableCharacteristic(server);
+    if (!found) {
+      server.disconnect();
+      throw new Error('Impressora conectada, mas nenhuma característica de escrita compatível foi encontrada (modelo pode não ser suportado).');
+    }
+    this.characteristic = found.characteristic;
+    this.writeWithoutResponse = found.withoutResponse;
+    this.reconnectAttempts = 0;
+    this.setStatus('conectado');
+  }
+
+  async disconnect(): Promise<void> {
+    this.manuallyDisconnected = true;
+    this.characteristic = null;
+    if (this.device.gatt?.connected) this.device.gatt.disconnect();
+    this.setStatus('desconectado');
+  }
+
+  private handleGattDisconnected = () => {
+    this.characteristic = null;
+    if (this.manuallyDisconnected) {
+      this.setStatus('desconectado');
+      return;
+    }
+    this.attemptReconnect();
+  };
+
+  private async attemptReconnect() {
+    const MAX_ATTEMPTS = 3;
+    if (this.reconnectAttempts >= MAX_ATTEMPTS) {
+      this.setStatus('desconectado');
+      return;
+    }
+    this.setStatus('reconectando');
+    this.reconnectAttempts += 1;
+    const backoffMs = 1000 * this.reconnectAttempts;
+    await sleep(backoffMs);
+    try {
+      await this.connect();
+    } catch {
+      if (!this.manuallyDisconnected) this.attemptReconnect();
+    }
+  }
+
+  async write(data: Uint8Array): Promise<void> {
+    if (!this.characteristic) throw new Error('Impressora não conectada.');
+    for (let offset = 0; offset < data.length; offset += WRITE_CHUNK_SIZE) {
+      const chunk = data.slice(offset, offset + WRITE_CHUNK_SIZE);
+      if (this.writeWithoutResponse) {
+        await this.characteristic.writeValueWithoutResponse(chunk);
+      } else {
+        await this.characteristic.writeValue(chunk);
+      }
+      if (offset + WRITE_CHUNK_SIZE < data.length) await sleep(WRITE_CHUNK_DELAY_MS);
+    }
+  }
+}
+
+// Opens the browser's native device picker (the only UI Web Bluetooth
+// allows for discovery — there is no way to render scan results in our own
+// list, by design of the API) and returns a transport for whatever the user
+// picked.
+export async function requestBluetoothPrinter(): Promise<BluetoothPrinterTransport> {
+  if (!isWebBluetoothSupported()) {
+    throw new Error('Este navegador não suporta Web Bluetooth. Use Google Chrome ou Microsoft Edge no computador ou Android (Safari/iOS não é compatível).');
+  }
+  const device = await navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: KNOWN_PRINTER_SERVICE_UUIDS
+  });
+  return new BluetoothPrinterTransport(device);
+}
+
+// Silent reconnection to a previously-paired printer (no picker prompt) —
+// relies on Chrome's persistent device permissions. Returns null if the
+// device is no longer permitted/known (e.g. permission revoked, or a
+// different browser/profile), in which case the user must pair again via
+// "Conectar Impressora".
+export async function reconnectKnownBluetoothPrinter(deviceId: string): Promise<BluetoothPrinterTransport | null> {
+  if (!isWebBluetoothSupported() || !navigator.bluetooth.getDevices) return null;
+  const known = await navigator.bluetooth.getDevices().catch(() => [] as BluetoothDevice[]);
+  const match = known.find(d => d.id === deviceId);
+  if (!match) return null;
+  return new BluetoothPrinterTransport(match);
+}

@@ -1,4 +1,4 @@
-import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, SubscriptionPlan, LoyaltyConfig } from '../types';
+import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, SubscriptionPlan, LoyaltyConfig, PrintingConfig } from '../types';
 import { SUSHIOS_LOGO_DATA_URL } from '../components/SushiIcons';
 
 export const DEFAULT_LOYALTY_CONFIG: LoyaltyConfig = {
@@ -7,6 +7,18 @@ export const DEFAULT_LOYALTY_CONFIG: LoyaltyConfig = {
   pointsNeededForReward: 100,
   rewardType: 'fixed',
   rewardValue: 25
+};
+
+export const DEFAULT_PRINTING_CONFIG: PrintingConfig = {
+  autoPrintOnReceived: false,
+  autoPrintOnConfirmed: false,
+  printObservacoes: true,
+  printTelefone: true,
+  printEndereco: true,
+  printFormaPagamento: true,
+  autoCutPaper: false,
+  accentMode: 'ascii',
+  printers: []
 };
 
 export const INITIAL_VISUAL_CONFIG: VisualConfig = {

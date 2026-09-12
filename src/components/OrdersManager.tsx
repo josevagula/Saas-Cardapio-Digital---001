@@ -1,25 +1,41 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus } from '../types';
-import { safeNumber, formatCurrency, parseCashAmount } from '../utils/formatters';
-import { 
+import { safeNumber, formatCurrency, parseCashAmount, formatOrderCode } from '../utils/formatters';
+import { printOrderOnPrinter, hasEverPrintedOrder, getPrinterStatus } from '../lib/printing/printService';
+import { DEFAULT_PRINTING_CONFIG } from '../data/mockData';
+import {
   Check,
   Truck,
-  ShoppingBag, 
-  MessageSquare, 
-  ChevronRight, 
-  ExternalLink, 
-  Phone, 
+  ShoppingBag,
+  MessageSquare,
+  ChevronRight,
+  ExternalLink,
+  Phone,
   AlertCircle,
   TrendingUp,
   X,
   Ban,
-  Trash2
+  Trash2,
+  Printer
 } from 'lucide-react';
 
 export default function OrdersManager() {
   const { orders, updateOrderStatus, deleteOrder, visualConfig } = useApp();
   const [activeTab, setActiveTab] = useState<OrderStatus>('preparing');
+  const [printFeedback, setPrintFeedback] = useState<{ id: string; message: string } | null>(null);
+
+  const handlePrintOrder = (order: Order) => {
+    const config = visualConfig.printingConfig ?? DEFAULT_PRINTING_CONFIG;
+    const connected = config.printers.filter(p => getPrinterStatus(p.id) === 'conectado');
+    if (connected.length === 0) {
+      alert('Nenhuma impressora conectada. Configure em Configurações > Impressão.');
+      return;
+    }
+    connected.forEach(p => printOrderOnPrinter(p.id, p.name, order, formatOrderCode(order), config, p.paperWidth));
+    setPrintFeedback({ id: order.id, message: 'Enviado para a fila de impressão.' });
+    setTimeout(() => setPrintFeedback(prev => (prev?.id === order.id ? null : prev)), 4000);
+  };
 
   // Simulated WhatsApp State
   const [selectedOrderForWhats, setSelectedOrderForWhats] = useState<Order | null>(null);
@@ -41,13 +57,6 @@ export default function OrdersManager() {
   const filteredOrders = orders
     .filter(o => matchesTab(o, activeTab))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  // The sequential number is assigned in the background shortly after
-  // checkout (see assignOrderNumber in AppContext), so it may briefly be
-  // missing on a just-placed order — falls back to the legacy random id
-  // (still relabelled LUV->PED) rather than showing a blank code.
-  const formatOrderCode = (order: Order) =>
-    order.orderNumber != null ? `PED-${String(order.orderNumber).padStart(4, '0')}` : order.id.replace('LUV', 'PED');
 
   // Generate Automated WhatsApp message based on current status
   const triggerWhatsAppSimulator = (order: Order) => {
@@ -277,7 +286,8 @@ export default function OrdersManager() {
                 </div>
 
                 {/* Card Footer Actions */}
-                <div className="p-4 bg-[#181512] border-t border-[#2A211A] flex items-center justify-between gap-3">
+                <div className="p-4 bg-[#181512] border-t border-[#2A211A]">
+                <div className="flex items-center justify-between gap-3">
                   <div className="font-mono text-xs">
                     <span className="text-[#A8A29A]">Total:</span>
                     <p className="text-sm font-extrabold text-[#F5F0EA]">R$ {formatCurrency(order.total)}</p>
@@ -313,6 +323,14 @@ export default function OrdersManager() {
                     )}
 
                     <button
+                      onClick={() => handlePrintOrder(order)}
+                      className="p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer"
+                      title={hasEverPrintedOrder(order.id) ? 'Reimprimir Pedido' : 'Imprimir Pedido'}
+                    >
+                      <Printer className="w-4.5 h-4.5" />
+                    </button>
+
+                    <button
                       onClick={() => triggerWhatsAppSimulator(order)}
                       className="p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer"
                       title="Enviar Status WhatsApp"
@@ -330,6 +348,10 @@ export default function OrdersManager() {
                       </button>
                     )}
                   </div>
+                </div>
+                {printFeedback?.id === order.id && (
+                  <p className="text-[10px] text-emerald-400 font-semibold mt-2 text-right">{printFeedback.message}</p>
+                )}
                 </div>
               </div>
             );

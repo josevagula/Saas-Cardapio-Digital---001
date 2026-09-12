@@ -8,6 +8,7 @@ import {
   Users,
   TrendingUp,
   BarChart3,
+  Printer,
   Sparkles,
   Palette,
   LogOut,
@@ -39,6 +40,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
     { id: 'customers', label: 'Clientes & Fidelidade', icon: Users },
     { id: 'financial', label: 'Financeiro', icon: TrendingUp },
     { id: 'analytics_advanced', label: 'Analytics Avançado', icon: BarChart3 },
+    { id: 'printing', label: 'Impressão', icon: Printer },
     { id: 'customizer', label: 'Personalização', icon: Palette },
     { id: 'ai_assistant', label: 'Sushi AI Studio', icon: Sparkles, highlight: true },
   ];
