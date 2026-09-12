@@ -17,10 +17,6 @@ export function dotsForPaperWidth(paperWidth: 58 | 80): number {
 // "Tamanho médio" — half the printable width, centered by the caller via
 // EscPosBuilder.align('center').
 const MEDIUM_LOGO_SIZE_FACTOR = 0.5;
-// Anything lighter than this (0-255 luminance) prints as black — logos are
-// usually flat-color/line art, so a mid threshold reads them cleanly without
-// needing real dithering.
-const BLACK_THRESHOLD = 160;
 
 async function loadImage(url: string): Promise<HTMLImageElement> {
   const response = await fetch(url, { mode: 'cors' });
@@ -66,18 +62,40 @@ export async function buildLogoRaster(logoUrl: string | undefined, paperWidth: 5
     ctx.drawImage(img, 0, 0, widthPx, heightPx);
 
     const imageData = ctx.getImageData(0, 0, widthPx, heightPx).data;
+
+    // Grayscale first (transparent pixels read as white background, since
+    // they were already composited over the white fill above).
+    const gray = new Float32Array(widthPx * heightPx);
+    for (let y = 0; y < heightPx; y++) {
+      for (let x = 0; x < widthPx; x++) {
+        const i = (y * widthPx + x) * 4;
+        gray[y * widthPx + x] = 0.299 * imageData[i] + 0.587 * imageData[i + 1] + 0.114 * imageData[i + 2];
+      }
+    }
+
+    // Floyd–Steinberg dithering — a flat brightness cutoff crushes any
+    // colorful/mid-tone logo (which is most real logos) into a solid black
+    // block, since whole regions can sit just under the threshold. Diffusing
+    // the quantization error to neighboring pixels instead reproduces
+    // gradients and color regions as a dot pattern, the same technique
+    // actual receipt-printer software uses for logo images.
     const widthBytes = widthPx / 8;
     const data = new Uint8Array(widthBytes * heightPx);
     for (let y = 0; y < heightPx; y++) {
       for (let x = 0; x < widthPx; x++) {
-        const i = (y * widthPx + x) * 4;
-        const alpha = imageData[i + 3];
-        // Transparent pixels are background (white) — only opaque, dark
-        // pixels ever set a bit.
-        const luminance = alpha < 32 ? 255 : (0.299 * imageData[i] + 0.587 * imageData[i + 1] + 0.114 * imageData[i + 2]);
-        if (luminance < BLACK_THRESHOLD) {
+        const idx = y * widthPx + x;
+        const oldVal = gray[idx];
+        const isBlack = oldVal < 128;
+        if (isBlack) {
           const byteIndex = y * widthBytes + (x >> 3);
           data[byteIndex] |= (0x80 >> (x & 7));
+        }
+        const error = oldVal - (isBlack ? 0 : 255);
+        if (x + 1 < widthPx) gray[idx + 1] += error * 7 / 16;
+        if (y + 1 < heightPx) {
+          if (x > 0) gray[idx - 1 + widthPx] += error * 3 / 16;
+          gray[idx + widthPx] += error * 5 / 16;
+          if (x + 1 < widthPx) gray[idx + 1 + widthPx] += error * 1 / 16;
         }
       }
     }
