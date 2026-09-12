@@ -272,13 +272,9 @@ export default function PrintingManager() {
   const [justSaved, setJustSaved] = useState(false);
   const jobs = useQueue();
 
-  // Attempt a silent reconnect (no device picker) for every saved printer
-  // the moment this screen opens — Chrome remembers the pairing grant, so
-  // this is the "reconexão automática" the spec asks for, not a fresh pair.
-  useEffect(() => {
-    savedConfig.printers.forEach(p => { reconnectPrinter(p.id).catch(() => {}); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Reconnection itself is handled globally (see AppContext) so a printer
+  // comes back regardless of which screen is open after a reload — nothing
+  // to do here on mount.
 
   const updateDraft = <K extends keyof PrintingConfig>(key: K, value: PrintingConfig[K]) => {
     setDraft(prev => ({ ...prev, [key]: value }));

@@ -204,20 +204,40 @@ export async function pairNewPrinter(printerId: string): Promise<{ suggestedName
   return { suggestedName: transport.deviceName };
 }
 
+// Guards reconnectPrinter against ever running twice at once for the same
+// printer — e.g. the global "reconnect everything" effect and a manual
+// "Conectar" click racing. Without this, the second call would wrap the
+// same physical device in a brand-new BluetoothPrinterTransport and
+// overwrite the live one in `transports`, orphaning the first (its own
+// heartbeat timer keeps running, writing to a characteristic reference
+// nothing else uses anymore) — a real duplicate-connection leak, not just
+// a wasted network round trip.
+const reconnectsInFlight = new Map<string, Promise<boolean>>();
+
 // Silent reconnect to an already-paired printer — no picker, safe to call
-// automatically on page load for every saved printer.
-export async function reconnectPrinter(printerId: string): Promise<boolean> {
-  const deviceId = getDeviceMap()[printerId];
-  if (!deviceId) return false;
-  const transport = await reconnectKnownBluetoothPrinter(deviceId);
-  if (!transport) return false;
-  try {
-    await transport.connect();
-  } catch {
-    return false;
-  }
-  attachTransport(printerId, transport);
-  return true;
+// automatically on page load (or navigation) for every saved printer.
+export function reconnectPrinter(printerId: string): Promise<boolean> {
+  if (getPrinterStatus(printerId) === 'conectado') return Promise.resolve(true);
+  const inFlight = reconnectsInFlight.get(printerId);
+  if (inFlight) return inFlight;
+
+  const attempt = (async () => {
+    const deviceId = getDeviceMap()[printerId];
+    if (!deviceId) return false;
+    const transport = await reconnectKnownBluetoothPrinter(deviceId);
+    if (!transport) return false;
+    try {
+      await transport.connect();
+    } catch {
+      return false;
+    }
+    attachTransport(printerId, transport);
+    return true;
+  })();
+
+  reconnectsInFlight.set(printerId, attempt);
+  attempt.finally(() => reconnectsInFlight.delete(printerId));
+  return attempt;
 }
 
 export async function disconnectPrinter(printerId: string): Promise<void> {
