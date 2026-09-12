@@ -301,9 +301,21 @@ export default function OrdersManager() {
                 {/* Card Footer Actions */}
                 <div className="p-4 bg-[#181512] border-t border-[#2A211A]">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="font-mono text-xs">
-                    <span className="text-[#A8A29A]">Total:</span>
-                    <p className="text-sm font-extrabold text-[#F5F0EA]">R$ {formatCurrency(order.total)}</p>
+                  <div className="font-mono text-xs space-y-0.5 min-w-0">
+                    <div className="flex justify-between gap-3 text-[#A8A29A]">
+                      <span>Subtotal:</span>
+                      <span>R$ {formatCurrency(order.total + order.discountAmount - order.deliveryFee)}</span>
+                    </div>
+                    {order.deliveryFee > 0 && (
+                      <div className="flex justify-between gap-3 text-[#A8A29A]">
+                        <span>Taxa:</span>
+                        <span>R$ {formatCurrency(order.deliveryFee)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between gap-3">
+                      <span className="text-[#A8A29A]">Total:</span>
+                      <span className="text-sm font-extrabold text-[#F5F0EA]">R$ {formatCurrency(order.total)}</span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
