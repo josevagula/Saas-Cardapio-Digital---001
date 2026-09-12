@@ -227,6 +227,9 @@ export default function OrdersManager() {
                         <div className="flex-1">
                           <span className="font-bold text-[#F97316] font-mono mr-1">{item.quantity}x</span>
                           <span className="font-medium text-slate-200">{item.product.name}</span>
+                          {item.product.description && (
+                            <p className="text-[10px] text-[#A8A29A] mt-0.5 ml-5">{item.product.description}</p>
+                          )}
                           {item.comboFlavors && item.comboFlavors.length > 0 && (
                             <p className="text-[10px] text-[#FB923C] font-bold mt-0.5 ml-5">
                               🍣 Sabores: {item.comboFlavors.map(f => `${f.pieces}x ${f.flavorName}`).join(', ')}
