@@ -62,6 +62,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   menu_manager: '/dashboard/cardapio',
   customers: '/dashboard/clientes-fidelidade',
   financial: '/dashboard/financeiro-cupons',
+  analytics_advanced: '/dashboard/analytics',
   customizer: '/dashboard/personalizacao',
   ai_assistant: '/dashboard/ai-studio'
 };

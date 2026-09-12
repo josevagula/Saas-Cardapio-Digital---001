@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   Users,
   TrendingUp,
+  BarChart3,
   Sparkles,
   Palette,
   LogOut,
@@ -37,6 +38,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
     { id: 'menu_manager', label: 'Cardápio', icon: SushiRollIcon },
     { id: 'customers', label: 'Clientes & Fidelidade', icon: Users },
     { id: 'financial', label: 'Financeiro', icon: TrendingUp },
+    { id: 'analytics_advanced', label: 'Analytics Avançado', icon: BarChart3 },
     { id: 'customizer', label: 'Personalização', icon: Palette },
     { id: 'ai_assistant', label: 'Sushi AI Studio', icon: Sparkles, highlight: true },
   ];
