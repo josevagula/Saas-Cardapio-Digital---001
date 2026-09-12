@@ -146,7 +146,10 @@ function saveLog(currentJobs: PrintJob[]) {
   Array.from(jobBytes.keys()).forEach(id => { if (!keepIds.has(id)) jobBytes.delete(id); });
 }
 
-const jobBytes = new Map<string, Uint8Array>();
+// Each job is one or more byte segments — normally just one, but the logo
+// (when printed) is its own leading segment so it can be sent as a separate
+// transport write, with a cooldown pause after it (see runJob below).
+const jobBytes = new Map<string, Uint8Array[]>();
 let jobs: PrintJob[] = loadLog();
 const queueListeners = new Set<(jobs: PrintJob[]) => void>();
 
@@ -336,16 +339,25 @@ async function drainPrinterQueue(printerId: string) {
   }
 }
 
+// Pause between segments (currently: after the logo, before the rest of the
+// receipt) so a printer with a weak power supply gets a real recovery
+// window after the single most current-hungry thing it's asked to print —
+// see the comment on the logo-segment split in receiptTemplates.ts.
+const INTER_SEGMENT_COOLDOWN_MS = 400;
+
 async function runJob(job: PrintJob) {
   upsertJob({ ...job, status: 'imprimindo', updatedAt: new Date().toISOString() });
   const transport = transports.get(job.printerId);
-  const bytes = jobBytes.get(job.id);
-  if (!transport || !transport.isConnected() || !bytes) {
-    failJob(job, !bytes ? 'Conteúdo da impressão não está mais disponível — use Reimprimir.' : 'Impressora desconectada.');
+  const segments = jobBytes.get(job.id);
+  if (!transport || !transport.isConnected() || !segments) {
+    failJob(job, !segments ? 'Conteúdo da impressão não está mais disponível — use Reimprimir.' : 'Impressora desconectada.');
     return;
   }
   try {
-    await transport.write(bytes);
+    for (let i = 0; i < segments.length; i++) {
+      await transport.write(segments[i]);
+      if (i + 1 < segments.length) await new Promise(resolve => setTimeout(resolve, INTER_SEGMENT_COOLDOWN_MS));
+    }
     jobBytes.delete(job.id);
     upsertJob({ ...job, status: 'impresso', updatedAt: new Date().toISOString(), errorMessage: undefined });
   } catch (e: any) {
@@ -366,7 +378,7 @@ function failJob(job: PrintJob, message: string) {
   setTimeout(() => drainPrinterQueue(job.printerId), 1500 * attempts);
 }
 
-function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'updatedAt'>, bytes: Uint8Array) {
+function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'updatedAt'>, bytes: Uint8Array[]) {
   const full: PrintJob = {
     ...job,
     status: 'pendente',
@@ -396,8 +408,8 @@ export async function printTest(
   printLogoEnabled: boolean = true
 ) {
   const logo = printLogoEnabled ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-  const builder = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo);
-  enqueue({ id: crypto.randomUUID(), kind: 'teste', printerId, printerName }, builder.toBytes());
+  const segments = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo);
+  enqueue({ id: crypto.randomUUID(), kind: 'teste', printerId, printerName }, segments.map(s => s.toBytes()));
 }
 
 export async function printOrderOnPrinter(
@@ -410,8 +422,8 @@ export async function printOrderOnPrinter(
   establishmentLogoUrl: string | undefined
 ) {
   const logo = config.printLogo ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-  const builder = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
-  enqueue({ id: crypto.randomUUID(), kind: 'pedido', orderId: order.id, orderCode, printerId, printerName }, builder.toBytes());
+  const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
+  enqueue({ id: crypto.randomUUID(), kind: 'pedido', orderId: order.id, orderCode, printerId, printerName }, segments.map(s => s.toBytes()));
 }
 
 export function retryJob(jobId: string) {

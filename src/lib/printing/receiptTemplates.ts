@@ -12,10 +12,23 @@ function printLogo(b: EscPosBuilder, logo: LogoRaster | null | undefined) {
   b.align('center').rasterImage(logo.widthBytes, logo.heightPx, logo.data).feed(1);
 }
 
-export function buildTestReceipt(establishmentName: string, accentMode: AccentMode, cols: number, logo?: LogoRaster | null): EscPosBuilder {
+// Returns one builder per segment instead of a single combined one — the
+// logo (when present) is its own segment so the caller can send it as a
+// separate transport write with a cooldown pause after it. See the comment
+// on printOrderOnPrinter in printService.ts for why: a raster image is by
+// far the most current-hungry thing sent to a cheap Bluetooth thermal
+// printer, and some underpowered units brown out mid-job without a recovery
+// window between the image and whatever prints next.
+export function buildTestReceipt(establishmentName: string, accentMode: AccentMode, cols: number, logo?: LogoRaster | null): EscPosBuilder[] {
+  const segments: EscPosBuilder[] = [];
+  if (logo) {
+    const logoBuilder = new EscPosBuilder(accentMode);
+    printLogo(logoBuilder, logo);
+    segments.push(logoBuilder);
+  }
+
   const now = new Date();
   const b = new EscPosBuilder(accentMode);
-  printLogo(b, logo);
   b.align('center').bold(true).doubleSize(true).line(establishmentName.toUpperCase() || 'ZUSHY');
   b.doubleSize(false).bold(false);
   b.line('Teste de Impressão');
@@ -31,7 +44,8 @@ export function buildTestReceipt(establishmentName: string, accentMode: AccentMo
   b.separator(cols);
   b.feed(3);
   b.cutPaper();
-  return b;
+  segments.push(b);
+  return segments;
 }
 
 const DELIVERY_METHOD_LABELS: Record<Order['deliveryMethod'], string> = {
@@ -119,10 +133,15 @@ export function buildOrderReceipt(
   accentMode: AccentMode,
   cols: number,
   logo?: LogoRaster | null
-): EscPosBuilder {
-  const b = new EscPosBuilder(accentMode);
+): EscPosBuilder[] {
+  const segments: EscPosBuilder[] = [];
+  if (logo) {
+    const logoBuilder = new EscPosBuilder(accentMode);
+    printLogo(logoBuilder, logo);
+    segments.push(logoBuilder);
+  }
 
-  printLogo(b, logo);
+  const b = new EscPosBuilder(accentMode);
   b.align('center').bold(true).doubleSize(true).line(orderCode);
   b.doubleSize(false).bold(false);
   b.separator(cols);
@@ -205,5 +224,6 @@ export function buildOrderReceipt(
 
   b.feed(3);
   if (config.autoCutPaper) b.cutPaper();
-  return b;
+  segments.push(b);
+  return segments;
 }
