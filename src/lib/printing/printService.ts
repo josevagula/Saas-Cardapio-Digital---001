@@ -343,7 +343,7 @@ async function drainPrinterQueue(printerId: string) {
 // receipt) so a printer with a weak power supply gets a real recovery
 // window after the single most current-hungry thing it's asked to print —
 // see the comment on the logo-segment split in receiptTemplates.ts.
-const INTER_SEGMENT_COOLDOWN_MS = 400;
+const INTER_SEGMENT_COOLDOWN_MS = 700;
 
 async function runJob(job: PrintJob) {
   upsertJob({ ...job, status: 'imprimindo', updatedAt: new Date().toISOString() });

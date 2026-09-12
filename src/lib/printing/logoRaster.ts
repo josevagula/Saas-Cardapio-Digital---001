@@ -14,9 +14,14 @@ export function dotsForPaperWidth(paperWidth: 58 | 80): number {
   return paperWidth === 80 ? 576 : 384;
 }
 
-// "Tamanho médio" — half the printable width, centered by the caller via
-// EscPosBuilder.align('center').
-const MEDIUM_LOGO_SIZE_FACTOR = 0.5;
+// "Tamanho médio" — centered by the caller via EscPosBuilder.align('center').
+// Smaller than a literal half of the printable width on purpose: total
+// current draw while printing a raster image scales with how many dots the
+// head fires, which scales ~quadratically with image size (width * height).
+// Weak Bluetooth thermal printers have been observed browning out on a
+// half-width logo; a little over a third keeps it clearly recognizable
+// while meaningfully cutting the peak/sustained draw during that segment.
+const MEDIUM_LOGO_SIZE_FACTOR = 0.35;
 
 async function loadImage(url: string): Promise<HTMLImageElement> {
   const response = await fetch(url, { mode: 'cors' });
