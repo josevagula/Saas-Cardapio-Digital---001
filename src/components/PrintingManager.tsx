@@ -85,6 +85,11 @@ function PrinterCard({
     try {
       if (status === 'conectado') {
         await disconnectPrinter(printer.id);
+      } else if (status === 'reconectando') {
+        // Already retrying on its own (see BluetoothPrinterTransport) —
+        // calling reconnectPrinter here would just be told no by its own
+        // guard against piling a second attempt on top of this one.
+        return;
       } else {
         const ok = await reconnectPrinter(printer.id);
         if (!ok) alert('Não foi possível reconectar automaticamente. Use "Substituir Pareamento" para parear esta impressora novamente.');

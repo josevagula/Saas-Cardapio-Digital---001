@@ -170,8 +170,17 @@ export function getQueueSnapshot(): PrintJob[] {
 
 const transports = new Map<string, BluetoothPrinterTransport>();
 const statusListeners = new Map<string, Set<(status: PrinterConnectionStatus) => void>>();
+// Tracks each transport's own last-reported status, 'reconectando' included
+// — getPrinterStatus used to derive this from isConnected() alone, which
+// can only ever answer 'conectado'/'desconectado' and made a transport that
+// was busy retrying internally (after a real mid-session drop) look
+// identical to one that had fully given up. That ambiguity is exactly what
+// let a naive watchdog/retry call pile a second, competing reconnect
+// attempt on top of an already-in-progress one.
+const printerStatuses = new Map<string, PrinterConnectionStatus>();
 
 function notifyStatus(printerId: string, status: PrinterConnectionStatus) {
+  printerStatuses.set(printerId, status);
   (statusListeners.get(printerId) || new Set()).forEach(cb => cb(status));
 }
 
@@ -183,12 +192,12 @@ export function subscribePrinterStatus(printerId: string, cb: (status: PrinterCo
 }
 
 export function getPrinterStatus(printerId: string): PrinterConnectionStatus {
-  const t = transports.get(printerId);
-  return t?.isConnected() ? 'conectado' : 'desconectado';
+  return printerStatuses.get(printerId) ?? 'desconectado';
 }
 
 function attachTransport(printerId: string, transport: BluetoothPrinterTransport) {
   transports.set(printerId, transport);
+  notifyStatus(printerId, transport.isConnected() ? 'conectado' : 'desconectado');
   transport.onStatusChange(status => notifyStatus(printerId, status));
 }
 
@@ -215,9 +224,16 @@ export async function pairNewPrinter(printerId: string): Promise<{ suggestedName
 const reconnectsInFlight = new Map<string, Promise<boolean>>();
 
 // Silent reconnect to an already-paired printer — no picker, safe to call
-// automatically on page load (or navigation) for every saved printer.
+// automatically on page load (or navigation) for every saved printer, and
+// safe to call repeatedly from the watchdog below. Skips 'reconectando' too,
+// not just 'conectado' — that status means an existing transport is already
+// retrying on its own (see BluetoothPrinterTransport.attemptReconnect); a
+// second call piling a competing attempt on top of it is exactly the
+// duplicate-connection bug this whole guard exists to prevent.
 export function reconnectPrinter(printerId: string): Promise<boolean> {
-  if (getPrinterStatus(printerId) === 'conectado') return Promise.resolve(true);
+  const status = getPrinterStatus(printerId);
+  if (status === 'conectado') return Promise.resolve(true);
+  if (status === 'reconectando') return Promise.resolve(false);
   const inFlight = reconnectsInFlight.get(printerId);
   if (inFlight) return inFlight;
 
@@ -238,6 +254,46 @@ export function reconnectPrinter(printerId: string): Promise<boolean> {
   reconnectsInFlight.set(printerId, attempt);
   attempt.finally(() => reconnectsInFlight.delete(printerId));
   return attempt;
+}
+
+// Watchdog: a printer's own BluetoothPrinterTransport already retries
+// forever after a *mid-session* drop (see attemptReconnect), and AppContext
+// calls reconnectPrinter once for every saved printer on load/config change
+// — but that one-shot page-load attempt has no retry of its own if it fails
+// once (e.g. the OS Bluetooth stack not fully ready yet, getDevices() not
+// yet returning the device, a transient GATT error). Without a backstop,
+// that single miss left a printer stuck showing "desconectado" until the
+// admin manually clicked Conectar again — which is the actual "não está
+// reconectando quando desconecta" bug. This periodically retries every
+// printer that's genuinely 'desconectado' (never one already 'reconectando'
+// — reconnectPrinter's own guard already skips those) until it's connected.
+const RECONNECT_WATCHDOG_INTERVAL_MS = 20000;
+let watchedPrinterIds: string[] = [];
+let watchdogTimer: ReturnType<typeof setInterval> | null = null;
+
+function runWatchdogSweep() {
+  watchedPrinterIds.forEach(id => { reconnectPrinter(id).catch(() => {}); });
+}
+
+export function setWatchedPrinters(printerIds: string[]): void {
+  watchedPrinterIds = printerIds;
+  if (printerIds.length === 0) return;
+  if (!watchdogTimer) {
+    watchdogTimer = setInterval(runWatchdogSweep, RECONNECT_WATCHDOG_INTERVAL_MS);
+  }
+  // Also worth an immediate try right now, e.g. right after this printer
+  // was just added to the watch list.
+  runWatchdogSweep();
+}
+
+// Backgrounded/inactive tabs get their timers throttled by the browser, so
+// the watchdog interval above can slip badly while the admin is looking at
+// something else — check again the instant the tab becomes visible instead
+// of waiting for a possibly-delayed tick.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') runWatchdogSweep();
+  });
 }
 
 export async function disconnectPrinter(printerId: string): Promise<void> {

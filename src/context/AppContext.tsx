@@ -47,7 +47,7 @@ import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../uti
 import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption } from '../utils/loyalty';
 import { formatOrderCode } from '../utils/formatters';
 import { handleOrderReceivedForPrinting, handleOrderConfirmedForPrinting } from '../lib/printing/printBridge';
-import { reconnectPrinter } from '../lib/printing/printService';
+import { setWatchedPrinters } from '../lib/printing/printService';
 
 // Maps a raw Stripe subscription_status value (trialing, active, past_due,
 // canceled, unpaid, incomplete, incomplete_expired…) onto the simple
@@ -662,20 +662,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => { supabase.removeChannel(channel); };
   }, [isAdmin, userId, isDemoMode, publicMenuSlug]);
 
-  // Reconnects every saved printer as soon as the admin session is live —
-  // deliberately global (not scoped to the Impressão screen's own mount)
-  // so a printer comes back automatically after a page reload/refresh no
-  // matter which screen the admin happens to land on, instead of silently
-  // staying disconnected until they visit Configurações > Impressão
-  // themselves. reconnectPrinter is idempotent (no-ops if already connected
-  // or already retrying), so this running again on every printingConfig
-  // change (e.g. saving a toggle, pairing a new printer) is harmless and
-  // even gives an already-given-up printer another chance.
+  // Keeps every saved printer's connection watched for the whole admin
+  // session — deliberately global (not scoped to the Impressão screen's own
+  // mount) so a printer comes back automatically after a page reload/
+  // refresh no matter which screen the admin happens to land on. This also
+  // hands the list to printService's watchdog (see setWatchedPrinters),
+  // which is what actually gives a printer a second chance if the very
+  // first reconnect attempt here fails — without it, one missed attempt
+  // (e.g. the OS Bluetooth stack not fully ready right after load) left a
+  // printer stuck "desconectado" until a manual reconnect.
   useEffect(() => {
     if (!isAdmin || isDemoMode || publicMenuSlug) return;
     const printers = visualConfig.printingConfig?.printers;
     if (!printers || printers.length === 0) return;
-    printers.forEach(p => { reconnectPrinter(p.id).catch(() => {}); });
+    setWatchedPrinters(printers.map(p => p.id));
   }, [isAdmin, isDemoMode, publicMenuSlug, visualConfig.printingConfig?.printers]);
 
   useEffect(() => {

@@ -43,6 +43,7 @@ export function isWebBluetoothSupported(): boolean {
 
 const WRITE_CHUNK_SIZE = 180;
 const WRITE_CHUNK_DELAY_MS = 20;
+const CONNECT_TIMEOUT_MS = 12000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -161,6 +162,12 @@ export class BluetoothPrinterTransport implements PrinterTransport {
   // effectively "impressora não fica conectada por muito tempo" all over
   // again after a single bad patch of drops. Backoff is capped, not the
   // attempt count; only an explicit disconnect() stops it.
+  //
+  // The connect attempt is raced against a timeout — device.gatt.connect()
+  // isn't guaranteed to ever settle on every platform/driver when a
+  // previously-paired device is intermittently reachable, and a single hung
+  // call here would otherwise stall this whole retry loop in 'reconectando'
+  // forever (the literal "não está reconectando quando desconecta" bug).
   private async attemptReconnect() {
     this.setStatus('reconectando');
     this.reconnectAttempts += 1;
@@ -168,7 +175,10 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     await sleep(backoffMs);
     if (this.manuallyDisconnected) return;
     try {
-      await this.connect();
+      await Promise.race([
+        this.connect(),
+        sleep(CONNECT_TIMEOUT_MS).then(() => { throw new Error('Tempo esgotado ao tentar reconectar.'); })
+      ]);
     } catch {
       if (!this.manuallyDisconnected) this.attemptReconnect();
     }
