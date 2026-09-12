@@ -68,9 +68,6 @@ function printItemSpec(b: EscPosBuilder, item: OrderItem, config: PrintingConfig
   const unitPrice = item.product.promoPrice ?? item.product.price;
   const total = lineItemTotal(item);
   b.bold(true).line(`${item.quantity}x ${item.product.name}`).bold(false);
-  if (item.product.description) {
-    b.line(`  ${item.product.description}`);
-  }
   if (item.quantity > 1) {
     b.line(`  Unit.: R$ ${formatCurrency(unitPrice)}  |  Total: R$ ${formatCurrency(total)}`);
   } else {
