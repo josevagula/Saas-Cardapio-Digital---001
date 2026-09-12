@@ -78,6 +78,14 @@ export interface PrintingConfig {
   printEndereco: boolean;
   printFormaPagamento: boolean;
   autoCutPaper: boolean;
+  // Off-brand BLE thermal printers ("mini impressoras") commonly run on a
+  // weak internal battery/power circuit; the logo raster image is by far
+  // the most current-hungry thing on a receipt (the print head fires many
+  // dots at once, continuously, instead of sparse text) and has been
+  // observed to brown out a printer mid-job on underpowered units. Default
+  // true (unchanged behavior); this is the immediate, certain workaround
+  // for an establishment whose specific printer can't handle it.
+  printLogo: boolean;
   // 'ascii' (default, safe on every printer) transliterates á/ã/ç/etc. to
   // plain letters; 'cp860' sends the real accented bytes for printers
   // confirmed (via "Imprimir Teste") to support the Portuguese code page.

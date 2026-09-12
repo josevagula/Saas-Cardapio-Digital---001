@@ -392,9 +392,10 @@ export async function printTest(
   establishmentName: string,
   establishmentLogoUrl: string | undefined,
   accentMode: AccentMode,
-  paperWidth: 58 | 80
+  paperWidth: 58 | 80,
+  printLogoEnabled: boolean = true
 ) {
-  const logo = await getLogoRaster(establishmentLogoUrl, paperWidth);
+  const logo = printLogoEnabled ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
   const builder = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo);
   enqueue({ id: crypto.randomUUID(), kind: 'teste', printerId, printerName }, builder.toBytes());
 }
@@ -408,7 +409,7 @@ export async function printOrderOnPrinter(
   paperWidth: 58 | 80,
   establishmentLogoUrl: string | undefined
 ) {
-  const logo = await getLogoRaster(establishmentLogoUrl, paperWidth);
+  const logo = config.printLogo ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
   const builder = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
   enqueue({ id: crypto.randomUUID(), kind: 'pedido', orderId: order.id, orderCode, printerId, printerName }, builder.toBytes());
 }

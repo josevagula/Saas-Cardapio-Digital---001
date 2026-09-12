@@ -41,8 +41,15 @@ export function isWebBluetoothSupported(): boolean {
   return typeof navigator !== 'undefined' && !!(navigator as any).bluetooth;
 }
 
-const WRITE_CHUNK_SIZE = 180;
-const WRITE_CHUNK_DELAY_MS = 20;
+// Smaller chunks + a bit more breathing room between them than the GATT
+// MTU strictly requires — cheap BLE thermal printers draw far more current
+// while the head is actively firing dots (a raster image especially) than
+// while idle between writes, and a weak internal battery/regulator can brown
+// out and power itself off under a long, uninterrupted burst. Trickling the
+// data in gives the printer's power supply (and the print head) periodic
+// recovery windows instead of one sustained draw for the whole job.
+const WRITE_CHUNK_SIZE = 120;
+const WRITE_CHUNK_DELAY_MS = 35;
 const CONNECT_TIMEOUT_MS = 12000;
 
 function sleep(ms: number): Promise<void> {

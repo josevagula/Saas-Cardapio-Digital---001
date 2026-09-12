@@ -17,6 +17,7 @@ export const DEFAULT_PRINTING_CONFIG: PrintingConfig = {
   printEndereco: true,
   printFormaPagamento: true,
   autoCutPaper: false,
+  printLogo: true,
   accentMode: 'ascii',
   printers: []
 };

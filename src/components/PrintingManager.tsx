@@ -67,12 +67,14 @@ function PrinterCard({
   establishmentName,
   establishmentLogoUrl,
   accentMode,
+  printLogoEnabled,
   onRemove
 }: {
   printer: PrinterProfile;
   establishmentName: string;
   establishmentLogoUrl: string;
   accentMode: PrintingConfig['accentMode'];
+  printLogoEnabled: boolean;
   onRemove: (id: string) => void;
 }) {
   const status = usePrinterStatus(printer.id);
@@ -113,7 +115,7 @@ function PrinterCard({
   };
 
   const handleTest = () => {
-    printTest(printer.id, printer.name, establishmentName, establishmentLogoUrl, accentMode, printer.paperWidth);
+    printTest(printer.id, printer.name, establishmentName, establishmentLogoUrl, accentMode, printer.paperWidth, printLogoEnabled);
     setTestFeedback('Teste enviado para a fila de impressão.');
     setTimeout(() => setTestFeedback(null), 4000);
   };
@@ -336,7 +338,8 @@ export default function PrintingManager() {
     { key: 'printTelefone', label: 'Imprimir telefone do cliente', help: '' },
     { key: 'printEndereco', label: 'Imprimir endereço de entrega', help: '' },
     { key: 'printFormaPagamento', label: 'Imprimir forma de pagamento', help: '' },
-    { key: 'autoCutPaper', label: 'Cortar papel automaticamente', help: 'Só funciona em impressoras com guilhotina (corte automático).' }
+    { key: 'autoCutPaper', label: 'Cortar papel automaticamente', help: 'Só funciona em impressoras com guilhotina (corte automático).' },
+    { key: 'printLogo', label: 'Imprimir logo do estabelecimento no cupom', help: 'Desative se a impressora desligar sozinha ao imprimir: a imagem da logo é o que mais exige da impressora, e algumas impressoras Bluetooth baratas não aguentam.' }
   ];
 
   return (
@@ -390,6 +393,7 @@ export default function PrintingManager() {
                 establishmentName={visualConfig.establishmentName}
                 establishmentLogoUrl={visualConfig.logoUrl}
                 accentMode={savedConfig.accentMode}
+                printLogoEnabled={savedConfig.printLogo}
                 onRemove={handleRemovePrinter}
               />
             ))}
