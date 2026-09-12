@@ -421,7 +421,11 @@ export async function printOrderOnPrinter(
   paperWidth: 58 | 80,
   establishmentLogoUrl: string | undefined
 ) {
-  const logo = config.printLogo ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
+  // !== false (not a truthy check) — printingConfig rows saved before this
+  // field existed don't have it at all, and a missing field must still mean
+  // "on" (the intended default), not silently turn the logo off for every
+  // establishment that had already configured printing.
+  const logo = config.printLogo !== false ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
   const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
   enqueue({ id: crypto.randomUUID(), kind: 'pedido', orderId: order.id, orderCode, printerId, printerName }, segments.map(s => s.toBytes()));
 }

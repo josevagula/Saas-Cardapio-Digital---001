@@ -415,7 +415,10 @@ export default function PrintingManager() {
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
                 <input
                   type="checkbox"
-                  checked={!!draft[t.key]}
+                  // printLogo defaults to true, unlike every other toggle here —
+                  // a printing_config saved before this field existed has it
+                  // missing (undefined), which must still render as "on".
+                  checked={t.key === 'printLogo' ? draft.printLogo !== false : !!draft[t.key]}
                   onChange={(e) => updateDraft(t.key, e.target.checked as any)}
                   className="sr-only peer"
                 />
