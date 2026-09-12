@@ -65,11 +65,13 @@ function useQueue(): PrintJob[] {
 function PrinterCard({
   printer,
   establishmentName,
+  establishmentLogoUrl,
   accentMode,
   onRemove
 }: {
   printer: PrinterProfile;
   establishmentName: string;
+  establishmentLogoUrl: string;
   accentMode: PrintingConfig['accentMode'];
   onRemove: (id: string) => void;
 }) {
@@ -106,7 +108,7 @@ function PrinterCard({
   };
 
   const handleTest = () => {
-    printTest(printer.id, printer.name, establishmentName, accentMode, printer.paperWidth);
+    printTest(printer.id, printer.name, establishmentName, establishmentLogoUrl, accentMode, printer.paperWidth);
     setTestFeedback('Teste enviado para a fila de impressão.');
     setTimeout(() => setTestFeedback(null), 4000);
   };
@@ -385,6 +387,7 @@ export default function PrintingManager() {
                 key={p.id}
                 printer={p}
                 establishmentName={visualConfig.establishmentName}
+                establishmentLogoUrl={visualConfig.logoUrl}
                 accentMode={savedConfig.accentMode}
                 onRemove={handleRemovePrinter}
               />

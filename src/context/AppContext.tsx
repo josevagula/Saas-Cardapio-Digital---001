@@ -650,7 +650,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         fetchOrderById(userId, incomingId).then(incoming => {
           if (!incoming) return;
           setOrders(prev => (prev.some(o => o.id === incoming.id) ? prev : [incoming, ...prev]));
-          handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig);
+          handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig, visualConfigRef.current.logoUrl);
         }).catch(() => {
           // Couldn't confirm the full row — do nothing rather than risk
           // adding a hollow order to local state (which syncOrders would
@@ -1313,7 +1313,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // (matches the pattern already established above for loyalty/receita);
       // does not change the status transition itself.
       if (status === 'preparing' && order.status === 'received') {
-        handleOrderConfirmedForPrinting({ ...order, status }, formatOrderCode(order), visualConfig.printingConfig);
+        handleOrderConfirmedForPrinting({ ...order, status }, formatOrderCode(order), visualConfig.printingConfig, visualConfig.logoUrl);
       }
     }
 

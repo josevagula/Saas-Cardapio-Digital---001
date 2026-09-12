@@ -32,7 +32,7 @@ export default function OrdersManager() {
       alert('Nenhuma impressora conectada. Configure em Configurações > Impressão.');
       return;
     }
-    connected.forEach(p => printOrderOnPrinter(p.id, p.name, order, formatOrderCode(order), config, p.paperWidth));
+    connected.forEach(p => printOrderOnPrinter(p.id, p.name, order, formatOrderCode(order), config, p.paperWidth, visualConfig.logoUrl));
     setPrintFeedback({ id: order.id, message: 'Enviado para a fila de impressão.' });
     setTimeout(() => setPrintFeedback(prev => (prev?.id === order.id ? null : prev)), 4000);
   };

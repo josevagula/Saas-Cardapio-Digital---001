@@ -1,14 +1,21 @@
 import { Order, OrderItem, PrintingConfig } from '../../types';
 import { formatCurrency, parseCashAmount } from '../../utils/formatters';
 import { EscPosBuilder, AccentMode } from './escpos';
+import { LogoRaster } from './logoRaster';
 
 export function colsForPaperWidth(paperWidth: 58 | 80): number {
   return paperWidth === 80 ? 48 : 32;
 }
 
-export function buildTestReceipt(establishmentName: string, accentMode: AccentMode, cols: number): EscPosBuilder {
+function printLogo(b: EscPosBuilder, logo: LogoRaster | null | undefined) {
+  if (!logo) return;
+  b.align('center').rasterImage(logo.widthBytes, logo.heightPx, logo.data).feed(1);
+}
+
+export function buildTestReceipt(establishmentName: string, accentMode: AccentMode, cols: number, logo?: LogoRaster | null): EscPosBuilder {
   const now = new Date();
   const b = new EscPosBuilder(accentMode);
+  printLogo(b, logo);
   b.align('center').bold(true).doubleSize(true).line(establishmentName.toUpperCase() || 'ZUSHY');
   b.doubleSize(false).bold(false);
   b.line('Teste de Impressão');
@@ -47,6 +54,9 @@ function printItemSpec(b: EscPosBuilder, item: OrderItem, config: PrintingConfig
   const unitPrice = item.product.promoPrice ?? item.product.price;
   const total = lineItemTotal(item);
   b.bold(true).line(`${item.quantity}x ${item.product.name}`).bold(false);
+  if (item.product.description) {
+    b.line(`  ${item.product.description}`);
+  }
   if (item.quantity > 1) {
     b.line(`  Unit.: R$ ${formatCurrency(unitPrice)}  |  Total: R$ ${formatCurrency(total)}`);
   } else {
@@ -107,10 +117,12 @@ export function buildOrderReceipt(
   orderCode: string,
   config: PrintingConfig,
   accentMode: AccentMode,
-  cols: number
+  cols: number,
+  logo?: LogoRaster | null
 ): EscPosBuilder {
   const b = new EscPosBuilder(accentMode);
 
+  printLogo(b, logo);
   b.align('center').bold(true).doubleSize(true).line(orderCode);
   b.doubleSize(false).bold(false);
   b.separator(cols);

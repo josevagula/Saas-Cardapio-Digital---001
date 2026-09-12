@@ -19,6 +19,23 @@ import {
 } from './bluetoothTransport';
 import { buildOrderReceipt, buildTestReceipt, colsForPaperWidth } from './receiptTemplates';
 import { AccentMode } from './escpos';
+import { buildLogoRaster, LogoRaster } from './logoRaster';
+
+// Cached per logoUrl+paperWidth so re-printing (especially auto-print, once
+// per incoming order) doesn't re-download/re-convert the same logo every
+// single time. Session-only (in-memory) — a page reload after uploading a
+// new logo in Personalização is enough to pick up the change, since the
+// logo's storage URL commonly stays the same after a re-upload.
+const logoRasterCache = new Map<string, Promise<LogoRaster | null>>();
+
+function getLogoRaster(logoUrl: string | undefined, paperWidth: 58 | 80): Promise<LogoRaster | null> {
+  if (!logoUrl) return Promise.resolve(null);
+  const key = `${logoUrl}|${paperWidth}`;
+  if (!logoRasterCache.has(key)) {
+    logoRasterCache.set(key, buildLogoRaster(logoUrl, paperWidth));
+  }
+  return logoRasterCache.get(key)!;
+}
 
 export type PrintJobStatus = 'pendente' | 'imprimindo' | 'impresso' | 'erro';
 export type PrintJobKind = 'teste' | 'pedido';
@@ -293,20 +310,30 @@ function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'upda
 jobs = capJobs(jobs.map(j => isActiveJob(j) ? { ...j, status: 'erro' as PrintJobStatus, errorMessage: 'Sessão anterior encerrada antes de concluir a impressão.' } : j));
 saveLog(jobs);
 
-export function printTest(printerId: string, printerName: string, establishmentName: string, accentMode: AccentMode, paperWidth: 58 | 80) {
-  const builder = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth));
+export async function printTest(
+  printerId: string,
+  printerName: string,
+  establishmentName: string,
+  establishmentLogoUrl: string | undefined,
+  accentMode: AccentMode,
+  paperWidth: 58 | 80
+) {
+  const logo = await getLogoRaster(establishmentLogoUrl, paperWidth);
+  const builder = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo);
   enqueue({ id: crypto.randomUUID(), kind: 'teste', printerId, printerName }, builder.toBytes());
 }
 
-export function printOrderOnPrinter(
+export async function printOrderOnPrinter(
   printerId: string,
   printerName: string,
   order: Order,
   orderCode: string,
   config: PrintingConfig,
-  paperWidth: 58 | 80
+  paperWidth: 58 | 80,
+  establishmentLogoUrl: string | undefined
 ) {
-  const builder = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth));
+  const logo = await getLogoRaster(establishmentLogoUrl, paperWidth);
+  const builder = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
   enqueue({ id: crypto.randomUUID(), kind: 'pedido', orderId: order.id, orderCode, printerId, printerName }, builder.toBytes());
 }
 

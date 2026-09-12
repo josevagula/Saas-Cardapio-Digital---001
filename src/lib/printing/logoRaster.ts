@@ -1,0 +1,88 @@
+// Converts the establishment's logo (visualConfig.logoUrl) into an ESC/POS
+// monochrome raster image — printed centered above the order code, per the
+// "Personalização" logo the restaurant already uploaded. Thermal printers
+// have no way to render a JPEG/PNG directly; GS v 0 (raster bit image) is
+// the standard ESC/POS command for sending a 1-bit-per-pixel bitmap.
+
+export interface LogoRaster {
+  widthBytes: number;
+  heightPx: number;
+  data: Uint8Array;
+}
+
+export function dotsForPaperWidth(paperWidth: 58 | 80): number {
+  return paperWidth === 80 ? 576 : 384;
+}
+
+// "Tamanho médio" — half the printable width, centered by the caller via
+// EscPosBuilder.align('center').
+const MEDIUM_LOGO_SIZE_FACTOR = 0.5;
+// Anything lighter than this (0-255 luminance) prints as black — logos are
+// usually flat-color/line art, so a mid threshold reads them cleanly without
+// needing real dithering.
+const BLACK_THRESHOLD = 160;
+
+async function loadImage(url: string): Promise<HTMLImageElement> {
+  const response = await fetch(url, { mode: 'cors' });
+  if (!response.ok) throw new Error('Falha ao baixar a logo.');
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    return await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Falha ao decodificar a logo.'));
+      el.src = objectUrl;
+    });
+  } finally {
+    // Safe once the promise above resolves — the browser has already
+    // decoded the bitmap into the <img> element by the time 'load' fires.
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+// Returns null (never throws) on anything that goes wrong — no logo
+// configured, a network/CORS failure, a corrupt image — so a receipt still
+// prints normally, just without the logo, instead of failing the whole job.
+export async function buildLogoRaster(logoUrl: string | undefined, paperWidth: 58 | 80): Promise<LogoRaster | null> {
+  if (!logoUrl) return null;
+  try {
+    const img = await loadImage(logoUrl);
+    if (!img.naturalWidth || !img.naturalHeight) return null;
+
+    const maxDots = dotsForPaperWidth(paperWidth);
+    const targetWidthPx = Math.round(maxDots * MEDIUM_LOGO_SIZE_FACTOR);
+    const widthPx = Math.max(8, Math.ceil(targetWidthPx / 8) * 8); // byte-aligned, GS v 0 packs 8 px/byte
+    const scale = widthPx / img.naturalWidth;
+    const heightPx = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = widthPx;
+    canvas.height = heightPx;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, widthPx, heightPx);
+    ctx.drawImage(img, 0, 0, widthPx, heightPx);
+
+    const imageData = ctx.getImageData(0, 0, widthPx, heightPx).data;
+    const widthBytes = widthPx / 8;
+    const data = new Uint8Array(widthBytes * heightPx);
+    for (let y = 0; y < heightPx; y++) {
+      for (let x = 0; x < widthPx; x++) {
+        const i = (y * widthPx + x) * 4;
+        const alpha = imageData[i + 3];
+        // Transparent pixels are background (white) — only opaque, dark
+        // pixels ever set a bit.
+        const luminance = alpha < 32 ? 255 : (0.299 * imageData[i] + 0.587 * imageData[i + 1] + 0.114 * imageData[i + 2]);
+        if (luminance < BLACK_THRESHOLD) {
+          const byteIndex = y * widthBytes + (x >> 3);
+          data[byteIndex] |= (0x80 >> (x & 7));
+        }
+      }
+    }
+    return { widthBytes, heightPx, data };
+  } catch {
+    return null;
+  }
+}

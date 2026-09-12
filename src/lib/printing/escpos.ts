@@ -115,6 +115,20 @@ export class EscPosBuilder {
     return this;
   }
 
+  // GS v 0 — raster bit image. widthBytes/heightPx/data come from
+  // logoRaster.ts's 1-bit conversion of the establishment's logo. Pushed one
+  // byte at a time (never spread) since a logo can be a few thousand bytes —
+  // safely above what a spread call's argument list should risk.
+  rasterImage(widthBytes: number, heightPx: number, data: Uint8Array): this {
+    const xL = widthBytes & 0xFF;
+    const xH = (widthBytes >> 8) & 0xFF;
+    const yL = heightPx & 0xFF;
+    const yH = (heightPx >> 8) & 0xFF;
+    this.bytes.push(0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH);
+    for (let i = 0; i < data.length; i++) this.bytes.push(data[i]);
+    return this;
+  }
+
   cutPaper(): this {
     this.bytes.push(0x1D, 0x56, 0x00); // GS V 0 — full cut
     return this;
