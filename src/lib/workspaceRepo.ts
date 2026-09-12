@@ -357,6 +357,20 @@ export async function syncOrders(userId: string, orders: Order[]) {
   if (error) throw new Error(`Failed to save orders to Supabase: ${error.message}`);
 }
 
+// Fetches one order fresh via a normal REST select — used by the orders
+// realtime subscription (see AppContext), which only trusts postgres_changes
+// for the "something changed" signal, never for the row's own content.
+// Large jsonb columns like `items` (each entry embeds a full product,
+// images included) can arrive incomplete over the realtime/logical-
+// replication channel, and syncOrders' upsert would then happily persist
+// that hollowed-out `items: []` right back over the real data. A plain
+// REST fetch has no such size caveat.
+export async function fetchOrderById(userId: string, orderId: string): Promise<Order | null> {
+  const { data, error } = await supabase.from('orders').select('*').eq('user_id', userId).eq('id', orderId).maybeSingle();
+  if (error) throw new Error(`Failed to fetch order from Supabase: ${error.message}`);
+  return data ? rowToOrder(data) : null;
+}
+
 // Permanently removes one order. The DB policy only allows this for the
 // order's own owner and only while its status is 'cancelled' — a delete
 // attempted on anything else is rejected there, not just here.

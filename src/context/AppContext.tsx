@@ -36,7 +36,7 @@ import {
   syncCustomers,
   syncVisualConfig,
   syncAnalytics,
-  rowToOrder
+  fetchOrderById
 } from '../lib/workspaceRepo';
 import { supabase } from '../lib/supabase';
 import { startCheckout, openBillingPortal } from '../lib/billing';
@@ -623,6 +623,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // regression from 2026-09-12). INSERT never re-fires for the same row, so
   // it can't cause that loop.
   //
+  // The realtime payload's row content is deliberately NOT trusted for the
+  // order itself — only its id is used, to then fetch that order fresh via
+  // fetchOrderById (a plain REST select). `items` embeds a full product per
+  // line (images included) and can be large; postgres_changes/logical
+  // replication payloads have their own size ceiling, and when a big `items`
+  // value didn't fully arrive, rowToOrder's `r.items || []` silently turned
+  // it into an empty array — which syncOrders' upsert then happily wrote
+  // back over the real data (the "pedidos sem itens" incident from
+  // 2026-09-12: LUV-6653/LUV-9040 lost their items this way). A REST fetch
+  // doesn't have that failure mode.
+  //
   // visualConfigRef always holds the latest printingConfig without forcing
   // this effect (and the realtime channel) to resubscribe every time
   // visualConfig changes for an unrelated reason.
@@ -634,9 +645,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const channel = supabase
       .channel(`orders-live-${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, (payload: any) => {
-        const incoming = rowToOrder(payload.new);
-        setOrders(prev => (prev.some(o => o.id === incoming.id) ? prev : [incoming, ...prev]));
-        handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig);
+        const incomingId = payload.new?.id;
+        if (!incomingId) return;
+        fetchOrderById(userId, incomingId).then(incoming => {
+          if (!incoming) return;
+          setOrders(prev => (prev.some(o => o.id === incoming.id) ? prev : [incoming, ...prev]));
+          handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig);
+        }).catch(() => {
+          // Couldn't confirm the full row — do nothing rather than risk
+          // adding a hollow order to local state (which syncOrders would
+          // then persist). The next fetchWorkspace/reload will pick it up.
+        });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
