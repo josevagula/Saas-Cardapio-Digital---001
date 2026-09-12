@@ -610,12 +610,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Live "a new order just landed" signal — added for the Impressão module's
   // "Impressão automática ao receber pedido" (see lib/printing/printBridge.ts):
   // a customer places an order from their OWN browser, so without this the
-  // admin's dashboard would only learn about it on a manual reload. Purely
-  // additive — it only adds an order the admin doesn't already have and
-  // patches an existing one's status; it never changes what createOrder or
-  // updateOrderStatus themselves do. visualConfigRef always holds the latest
-  // printingConfig without forcing this effect (and the realtime channel) to
-  // resubscribe every time visualConfig changes for an unrelated reason.
+  // admin's dashboard would only learn about it on a manual reload.
+  //
+  // INSERT only, deliberately — do NOT add an UPDATE listener here. This
+  // admin's own status changes (updateOrderStatus) already update local
+  // state directly and get pushed to Supabase by the syncOrders effect right
+  // above; if this channel also listened for UPDATE, that same write would
+  // echo back as a realtime event, setOrders() would produce a new array
+  // reference even though nothing actually changed, which re-triggers the
+  // syncOrders effect, which upserts again, which echoes again — an infinite
+  // save loop (the "fica salvando toda hora" / stuck status transitions
+  // regression from 2026-09-12). INSERT never re-fires for the same row, so
+  // it can't cause that loop.
+  //
+  // visualConfigRef always holds the latest printingConfig without forcing
+  // this effect (and the realtime channel) to resubscribe every time
+  // visualConfig changes for an unrelated reason.
   const visualConfigRef = useRef(visualConfig);
   useEffect(() => { visualConfigRef.current = visualConfig; }, [visualConfig]);
 
@@ -627,10 +637,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const incoming = rowToOrder(payload.new);
         setOrders(prev => (prev.some(o => o.id === incoming.id) ? prev : [incoming, ...prev]));
         handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig);
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, (payload: any) => {
-        const updated = rowToOrder(payload.new);
-        setOrders(prev => prev.map(o => (o.id === updated.id ? updated : o)));
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };

@@ -74,6 +74,7 @@ export class BluetoothPrinterTransport implements PrinterTransport {
   private listeners = new Set<(status: PrinterConnectionStatus) => void>();
   private reconnectAttempts = 0;
   private manuallyDisconnected = false;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(device: BluetoothDevice) {
     this.device = device;
@@ -109,16 +110,44 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     this.writeWithoutResponse = found.withoutResponse;
     this.reconnectAttempts = 0;
     this.setStatus('conectado');
+    this.startHeartbeat();
   }
 
   async disconnect(): Promise<void> {
     this.manuallyDisconnected = true;
+    this.stopHeartbeat();
     this.characteristic = null;
     if (this.device.gatt?.connected) this.device.gatt.disconnect();
     this.setStatus('desconectado');
   }
 
+  // Cheap Bluetooth thermal printers commonly drop the connection after a
+  // short idle period (an aggressive power-saving sleep timer, not a real
+  // range/interference issue) — this is the #1 real-world cause of
+  // "a impressora não fica conectada por muito tempo". A periodic no-op
+  // write (ESC @ — the standard ESC/POS "initialize printer" command, safe
+  // to send at any time: no visible output, no paper feed) keeps the link
+  // active so it never gets the chance to go idle.
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatTimer = setInterval(() => {
+      this.write(new Uint8Array([0x1B, 0x40])).catch(() => {
+        // A failed heartbeat write means the link is already gone — the
+        // browser's own 'gattserverdisconnected' event (handled below) is
+        // what actually drives reconnection, so nothing else to do here.
+      });
+    }, 25000);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
   private handleGattDisconnected = () => {
+    this.stopHeartbeat();
     this.characteristic = null;
     if (this.manuallyDisconnected) {
       this.setStatus('desconectado');
@@ -127,16 +156,17 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     this.attemptReconnect();
   };
 
+  // Keeps retrying for as long as the page stays open — a printer that only
+  // reconnects 3 times before giving up (the previous behavior) is
+  // effectively "impressora não fica conectada por muito tempo" all over
+  // again after a single bad patch of drops. Backoff is capped, not the
+  // attempt count; only an explicit disconnect() stops it.
   private async attemptReconnect() {
-    const MAX_ATTEMPTS = 3;
-    if (this.reconnectAttempts >= MAX_ATTEMPTS) {
-      this.setStatus('desconectado');
-      return;
-    }
     this.setStatus('reconectando');
     this.reconnectAttempts += 1;
-    const backoffMs = 1000 * this.reconnectAttempts;
+    const backoffMs = Math.min(15000, 1000 * this.reconnectAttempts);
     await sleep(backoffMs);
+    if (this.manuallyDisconnected) return;
     try {
       await this.connect();
     } catch {
@@ -144,7 +174,20 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     }
   }
 
-  async write(data: Uint8Array): Promise<void> {
+  // Serializes every write (real print jobs AND the heartbeat) onto one
+  // queue — printService already sends one job at a time per printer, but
+  // the heartbeat timer fires independently of that, and two concurrent
+  // writes to the same GATT characteristic would interleave their bytes
+  // into a corrupted receipt.
+  private writeQueue: Promise<void> = Promise.resolve();
+
+  write(data: Uint8Array): Promise<void> {
+    const run = this.writeQueue.then(() => this.writeRaw(data));
+    this.writeQueue = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
+  private async writeRaw(data: Uint8Array): Promise<void> {
     if (!this.characteristic) throw new Error('Impressora não conectada.');
     for (let offset = 0; offset < data.length; offset += WRITE_CHUNK_SIZE) {
       const chunk = data.slice(offset, offset + WRITE_CHUNK_SIZE);
