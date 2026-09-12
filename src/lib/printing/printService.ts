@@ -40,7 +40,7 @@ export interface PrintJob {
 const DEVICE_MAP_KEY = 'zushy_printer_device_map';
 const LOG_KEY = 'zushy_print_job_log';
 const AUTO_PRINTED_KEY = 'zushy_auto_printed_orders';
-const MAX_LOG_ENTRIES = 300;
+const MAX_LOG_ENTRIES = 10;
 const MAX_ATTEMPTS = 3;
 
 function readJSON<T>(key: string, fallback: T): T {
@@ -107,13 +107,26 @@ function loadLog(): PrintJob[] {
   return readJSON<PrintJob[]>(LOG_KEY, []);
 }
 
-function saveLog(allJobs: PrintJob[]) {
-  const trimmed = allJobs.slice(-MAX_LOG_ENTRIES);
-  writeJSON(LOG_KEY, trimmed);
-  if (trimmed.length < allJobs.length) {
-    const keepIds = new Set(trimmed.map(j => j.id));
-    Array.from(jobBytes.keys()).forEach(id => { if (!keepIds.has(id)) jobBytes.delete(id); });
-  }
+function isActiveJob(j: PrintJob): boolean {
+  return j.status === 'pendente' || j.status === 'imprimindo';
+}
+
+// Caps the HISTORY (finished jobs — impresso/erro) at MAX_LOG_ENTRIES, but
+// never drops a still-active (pendente/imprimindo) job just for being old —
+// a busy printer with a real backlog (e.g. reconnecting after being offline
+// for a while) must keep every one of those until it actually prints,
+// otherwise "nenhum pedido perdido" would stop being true the moment more
+// than MAX_LOG_ENTRIES orders piled up.
+function capJobs(allJobs: PrintJob[]): PrintJob[] {
+  const recentFinished = allJobs.filter(j => !isActiveJob(j)).slice(-MAX_LOG_ENTRIES);
+  const keepIds = new Set([...allJobs.filter(isActiveJob), ...recentFinished].map(j => j.id));
+  return allJobs.filter(j => keepIds.has(j.id));
+}
+
+function saveLog(currentJobs: PrintJob[]) {
+  writeJSON(LOG_KEY, currentJobs);
+  const keepIds = new Set(currentJobs.map(j => j.id));
+  Array.from(jobBytes.keys()).forEach(id => { if (!keepIds.has(id)) jobBytes.delete(id); });
 }
 
 const jobBytes = new Map<string, Uint8Array>();
@@ -121,6 +134,7 @@ let jobs: PrintJob[] = loadLog();
 const queueListeners = new Set<(jobs: PrintJob[]) => void>();
 
 function emitQueue() {
+  jobs = capJobs(jobs);
   saveLog(jobs);
   queueListeners.forEach(cb => cb(jobs));
 }
@@ -276,7 +290,7 @@ function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'upda
 // (bytes aren't persisted across reload) is marked as an error rather than
 // silently vanishing — "nenhum pedido perdido" means the failure is visible
 // and reprintable, not that a stale byte buffer is resurrected.
-jobs = jobs.map(j => (j.status === 'pendente' || j.status === 'imprimindo') ? { ...j, status: 'erro' as PrintJobStatus, errorMessage: 'Sessão anterior encerrada antes de concluir a impressão.' } : j);
+jobs = capJobs(jobs.map(j => isActiveJob(j) ? { ...j, status: 'erro' as PrintJobStatus, errorMessage: 'Sessão anterior encerrada antes de concluir a impressão.' } : j));
 saveLog(jobs);
 
 export function printTest(printerId: string, printerName: string, establishmentName: string, accentMode: AccentMode, paperWidth: 58 | 80) {

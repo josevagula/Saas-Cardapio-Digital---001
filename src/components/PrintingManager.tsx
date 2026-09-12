@@ -321,7 +321,10 @@ export default function PrintingManager() {
     setDraft(prev => ({ ...prev, printers: prev.printers.filter(p => p.id !== id) }));
   };
 
-  const recentJobs = [...jobs].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 30);
+  // The service itself only ever keeps the 10 most recent finished
+  // (impresso/erro) jobs — any pendente/imprimindo job stays visible
+  // regardless of count, since those still need attention.
+  const recentJobs = [...jobs].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
   const toggles: { key: keyof PrintingConfig; label: string; help: string }[] = [
     { key: 'autoPrintOnReceived', label: 'Impressão automática ao receber pedido', help: 'Imprime assim que um pedido novo chega, sem precisar recarregar a tela.' },
