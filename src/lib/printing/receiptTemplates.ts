@@ -54,24 +54,18 @@ const DELIVERY_METHOD_LABELS: Record<Order['deliveryMethod'], string> = {
   dine_in: 'Consumo no Local'
 };
 
-function lineItemTotal(item: OrderItem): number {
-  const unit = item.product.promoPrice ?? item.product.price;
-  const extrasTotal = (item.extras || []).reduce((s, ex) => s + ex.price * ex.quantity, 0);
-  return unit * item.quantity + extrasTotal;
-}
-
 // Every customization the kitchen actually needs to know about — this is
 // deliberately the most detailed part of the receipt (Monte Seu Combinado's
 // chosen flavors and Meio a Meio's two halves are otherwise invisible on a
 // generic "2x Combo" line, and a wrong assembly means a redone order).
 function printItemSpec(b: EscPosBuilder, item: OrderItem, config: PrintingConfig) {
   const unitPrice = item.product.promoPrice ?? item.product.price;
-  const total = lineItemTotal(item);
+  const productTotal = unitPrice * item.quantity;
   b.bold(true).line(`${item.quantity}x ${item.product.name}`).bold(false);
   if (item.quantity > 1) {
-    b.line(`  Unit.: R$ ${formatCurrency(unitPrice)}  |  Total: R$ ${formatCurrency(total)}`);
+    b.line(`  Unit.: R$ ${formatCurrency(unitPrice)}  |  Total: R$ ${formatCurrency(productTotal)}`);
   } else {
-    b.line(`  Valor: R$ ${formatCurrency(total)}`);
+    b.line(`  Valor: R$ ${formatCurrency(unitPrice)}`);
   }
 
   if (item.comboFlavors && item.comboFlavors.length > 0) {
@@ -147,7 +141,7 @@ export function buildOrderReceipt(
   b.line('Cliente:');
   b.bold(true).line(order.customerName).bold(false);
   b.newline();
-  b.line(`Tipo: ${DELIVERY_METHOD_LABELS[order.deliveryMethod]}`);
+  b.line(`Entrega: ${DELIVERY_METHOD_LABELS[order.deliveryMethod]}`);
 
   if (config.printTelefone) {
     b.newline();
