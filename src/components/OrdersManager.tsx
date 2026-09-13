@@ -91,7 +91,7 @@ export default function OrdersManager() {
     }
     text += `\n*Total:* R$ ${formatCurrency(order.total)}\n`;
     let paymentFormatted = order.paymentMethod === 'credit_card' || order.paymentMethod === 'debit_card'
-      ? 'CARTÃO'
+      ? 'Cartão'
       : order.paymentMethod.replace('_', ' ').toUpperCase();
     if (order.paymentMethod === 'cash') {
       if (order.needsChange) {
@@ -270,7 +270,7 @@ export default function OrdersManager() {
                     <div className="flex justify-between">
                       <span>
                         Forma: {(() => {
-                          if (order.paymentMethod === 'credit_card' || order.paymentMethod === 'debit_card') return 'CARTÃO';
+                          if (order.paymentMethod === 'credit_card' || order.paymentMethod === 'debit_card') return 'Cartão';
                           if (order.paymentMethod !== 'cash') return order.paymentMethod.replace('_', ' ').toUpperCase();
                           if (!order.needsChange) return 'DINHEIRO (Sem troco)';
                           const noteVal = parseCashAmount(order.changeAmount || '');
