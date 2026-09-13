@@ -352,9 +352,53 @@ async function drainPrinterQueue(printerId: string) {
 // see the comment on the logo-segment split in receiptTemplates.ts.
 const INTER_SEGMENT_COOLDOWN_MS = 700;
 
+// How long a job is willing to wait, on top of its own retry backoff, for a
+// printer that's mid-reconnect (heartbeat drop, watchdog sweep, etc.) to
+// come back before treating it as a hard failure. Cheap BLE printers drop
+// and silently reconnect on their own within a few seconds all the time —
+// without this wait, a job that lands in that exact window used to fail (or,
+// for auto-print, be skipped outright — see printBridge.ts) even though the
+// same printer would have accepted the job perfectly fine a moment later.
+// This is the root cause of receipts that "sometimes print, sometimes
+// don't": success depended entirely on not landing in that window.
+const RECONNECT_WAIT_MS = 8000;
+
+// Waits for the printer's status to reach 'conectado', up to timeoutMs.
+// Deliberately NOT just `await reconnectPrinter(printerId)` — that call
+// no-ops (resolves immediately, without waiting) whenever a reconnect is
+// already in flight, which is exactly the common case here (the transport's
+// own heartbeat-triggered attemptReconnect, or the periodic watchdog, is
+// already retrying). This instead watches the live status and only nudges a
+// fresh attempt as a fallback for when nothing is currently retrying.
+function waitForConnection(printerId: string, timeoutMs: number): Promise<boolean> {
+  return new Promise(resolve => {
+    if (getPrinterStatus(printerId) === 'conectado') { resolve(true); return; }
+    let settled = false;
+    let unsubscribe: () => void = () => {};
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      resolve(false);
+    }, timeoutMs);
+    unsubscribe = subscribePrinterStatus(printerId, status => {
+      if (settled || status !== 'conectado') return;
+      settled = true;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(true);
+    });
+    reconnectPrinter(printerId).catch(() => {});
+  });
+}
+
 async function runJob(job: PrintJob) {
   upsertJob({ ...job, status: 'imprimindo', updatedAt: new Date().toISOString() });
-  const transport = transports.get(job.printerId);
+  let transport = transports.get(job.printerId);
+  if (!transport || !transport.isConnected()) {
+    await waitForConnection(job.printerId, RECONNECT_WAIT_MS);
+    transport = transports.get(job.printerId);
+  }
   const segments = jobBytes.get(job.id);
   if (!transport || !transport.isConnected() || !segments) {
     failJob(job, !segments ? 'Conteúdo da impressão não está mais disponível — use Reimprimir.' : 'Impressora desconectada.');

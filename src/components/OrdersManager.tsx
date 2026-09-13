@@ -27,7 +27,11 @@ export default function OrdersManager() {
 
   const handlePrintOrder = async (order: Order) => {
     const config = visualConfig.printingConfig ?? DEFAULT_PRINTING_CONFIG;
-    const connected = config.printers.filter(p => getPrinterStatus(p.id) === 'conectado');
+    // Includes 'reconectando' — a printer mid-reconnect still accepts the
+    // job (runJob now waits for it), so excluding it here would just make
+    // the button falsely claim "nenhuma impressora conectada" for a printer
+    // that's about to come back on its own.
+    const connected = config.printers.filter(p => getPrinterStatus(p.id) !== 'desconectado');
     if (connected.length === 0) {
       alert('Nenhuma impressora conectada. Configure em Configurações > Impressão.');
       return;

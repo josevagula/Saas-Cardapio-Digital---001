@@ -6,8 +6,15 @@ import { Order, PrintingConfig } from '../../types';
 import { getPrinterStatus, printOrderOnPrinter, wasAutoPrinted, markAutoPrinted } from './printService';
 
 function printOnAllConnectedPrinters(order: Order, orderCode: string, config: PrintingConfig, logoUrl: string | undefined) {
+  // Includes 'reconectando', not just 'conectado' — a printer mid-reconnect
+  // (routine idle-timeout drop, watchdog sweep, etc.) is exactly the common
+  // case an incoming/confirmed order can race against, and excluding it here
+  // used to mean the job was never even enqueued while still marking the
+  // order as auto-printed below, permanently losing that receipt. runJob
+  // (printService.ts) now waits for a printer that isn't connected yet, so
+  // it's safe to hand it the job instead of pre-filtering it out here.
   config.printers
-    .filter(p => getPrinterStatus(p.id) === 'conectado')
+    .filter(p => getPrinterStatus(p.id) !== 'desconectado')
     .forEach(p => printOrderOnPrinter(p.id, p.name, order, orderCode, config, p.paperWidth, logoUrl));
 }
 
