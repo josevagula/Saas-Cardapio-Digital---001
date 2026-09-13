@@ -6,8 +6,8 @@ import { Order } from '../types';
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   pix: 'Pix',
-  credit_card: 'Cartão de Crédito',
-  debit_card: 'Cartão de Débito',
+  credit_card: 'Cartão',
+  debit_card: 'Cartão',
   cash: 'Dinheiro'
 };
 

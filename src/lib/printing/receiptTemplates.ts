@@ -100,7 +100,7 @@ function printItemSpec(b: EscPosBuilder, item: OrderItem, config: PrintingConfig
 // tells the kitchen/delivery nothing about how much change to bring.
 function printPaymentSpec(b: EscPosBuilder, order: Order) {
   if (order.paymentMethod !== 'cash') {
-    const labels: Record<string, string> = { pix: 'PIX', credit_card: 'Cartão', debit_card: 'Cartão de Débito' };
+    const labels: Record<string, string> = { pix: 'PIX', credit_card: 'Cartão', debit_card: 'Cartão' };
     b.bold(true).line(labels[order.paymentMethod] || order.paymentMethod).bold(false);
     return;
   }
