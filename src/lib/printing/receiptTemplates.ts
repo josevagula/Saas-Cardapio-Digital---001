@@ -50,7 +50,7 @@ export function buildTestReceipt(establishmentName: string, accentMode: AccentMo
 
 const DELIVERY_METHOD_LABELS: Record<Order['deliveryMethod'], string> = {
   delivery: 'Delivery',
-  pickup: 'Retirada no Balcão',
+  pickup: 'Retirada no Local',
   dine_in: 'Consumo no Local'
 };
 
