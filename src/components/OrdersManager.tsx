@@ -21,18 +21,22 @@ import {
 } from 'lucide-react';
 
 export default function OrdersManager() {
-  const { orders, updateOrderStatus, deleteOrder, visualConfig } = useApp();
+  const { orders, updateOrderStatus, deleteOrder, visualConfig, ensureOrderNumber } = useApp();
   const [activeTab, setActiveTab] = useState<OrderStatus>('preparing');
   const [printFeedback, setPrintFeedback] = useState<{ id: string; message: string } | null>(null);
 
-  const handlePrintOrder = (order: Order) => {
+  const handlePrintOrder = async (order: Order) => {
     const config = visualConfig.printingConfig ?? DEFAULT_PRINTING_CONFIG;
     const connected = config.printers.filter(p => getPrinterStatus(p.id) === 'conectado');
     if (connected.length === 0) {
       alert('Nenhuma impressora conectada. Configure em Configurações > Impressão.');
       return;
     }
-    connected.forEach(p => printOrderOnPrinter(p.id, p.name, order, formatOrderCode(order), config, p.paperWidth, visualConfig.logoUrl));
+    // A brand-new order clicked within seconds of arriving may not have its
+    // sequential number yet (assigned by a separate RPC) — wait for it
+    // instead of printing the raw internal id as a fallback code.
+    const withNumber = await ensureOrderNumber(order);
+    connected.forEach(p => printOrderOnPrinter(p.id, p.name, withNumber, formatOrderCode(withNumber), config, p.paperWidth, visualConfig.logoUrl));
     setPrintFeedback({ id: order.id, message: 'Enviado para a fila de impressão.' });
     setTimeout(() => setPrintFeedback(prev => (prev?.id === order.id ? null : prev)), 4000);
   };

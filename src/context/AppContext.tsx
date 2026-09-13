@@ -173,6 +173,13 @@ interface AppContextType {
   reorderProductInCategory: (productId: string, direction: -1 | 1, categoryId: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   deleteOrder: (orderId: string) => void;
+  // Refetches an order until its sequential order_number lands (assigned by
+  // a separate RPC shortly after checkout — see the orders realtime INSERT
+  // handler below) when it's still missing locally, so printing/sharing an
+  // order moments after it arrives shows PED-00xx instead of falling back
+  // to the raw internal id. Resolves immediately with the same order if it
+  // already has a number.
+  ensureOrderNumber: (order: Order) => Promise<Order>;
   redeemReward: (customerPhone: string) => Promise<{ success: boolean; message: string }>;
   fetchCustomerLoyaltyHistory: (customerPhone: string) => Promise<LoyaltyLedgerEntry[]>;
   addCoupon: (coupon: Coupon) => void;
@@ -641,6 +648,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const visualConfigRef = useRef(visualConfig);
   useEffect(() => { visualConfigRef.current = visualConfig; }, [visualConfig]);
 
+  // assignOrderNumber (see workspaceRepo) is a separate RPC the customer's
+  // checkout fires right after inserting the order row — anything that
+  // fetches/prints an order right as it arrives can win that race and see
+  // orderNumber still null, and formatOrderCode then falls back to the raw
+  // id-based code instead of the real PED-00xx. assignOrderNumber's own
+  // retryUntilSuccess commonly needs a first failed attempt (the order row
+  // not visible yet) plus its ~2s backoff before a second attempt lands it,
+  // so this polls for up to ~5s — comfortable room for that real-world
+  // latency — before giving up and returning whatever it last saw. Shared by
+  // the realtime INSERT handler below, the "Confirmado" auto-print, and the
+  // manual Imprimir button (OrdersManager), since any of those can fire
+  // within that same window.
+  const ensureOrderNumber = async (order: Order): Promise<Order> => {
+    if (order.orderNumber != null || !userId) return order;
+    for (let attempt = 0; attempt < 11; attempt++) {
+      const fresh = await fetchOrderById(userId, order.id);
+      if (!fresh) return order;
+      if (fresh.orderNumber != null || attempt === 10) {
+        setOrders(prev => prev.map(o => (o.id === fresh.id ? fresh : o)));
+        return fresh;
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return order;
+  };
+
   useEffect(() => {
     if (!isAdmin || !userId || isDemoMode || publicMenuSlug) return;
     const channel = supabase
@@ -648,29 +681,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, (payload: any) => {
         const incomingId = payload.new?.id;
         if (!incomingId) return;
-        // assignOrderNumber (see workspaceRepo) is a separate RPC the
-        // customer's checkout fires right after inserting the order row —
-        // this INSERT event can fire and be fetched before that RPC lands,
-        // seeing orderNumber still null. formatOrderCode then falls back to
-        // the raw id-based code, which is exactly why auto-printed receipts
-        // were showing a random-looking code instead of the real PED-00xx.
-        // assignOrderNumber's own retryUntilSuccess (workspaceRepo) commonly
-        // needs a first failed attempt (the order row not being visible yet)
-        // plus its ~2s backoff before a second attempt lands it, so a short
-        // ~2.4s window wasn't consistently enough — 5s of polling here gives
-        // that real-world latency comfortable room without stalling the
-        // printer noticeably longer than a normal person notices.
-        const fetchWithOrderNumber = async (): Promise<Order | null> => {
-          for (let attempt = 0; attempt < 11; attempt++) {
-            const order = await fetchOrderById(userId, incomingId);
-            if (!order || order.orderNumber != null || attempt === 10) return order;
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-          return null;
-        };
-        fetchWithOrderNumber().then(incoming => {
+        fetchOrderById(userId, incomingId).then(async base => {
+          if (!base) return null;
+          setOrders(prev => (prev.some(o => o.id === base.id) ? prev : [base, ...prev]));
+          return ensureOrderNumber(base);
+        }).then(incoming => {
           if (!incoming) return;
-          setOrders(prev => (prev.some(o => o.id === incoming.id) ? prev : [incoming, ...prev]));
           handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig, visualConfigRef.current.logoUrl);
         }).catch(() => {
           // Couldn't confirm the full row — do nothing rather than risk
@@ -1348,9 +1364,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // "Confirmado" — staff just accepted a pending order. Side effect only
       // (matches the pattern already established above for loyalty/receita);
-      // does not change the status transition itself.
+      // does not change the status transition itself. Confirming can happen
+      // within seconds of the order arriving, so its orderNumber may not be
+      // assigned yet — ensureOrderNumber waits for it instead of printing
+      // whatever stale code is already in local state.
       if (status === 'preparing' && order.status === 'received') {
-        handleOrderConfirmedForPrinting({ ...order, status }, formatOrderCode(order), visualConfig.printingConfig, visualConfig.logoUrl);
+        ensureOrderNumber(order).then(withNumber => {
+          handleOrderConfirmedForPrinting({ ...withNumber, status }, formatOrderCode(withNumber), visualConfigRef.current.printingConfig, visualConfigRef.current.logoUrl);
+        });
       }
     }
 
@@ -1518,6 +1539,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       updateOrderStatus,
       deleteOrder,
+      ensureOrderNumber,
       redeemReward,
       fetchCustomerLoyaltyHistory,
       addCoupon,
