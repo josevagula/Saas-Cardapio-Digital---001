@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus } from '../types';
 import { safeNumber, formatCurrency, parseCashAmount, formatOrderCode } from '../utils/formatters';
-import { printOrderOnPrinter, hasEverPrintedOrder, getPrinterStatus } from '../lib/printing/printService';
+import { printOrderOnPrinter, hasEverPrintedOrder } from '../lib/printing/printService';
 import { DEFAULT_PRINTING_CONFIG } from '../data/mockData';
 import {
   Check,
@@ -27,20 +27,19 @@ export default function OrdersManager() {
 
   const handlePrintOrder = async (order: Order) => {
     const config = visualConfig.printingConfig ?? DEFAULT_PRINTING_CONFIG;
-    // Includes 'reconectando' — a printer mid-reconnect still accepts the
-    // job (runJob now waits for it), so excluding it here would just make
-    // the button falsely claim "nenhuma impressora conectada" for a printer
-    // that's about to come back on its own.
-    const connected = config.printers.filter(p => getPrinterStatus(p.id) !== 'desconectado');
-    if (connected.length === 0) {
-      alert('Nenhuma impressora conectada. Configure em Configurações > Impressão.');
+    if (config.printers.length === 0) {
+      alert('Nenhuma impressora configurada. Configure em Configurações > Impressão.');
       return;
     }
+    // No status filtering here — printService's queue now owns deciding
+    // connectivity (waits for an in-flight reconnect, retries with backoff),
+    // so a printer that's momentarily 'desconectado' still gets a real,
+    // visible, reprintable job instead of being silently skipped.
     // A brand-new order clicked within seconds of arriving may not have its
     // sequential number yet (assigned by a separate RPC) — wait for it
     // instead of printing the raw internal id as a fallback code.
     const withNumber = await ensureOrderNumber(order);
-    connected.forEach(p => printOrderOnPrinter(p.id, p.name, withNumber, formatOrderCode(withNumber), config, p.paperWidth, visualConfig.logoUrl));
+    config.printers.forEach(p => printOrderOnPrinter(p.id, p.name, withNumber, formatOrderCode(withNumber), config, p.paperWidth, visualConfig.logoUrl));
     setPrintFeedback({ id: order.id, message: 'Enviado para a fila de impressão.' });
     setTimeout(() => setPrintFeedback(prev => (prev?.id === order.id ? null : prev)), 4000);
   };
