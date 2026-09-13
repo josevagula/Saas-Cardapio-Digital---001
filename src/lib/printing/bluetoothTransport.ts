@@ -237,9 +237,22 @@ export async function requestBluetoothPrinter(): Promise<BluetoothPrinterTranspo
 // different browser/profile), in which case the user must pair again via
 // "Conectar Impressora".
 export async function reconnectKnownBluetoothPrinter(deviceId: string): Promise<BluetoothPrinterTransport | null> {
-  if (!isWebBluetoothSupported() || !navigator.bluetooth.getDevices) return null;
-  const known = await navigator.bluetooth.getDevices().catch(() => [] as BluetoothDevice[]);
+  if (!isWebBluetoothSupported()) {
+    console.warn('[printing] reconnectKnownBluetoothPrinter: navigator.bluetooth não existe neste navegador.');
+    return null;
+  }
+  if (!navigator.bluetooth.getDevices) {
+    console.warn('[printing] reconnectKnownBluetoothPrinter: navigator.bluetooth.getDevices não é suportado (versão do Chrome sem permissões persistentes) — reconexão silenciosa é impossível, será preciso re-parear manualmente.');
+    return null;
+  }
+  const known = await navigator.bluetooth.getDevices().catch((e: any) => {
+    console.warn('[printing] reconnectKnownBluetoothPrinter: getDevices() rejeitou —', e?.message || e);
+    return [] as BluetoothDevice[];
+  });
   const match = known.find(d => d.id === deviceId);
-  if (!match) return null;
+  if (!match) {
+    console.warn(`[printing] reconnectKnownBluetoothPrinter: ${known.length} dispositivo(s) conhecido(s) pelo navegador, nenhum com id ${deviceId} — permissão pode ter sido revogada.`);
+    return null;
+  }
   return new BluetoothPrinterTransport(match);
 }

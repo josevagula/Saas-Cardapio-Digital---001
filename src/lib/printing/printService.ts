@@ -242,12 +242,19 @@ export function reconnectPrinter(printerId: string): Promise<boolean> {
 
   const attempt = (async () => {
     const deviceId = getDeviceMap()[printerId];
-    if (!deviceId) return false;
+    if (!deviceId) {
+      console.warn(`[printing] reconnectPrinter(${printerId}): nenhum dispositivo Bluetooth salvo para essa impressora.`);
+      return false;
+    }
     const transport = await reconnectKnownBluetoothPrinter(deviceId);
-    if (!transport) return false;
+    if (!transport) {
+      console.warn(`[printing] reconnectPrinter(${printerId}): dispositivo ${deviceId} não encontrado entre os pareados conhecidos pelo navegador (navigator.bluetooth.getDevices).`);
+      return false;
+    }
     try {
       await transport.connect();
-    } catch {
+    } catch (e: any) {
+      console.warn(`[printing] reconnectPrinter(${printerId}): connect() falhou —`, e?.message || e);
       return false;
     }
     attachTransport(printerId, transport);
