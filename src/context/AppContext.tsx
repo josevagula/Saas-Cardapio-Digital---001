@@ -653,13 +653,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // this INSERT event can fire and be fetched before that RPC lands,
         // seeing orderNumber still null. formatOrderCode then falls back to
         // the raw id-based code, which is exactly why auto-printed receipts
-        // were showing a random-looking code instead of the real PED-00xx —
-        // so give that RPC a few short beats to land before settling.
+        // were showing a random-looking code instead of the real PED-00xx.
+        // assignOrderNumber's own retryUntilSuccess (workspaceRepo) commonly
+        // needs a first failed attempt (the order row not being visible yet)
+        // plus its ~2s backoff before a second attempt lands it, so a short
+        // ~2.4s window wasn't consistently enough — 5s of polling here gives
+        // that real-world latency comfortable room without stalling the
+        // printer noticeably longer than a normal person notices.
         const fetchWithOrderNumber = async (): Promise<Order | null> => {
-          for (let attempt = 0; attempt < 6; attempt++) {
+          for (let attempt = 0; attempt < 11; attempt++) {
             const order = await fetchOrderById(userId, incomingId);
-            if (!order || order.orderNumber != null || attempt === 5) return order;
-            await new Promise(resolve => setTimeout(resolve, 400));
+            if (!order || order.orderNumber != null || attempt === 10) return order;
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
           return null;
         };
