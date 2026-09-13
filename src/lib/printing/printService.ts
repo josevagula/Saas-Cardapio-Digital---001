@@ -398,17 +398,21 @@ function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'upda
 jobs = capJobs(jobs.map(j => isActiveJob(j) ? { ...j, status: 'erro' as PrintJobStatus, errorMessage: 'Sessão anterior encerrada antes de concluir a impressão.' } : j));
 saveLog(jobs);
 
+// Logo printing is hard-disabled here (ignoring establishmentLogoUrl/config
+// entirely, not just via the per-establishment toggle) while we track down a
+// printer that powers itself off/disconnects mid-job — including on a bare
+// text test receipt. Once that's confirmed unrelated to the logo (or fixed
+// on the hardware/power side), restore the getLogoRaster calls below.
 export async function printTest(
   printerId: string,
   printerName: string,
   establishmentName: string,
-  establishmentLogoUrl: string | undefined,
+  _establishmentLogoUrl: string | undefined,
   accentMode: AccentMode,
   paperWidth: 58 | 80,
-  printLogoEnabled: boolean = true
+  _printLogoEnabled: boolean = true
 ) {
-  const logo = printLogoEnabled ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-  const segments = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo);
+  const segments = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), null);
   enqueue({ id: crypto.randomUUID(), kind: 'teste', printerId, printerName }, segments.map(s => s.toBytes()));
 }
 
@@ -419,14 +423,9 @@ export async function printOrderOnPrinter(
   orderCode: string,
   config: PrintingConfig,
   paperWidth: 58 | 80,
-  establishmentLogoUrl: string | undefined
+  _establishmentLogoUrl: string | undefined
 ) {
-  // !== false (not a truthy check) — printingConfig rows saved before this
-  // field existed don't have it at all, and a missing field must still mean
-  // "on" (the intended default), not silently turn the logo off for every
-  // establishment that had already configured printing.
-  const logo = config.printLogo !== false ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-  const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
+  const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), null);
   enqueue({ id: crypto.randomUUID(), kind: 'pedido', orderId: order.id, orderCode, printerId, printerName }, segments.map(s => s.toBytes()));
 }
 
