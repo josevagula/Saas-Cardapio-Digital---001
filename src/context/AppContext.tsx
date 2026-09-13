@@ -648,7 +648,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, (payload: any) => {
         const incomingId = payload.new?.id;
         if (!incomingId) return;
-        fetchOrderById(userId, incomingId).then(incoming => {
+        // assignOrderNumber (see workspaceRepo) is a separate RPC the
+        // customer's checkout fires right after inserting the order row —
+        // this INSERT event can fire and be fetched before that RPC lands,
+        // seeing orderNumber still null. formatOrderCode then falls back to
+        // the raw id-based code, which is exactly why auto-printed receipts
+        // were showing a random-looking code instead of the real PED-00xx —
+        // so give that RPC a few short beats to land before settling.
+        const fetchWithOrderNumber = async (): Promise<Order | null> => {
+          for (let attempt = 0; attempt < 6; attempt++) {
+            const order = await fetchOrderById(userId, incomingId);
+            if (!order || order.orderNumber != null || attempt === 5) return order;
+            await new Promise(resolve => setTimeout(resolve, 400));
+          }
+          return null;
+        };
+        fetchWithOrderNumber().then(incoming => {
           if (!incoming) return;
           setOrders(prev => (prev.some(o => o.id === incoming.id) ? prev : [incoming, ...prev]));
           handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig, visualConfigRef.current.logoUrl);
