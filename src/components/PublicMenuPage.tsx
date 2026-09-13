@@ -254,7 +254,7 @@ export default function PublicMenuPage() {
 
   const getOrderPaymentLabel = (order: any): string => {
     if (order.paymentMethod === 'pix') return 'Pix';
-    if (order.paymentMethod === 'credit_card') return 'Cartão de Crédito';
+    if (order.paymentMethod === 'credit_card') return 'Cartão';
     if (order.paymentMethod === 'debit_card') return 'Cartão de Débito';
     if (order.paymentMethod === 'cash') {
       if (order.needsChange) {
@@ -271,8 +271,8 @@ export default function PublicMenuPage() {
   };
 
   const sendOrderToWhatsApp = (order: any) => {
-    // The WhatsApp message only needs "Cartão" — the credit/debit split
-    // stays on the on-screen order summary via getOrderPaymentLabel.
+    // The WhatsApp message only needs "Cartão" — debit still shows as
+    // "Cartão de Débito" on the on-screen order summary via getOrderPaymentLabel.
     const payStr = (order.paymentMethod === 'credit_card' || order.paymentMethod === 'debit_card')
       ? 'Cartão'
       : getOrderPaymentLabel(order);
