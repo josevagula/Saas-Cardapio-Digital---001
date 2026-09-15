@@ -419,7 +419,7 @@ async function runJob(job: PrintJob) {
   }
   const segments = jobBytes.get(job.id);
   if (!transport || !transport.isConnected() || !segments) {
-    failJob(job, !segments ? 'Conteúdo da impressão não está mais disponível — use Reimprimir.' : 'Impressora desconectada.');
+    await failJob(job, !segments ? 'Conteúdo da impressão não está mais disponível — use Reimprimir.' : 'Impressora desconectada.');
     return;
   }
   try {
@@ -430,11 +430,15 @@ async function runJob(job: PrintJob) {
     jobBytes.delete(job.id);
     upsertJob({ ...job, status: 'impresso', updatedAt: new Date().toISOString(), errorMessage: undefined });
   } catch (e: any) {
-    failJob(job, e?.message || 'Falha ao enviar dados para a impressora.');
+    // A write failing here means the printer accepted and physically printed
+    // everything up to this point and then stopped mid-job — a real GATT
+    // write exception this far in is a mid-print drop, not a pre-flight
+    // connectivity gap (that's already handled above via waitForConnection).
+    await failJob(job, e?.message || 'Falha ao enviar dados para a impressora.');
   }
 }
 
-function failJob(job: PrintJob, message: string) {
+async function failJob(job: PrintJob, message: string) {
   const attempts = job.attempts + 1;
   if (attempts >= MAX_ATTEMPTS) {
     // Bytes are deliberately kept (not deleted) here — "Tentar novamente" in
@@ -442,9 +446,17 @@ function failJob(job: PrintJob, message: string) {
     upsertJob({ ...job, status: 'erro', attempts, updatedAt: new Date().toISOString(), errorMessage: message });
     return;
   }
-  // Reenvio automático — small backoff, back to 'pendente' so drainPrinterQueue picks it up again.
   upsertJob({ ...job, status: 'pendente', attempts, updatedAt: new Date().toISOString(), errorMessage: message });
-  setTimeout(() => drainPrinterQueue(job.printerId), 1500 * attempts);
+  // drainPrinterQueue's loop re-picks this same job (still 'pendente') the
+  // instant runJob returns — without actually waiting out this backoff
+  // here, a printer that just dropped mid-write (e.g. a brief power dip)
+  // got hit with all MAX_ATTEMPTS retries within well under a second,
+  // since transport.isConnected() often doesn't flip to false immediately
+  // after a failed write. That's retrying in name only: the hardware never
+  // got a real chance to recover between attempts, so a job that started
+  // printing and then stopped mid-receipt just kept stopping at the same
+  // point until it gave up — indistinguishable from not retrying at all.
+  await new Promise(resolve => setTimeout(resolve, 1500 * attempts));
 }
 
 function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'updatedAt'>, bytes: Uint8Array[]) {
