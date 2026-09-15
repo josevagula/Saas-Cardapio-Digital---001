@@ -66,6 +66,7 @@ function PrinterCard({
   establishmentLogoUrl,
   accentMode,
   printLogoEnabled,
+  lowPowerEnabled,
   onRemove
 }: {
   printer: PrinterProfile;
@@ -73,6 +74,7 @@ function PrinterCard({
   establishmentLogoUrl: string;
   accentMode: PrintingConfig['accentMode'];
   printLogoEnabled: boolean;
+  lowPowerEnabled: boolean;
   onRemove: (id: string) => void;
 }) {
   const status = usePrinterStatus(printer.id);
@@ -92,7 +94,7 @@ function PrinterCard({
   };
 
   const handleTest = () => {
-    printTest(printer.id, printer.name, establishmentName, establishmentLogoUrl, accentMode, printer.paperWidth, printLogoEnabled);
+    printTest(printer.id, printer.name, establishmentName, establishmentLogoUrl, accentMode, printer.paperWidth, printLogoEnabled, lowPowerEnabled);
     setTestFeedback('Teste enviado para a fila de impressão.');
     setTimeout(() => setTestFeedback(null), 4000);
   };
@@ -308,7 +310,8 @@ export default function PrintingManager() {
     { key: 'printEndereco', label: 'Imprimir endereço de entrega', help: '' },
     { key: 'printFormaPagamento', label: 'Imprimir forma de pagamento', help: '' },
     { key: 'autoCutPaper', label: 'Cortar papel automaticamente', help: 'Só funciona em impressoras com guilhotina (corte automático).' },
-    { key: 'printLogo', label: 'Imprimir logo do estabelecimento no cupom', help: 'Desative se a impressora desligar sozinha ao imprimir: a imagem da logo é o que mais exige da impressora, e algumas impressoras Bluetooth baratas não aguentam.' }
+    { key: 'printLogo', label: 'Imprimir logo do estabelecimento no cupom', help: 'Desative se a impressora desligar sozinha ao imprimir: a imagem da logo é o que mais exige da impressora, e algumas impressoras Bluetooth baratas não aguentam.' },
+    { key: 'lowPowerMode', label: 'Modo baixa energia (impressora desliga/trava no meio)', help: 'Reduz a intensidade de aquecimento da cabeça térmica para diminuir o consumo de energia — a nota sai um pouco mais clara. Ative apenas se a impressora desligar ou travar durante a impressão mesmo com a logo desativada; isso indica uma fonte de energia fraca (adaptador/USB/bateria).' }
   ];
 
   return (
@@ -363,6 +366,7 @@ export default function PrintingManager() {
                 establishmentLogoUrl={visualConfig.logoUrl}
                 accentMode={savedConfig.accentMode}
                 printLogoEnabled={savedConfig.printLogo}
+                lowPowerEnabled={!!savedConfig.lowPowerMode}
                 onRemove={handleRemovePrinter}
               />
             ))}

@@ -60,15 +60,31 @@ function encodeText(text: string, mode: AccentMode): number[] {
 
 export type Align = 'left' | 'center' | 'right';
 
+// ESC 7 n1 n2 n3 — "set heating parameters", a de-facto standard on the
+// generic/clone ESC/POS controllers used by cheap BLE thermal printers
+// (n1 = extra heating dots, n2 = heating time, n3 = heating interval; each
+// printer firmware treats these as its own units, roughly 10µs each).
+// Lowering n2 (less time energizing each dot) and raising n3 (more idle time
+// between heating pulses) cuts the print head's real current draw — unlike
+// BLE write pacing/segment cooldowns, which only ever spaced out *when*
+// current is drawn, this is the one lever that reduces *how much* is drawn
+// at once, which is what actually browns out an underpowered unit mid-job.
+// Values are conservative guesses, not measured against real hardware — a
+// firmware that ignores ESC 7 entirely just prints at its normal darkness.
+const LOW_POWER_HEATING = { dots: 3, time: 60, interval: 8 };
+
 export class EscPosBuilder {
   private bytes: number[] = [];
   private mode: AccentMode;
 
-  constructor(mode: AccentMode = 'ascii') {
+  constructor(mode: AccentMode = 'ascii', lowPower: boolean = false) {
     this.mode = mode;
-    this.bytes.push(0x1B, 0x40); // ESC @ — initialize printer
+    this.bytes.push(0x1B, 0x40); // ESC @ — initialize printer (also resets heating params, so this must be reapplied on every segment/builder, not just the first)
     if (mode === 'cp860') {
       this.bytes.push(0x1B, 0x74, CP860_CODEPAGE_SELECTOR); // ESC t 3
+    }
+    if (lowPower) {
+      this.bytes.push(0x1B, 0x37, LOW_POWER_HEATING.dots, LOW_POWER_HEATING.time, LOW_POWER_HEATING.interval);
     }
   }
 

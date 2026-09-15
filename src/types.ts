@@ -86,6 +86,15 @@ export interface PrintingConfig {
   // true (unchanged behavior); this is the immediate, certain workaround
   // for an establishment whose specific printer can't handle it.
   printLogo: boolean;
+  // Cuts the thermal head's heating time/dot count via ESC/POS heating
+  // params (ESC 7) instead of just pacing BLE writes — for a printer that
+  // physically browns out/shuts off mid-print (a real power-supply limit,
+  // not a Bluetooth timing issue), this is the one software lever that
+  // actually reduces peak current draw rather than just spacing it out.
+  // Trades some print darkness/contrast for that. Default false — most
+  // printers don't need it and it isn't guaranteed to be honored by every
+  // clone firmware.
+  lowPowerMode: boolean;
   // 'ascii' (default, safe on every printer) transliterates á/ã/ç/etc. to
   // plain letters; 'cp860' sends the real accented bytes for printers
   // confirmed (via "Imprimir Teste") to support the Portuguese code page.

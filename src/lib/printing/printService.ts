@@ -504,12 +504,13 @@ export async function printTest(
   establishmentLogoUrl: string | undefined,
   accentMode: AccentMode,
   paperWidth: 58 | 80,
-  printLogoEnabled: boolean = true
+  printLogoEnabled: boolean = true,
+  lowPowerEnabled: boolean = false
 ) {
   const jobStub = { id: crypto.randomUUID(), kind: 'teste' as PrintJobKind, printerId, printerName };
   try {
     const logo = printLogoEnabled ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-    const segments = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo);
+    const segments = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo, lowPowerEnabled);
     enqueue(jobStub, segments.map(s => s.toBytes()));
   } catch (e: any) {
     recordBuildFailure(jobStub, e?.message || 'Falha ao preparar a impressão de teste.');
@@ -532,7 +533,7 @@ export async function printOrderOnPrinter(
     // mean "on" (the intended default), not silently turn the logo off for
     // every establishment that had already configured printing.
     const logo = config.printLogo !== false ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-    const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
+    const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo, !!config.lowPowerMode);
     enqueue(jobStub, segments.map(s => s.toBytes()));
   } catch (e: any) {
     recordBuildFailure(jobStub, e?.message || 'Falha ao preparar o recibo para impressão.');

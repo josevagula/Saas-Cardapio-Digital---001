@@ -19,10 +19,10 @@ function printLogo(b: EscPosBuilder, logo: LogoRaster | null | undefined) {
 // far the most current-hungry thing sent to a cheap Bluetooth thermal
 // printer, and some underpowered units brown out mid-job without a recovery
 // window between the image and whatever prints next.
-export function buildTestReceipt(establishmentName: string, accentMode: AccentMode, cols: number, logo?: LogoRaster | null): EscPosBuilder[] {
+export function buildTestReceipt(establishmentName: string, accentMode: AccentMode, cols: number, logo?: LogoRaster | null, lowPower: boolean = false): EscPosBuilder[] {
   const segments: EscPosBuilder[] = [];
   if (logo) {
-    const logoBuilder = new EscPosBuilder(accentMode);
+    const logoBuilder = new EscPosBuilder(accentMode, lowPower);
     printLogo(logoBuilder, logo);
     segments.push(logoBuilder);
   }
@@ -32,14 +32,14 @@ export function buildTestReceipt(establishmentName: string, accentMode: AccentMo
   // been seen browning out even on this short no-logo test print before,
   // and this large/bold line is the single heaviest burst left in it.
   const now = new Date();
-  const header = new EscPosBuilder(accentMode);
+  const header = new EscPosBuilder(accentMode, lowPower);
   header.align('center').bold(true).doubleSize(true).line(establishmentName.toUpperCase() || 'ZUSHY');
   header.doubleSize(false).bold(false);
   header.line('Teste de Impressão');
   header.separator(cols);
   segments.push(header);
 
-  const b = new EscPosBuilder(accentMode);
+  const b = new EscPosBuilder(accentMode, lowPower);
   b.align('left');
   b.line(`Data: ${now.toLocaleDateString('pt-BR')}`);
   b.line(`Hora: ${now.toLocaleTimeString('pt-BR')}`);
@@ -137,11 +137,12 @@ export function buildOrderReceipt(
   config: PrintingConfig,
   accentMode: AccentMode,
   cols: number,
-  logo?: LogoRaster | null
+  logo?: LogoRaster | null,
+  lowPower: boolean = false
 ): EscPosBuilder[] {
   const segments: EscPosBuilder[] = [];
   if (logo) {
-    const logoBuilder = new EscPosBuilder(accentMode);
+    const logoBuilder = new EscPosBuilder(accentMode, lowPower);
     printLogo(logoBuilder, logo);
     segments.push(logoBuilder);
   }
@@ -150,7 +151,7 @@ export function buildOrderReceipt(
   // this doubleSize+bold order code is the heaviest single burst left once
   // the logo is off, and a printer with a weak power supply has been
   // observed browning out even on a short, logo-free print before.
-  const header = new EscPosBuilder(accentMode);
+  const header = new EscPosBuilder(accentMode, lowPower);
   header.align('center').bold(true).doubleSize(true).line(orderCode);
   header.doubleSize(false).bold(false);
   header.separator(cols);
@@ -181,7 +182,7 @@ export function buildOrderReceipt(
   // through its list instead of only before/after it.
   for (let i = 0; i < order.items.length; i += ITEMS_PER_SEGMENT) {
     const chunk = order.items.slice(i, i + ITEMS_PER_SEGMENT);
-    const itemsBuilder = new EscPosBuilder(accentMode);
+    const itemsBuilder = new EscPosBuilder(accentMode, lowPower);
     itemsBuilder.align('left');
     if (i === 0) {
       itemsBuilder.newline();
@@ -192,7 +193,7 @@ export function buildOrderReceipt(
     segments.push(itemsBuilder);
   }
 
-  const footer = new EscPosBuilder(accentMode);
+  const footer = new EscPosBuilder(accentMode, lowPower);
   footer.align('left');
 
   if (order.hashiCount || order.kitAutoIncluded) {

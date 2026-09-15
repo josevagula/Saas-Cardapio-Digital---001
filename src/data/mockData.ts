@@ -18,6 +18,7 @@ export const DEFAULT_PRINTING_CONFIG: PrintingConfig = {
   printFormaPagamento: true,
   autoCutPaper: false,
   printLogo: true,
+  lowPowerMode: false,
   accentMode: 'ascii',
   printers: []
 };
