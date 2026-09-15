@@ -81,6 +81,7 @@ export class BluetoothPrinterTransport implements PrinterTransport {
   private reconnectAttempts = 0;
   private manuallyDisconnected = false;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private pendingBackoffResolve: (() => void) | null = null;
 
   constructor(device: BluetoothDevice) {
     this.device = device;
@@ -177,7 +178,7 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     this.setStatus('reconectando');
     this.reconnectAttempts += 1;
     const backoffMs = Math.min(15000, 1000 * this.reconnectAttempts);
-    await sleep(backoffMs);
+    await this.cancellableSleep(backoffMs);
     if (this.manuallyDisconnected) return;
     try {
       await Promise.race([
@@ -187,6 +188,38 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     } catch {
       if (!this.manuallyDisconnected) this.attemptReconnect();
     }
+  }
+
+  // Same as sleep(), but a pending wait can be cut short by
+  // requestImmediateReconnect() below instead of always running its full
+  // backoff to completion.
+  private cancellableSleep(ms: number): Promise<void> {
+    return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        this.pendingBackoffResolve = null;
+        resolve();
+      }, ms);
+      this.pendingBackoffResolve = () => {
+        clearTimeout(timer);
+        this.pendingBackoffResolve = null;
+        resolve();
+      };
+    });
+  }
+
+  // A real, waiting print job is a far stronger signal than the fixed
+  // schedule attemptReconnect uses on its own — after a string of drops
+  // (e.g. a printer with a flaky power supply) that schedule's backoff
+  // climbs up to its 15s cap and stays there until a reconnect finally
+  // succeeds, which regularly outlasted printService's fixed wait window
+  // and made every print job in the meantime time out and fail, even
+  // though the transport was about to reconnect on its own a moment later.
+  // Skipping straight to the connect attempt when a job is actively waiting
+  // closes that gap without having to either shrink the backoff (which
+  // would just hammer an already-struggling printer harder) or guess at an
+  // ever-larger fixed wait window.
+  requestImmediateReconnect(): void {
+    if (this.pendingBackoffResolve) this.pendingBackoffResolve();
   }
 
   // Serializes every write (real print jobs AND the heartbeat) onto one

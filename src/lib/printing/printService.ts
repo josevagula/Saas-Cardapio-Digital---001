@@ -361,15 +361,28 @@ const INTER_SEGMENT_COOLDOWN_MS = 700;
 // same printer would have accepted the job perfectly fine a moment later.
 // This is the root cause of receipts that "sometimes print, sometimes
 // don't": success depended entirely on not landing in that window.
-const RECONNECT_WAIT_MS = 8000;
+//
+// Sized to comfortably cover one connect() attempt (see CONNECT_TIMEOUT_MS
+// in bluetoothTransport.ts) since waitForConnection below now forces that
+// attempt to start immediately instead of waiting out whatever backoff the
+// transport's own retry loop happened to be sitting on.
+const RECONNECT_WAIT_MS = 14000;
 
 // Waits for the printer's status to reach 'conectado', up to timeoutMs.
 // Deliberately NOT just `await reconnectPrinter(printerId)` — that call
 // no-ops (resolves immediately, without waiting) whenever a reconnect is
 // already in flight, which is exactly the common case here (the transport's
 // own heartbeat-triggered attemptReconnect, or the periodic watchdog, is
-// already retrying). This instead watches the live status and only nudges a
-// fresh attempt as a fallback for when nothing is currently retrying.
+// already retrying).
+//
+// When a reconnect is already in flight, this doesn't just sit and hope it
+// lands in time — a printer that's dropped repeatedly (e.g. a flaky power
+// supply) has its own attemptReconnect backoff climbing up to a 15s cap,
+// which regularly outlasted the old fixed wait window on its own and made
+// an otherwise-about-to-succeed reconnect look like a hard failure to every
+// job in the meantime. A real print job waiting is a much stronger signal
+// than that fixed schedule, so it cuts the remaining backoff short and
+// forces the connect attempt to start right now.
 function waitForConnection(printerId: string, timeoutMs: number): Promise<boolean> {
   return new Promise(resolve => {
     if (getPrinterStatus(printerId) === 'conectado') { resolve(true); return; }
@@ -388,7 +401,12 @@ function waitForConnection(printerId: string, timeoutMs: number): Promise<boolea
       unsubscribe();
       resolve(true);
     });
-    reconnectPrinter(printerId).catch(() => {});
+    const existing = transports.get(printerId);
+    if (existing && getPrinterStatus(printerId) === 'reconectando') {
+      existing.requestImmediateReconnect();
+    } else {
+      reconnectPrinter(printerId).catch(() => {});
+    }
   });
 }
 
@@ -442,6 +460,24 @@ function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'upda
   drainPrinterQueue(job.printerId);
 }
 
+// Records a job as failed outright, without ever having gone through
+// enqueue()/drainPrinterQueue — used when something throws while still
+// building the receipt (logo download, byte-stream assembly), before there
+// was anything to hand a printer. Without this, that failure was an
+// uncaught promise rejection nobody saw: no queue entry, no toast, nothing
+// — just an order that silently never printed, and for auto-print,
+// permanently so (see markAutoPrinted in printBridge.ts, which had already
+// fired by the time the failure happened). "Nenhum pedido perdido sem
+// rastro" has to hold here too, not just for jobs that make it into the
+// queue.
+function recordBuildFailure(
+  job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'updatedAt'>,
+  message: string
+) {
+  const now = new Date().toISOString();
+  upsertJob({ ...job, status: 'erro', attempts: MAX_ATTEMPTS, createdAt: now, updatedAt: now, errorMessage: message });
+}
+
 // On module load, any job stranded mid-flight from a previous page session
 // (bytes aren't persisted across reload) is marked as an error rather than
 // silently vanishing — "nenhum pedido perdido" means the failure is visible
@@ -458,9 +494,14 @@ export async function printTest(
   paperWidth: 58 | 80,
   printLogoEnabled: boolean = true
 ) {
-  const logo = printLogoEnabled ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-  const segments = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo);
-  enqueue({ id: crypto.randomUUID(), kind: 'teste', printerId, printerName }, segments.map(s => s.toBytes()));
+  const jobStub = { id: crypto.randomUUID(), kind: 'teste' as PrintJobKind, printerId, printerName };
+  try {
+    const logo = printLogoEnabled ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
+    const segments = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo);
+    enqueue(jobStub, segments.map(s => s.toBytes()));
+  } catch (e: any) {
+    recordBuildFailure(jobStub, e?.message || 'Falha ao preparar a impressão de teste.');
+  }
 }
 
 export async function printOrderOnPrinter(
@@ -472,13 +513,18 @@ export async function printOrderOnPrinter(
   paperWidth: 58 | 80,
   establishmentLogoUrl: string | undefined
 ) {
-  // !== false (not a truthy check) — printingConfig rows saved before this
-  // field existed don't have it at all, and a missing field must still mean
-  // "on" (the intended default), not silently turn the logo off for every
-  // establishment that had already configured printing.
-  const logo = config.printLogo !== false ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-  const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
-  enqueue({ id: crypto.randomUUID(), kind: 'pedido', orderId: order.id, orderCode, printerId, printerName }, segments.map(s => s.toBytes()));
+  const jobStub = { id: crypto.randomUUID(), kind: 'pedido' as PrintJobKind, orderId: order.id, orderCode, printerId, printerName };
+  try {
+    // !== false (not a truthy check) — printingConfig rows saved before this
+    // field existed don't have it at all, and a missing field must still
+    // mean "on" (the intended default), not silently turn the logo off for
+    // every establishment that had already configured printing.
+    const logo = config.printLogo !== false ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
+    const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo);
+    enqueue(jobStub, segments.map(s => s.toBytes()));
+  } catch (e: any) {
+    recordBuildFailure(jobStub, e?.message || 'Falha ao preparar o recibo para impressão.');
+  }
 }
 
 export function retryJob(jobId: string) {

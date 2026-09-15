@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus } from '../types';
 import { safeNumber, formatCurrency, parseCashAmount, formatOrderCode } from '../utils/formatters';
-import { printOrderOnPrinter, hasEverPrintedOrder } from '../lib/printing/printService';
+import { printOrderOnPrinter, hasEverPrintedOrder, subscribeQueue, PrintJob } from '../lib/printing/printService';
 import { DEFAULT_PRINTING_CONFIG } from '../data/mockData';
 import {
   Check,
@@ -24,6 +24,27 @@ export default function OrdersManager() {
   const { orders, updateOrderStatus, deleteOrder, visualConfig, ensureOrderNumber } = useApp();
   const [activeTab, setActiveTab] = useState<OrderStatus>('preparing');
   const [printFeedback, setPrintFeedback] = useState<{ id: string; message: string } | null>(null);
+  // Surfaces a failed print job right here in Pedidos instead of only in
+  // Configurações > Impressão, which staff had no reason to check unless
+  // they already suspected something was wrong — that's exactly how a
+  // silently-failed auto-print used to go unnoticed for a whole order.
+  const [printErrors, setPrintErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    return subscribeQueue((jobs: PrintJob[]) => {
+      const latestByOrder = new Map<string, PrintJob>();
+      jobs.forEach(job => {
+        if (job.kind !== 'pedido' || !job.orderId) return;
+        const current = latestByOrder.get(job.orderId);
+        if (!current || job.updatedAt > current.updatedAt) latestByOrder.set(job.orderId, job);
+      });
+      const nextErrors: Record<string, string> = {};
+      latestByOrder.forEach((job, orderId) => {
+        if (job.status === 'erro') nextErrors[orderId] = job.errorMessage || 'Falha ao imprimir.';
+      });
+      setPrintErrors(nextErrors);
+    });
+  }, []);
 
   const handlePrintOrder = async (order: Order) => {
     const config = visualConfig.printingConfig ?? DEFAULT_PRINTING_CONFIG;
@@ -356,8 +377,12 @@ export default function OrdersManager() {
 
                     <button
                       onClick={() => handlePrintOrder(order)}
-                      className="p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer"
-                      title={hasEverPrintedOrder(order.id) ? 'Reimprimir Pedido' : 'Imprimir Pedido'}
+                      className={
+                        printErrors[order.id]
+                          ? 'p-2 rounded-lg bg-[#2A0F0F] text-red-400 border border-red-500/60 hover:bg-[#3A1515] transition-colors cursor-pointer animate-pulse'
+                          : 'p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer'
+                      }
+                      title={printErrors[order.id] ? `Falha ao imprimir — clique para tentar novamente (${printErrors[order.id]})` : (hasEverPrintedOrder(order.id) ? 'Reimprimir Pedido' : 'Imprimir Pedido')}
                     >
                       <Printer className="w-4.5 h-4.5" />
                     </button>
@@ -381,7 +406,11 @@ export default function OrdersManager() {
                     )}
                   </div>
                 </div>
-                {printFeedback?.id === order.id && (
+                {printErrors[order.id] ? (
+                  <p className="text-[10px] text-red-400 font-semibold mt-2 text-right">
+                    Falha ao imprimir: {printErrors[order.id]} — clique no ícone de impressora para tentar novamente.
+                  </p>
+                ) : printFeedback?.id === order.id && (
                   <p className="text-[10px] text-emerald-400 font-semibold mt-2 text-right">{printFeedback.message}</p>
                 )}
                 </div>
