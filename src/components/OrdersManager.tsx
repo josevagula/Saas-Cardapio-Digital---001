@@ -328,8 +328,14 @@ export default function OrdersManager() {
 
                 {/* Card Footer Actions */}
                 <div className="p-4 bg-[#181512] border-t border-[#2A211A]">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-mono text-xs space-y-0.5 min-w-0">
+                {/* Stacked (price block, then actions) at every width — the
+                    card's own column width shrinks with the grid (1/2/3
+                    columns), so even a "desktop" viewport can give this
+                    footer no more room than a phone does; a side-by-side
+                    layout gated by viewport alone kept clipping the
+                    next-status button under those narrower columns. */}
+                <div className="flex flex-col gap-3">
+                  <div className="font-mono text-xs space-y-0.5 min-w-0 shrink-0">
                     <div className="flex justify-between gap-3 text-[#A8A29A]">
                       <span>Subtotal:</span>
                       <span>R$ {formatCurrency(order.total + order.discountAmount - order.deliveryFee)}</span>
@@ -346,7 +352,7 @@ export default function OrdersManager() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
                     {order.status !== 'cancelled' && (
                       <button
                         onClick={() => {
