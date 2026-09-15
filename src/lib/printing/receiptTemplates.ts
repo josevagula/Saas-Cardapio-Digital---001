@@ -27,12 +27,19 @@ export function buildTestReceipt(establishmentName: string, accentMode: AccentMo
     segments.push(logoBuilder);
   }
 
+  // The doubleSize+bold establishment name is its own segment (with a
+  // cooldown before the rest, same as the logo) — a weak-power printer has
+  // been seen browning out even on this short no-logo test print before,
+  // and this large/bold line is the single heaviest burst left in it.
   const now = new Date();
+  const header = new EscPosBuilder(accentMode);
+  header.align('center').bold(true).doubleSize(true).line(establishmentName.toUpperCase() || 'ZUSHY');
+  header.doubleSize(false).bold(false);
+  header.line('Teste de Impressão');
+  header.separator(cols);
+  segments.push(header);
+
   const b = new EscPosBuilder(accentMode);
-  b.align('center').bold(true).doubleSize(true).line(establishmentName.toUpperCase() || 'ZUSHY');
-  b.doubleSize(false).bold(false);
-  b.line('Teste de Impressão');
-  b.separator(cols);
   b.align('left');
   b.line(`Data: ${now.toLocaleDateString('pt-BR')}`);
   b.line(`Hora: ${now.toLocaleTimeString('pt-BR')}`);
@@ -117,6 +124,13 @@ function printPaymentSpec(b: EscPosBuilder, order: Order) {
   if (changeVal > 0) b.bold(true).line(`Levar troco de: R$ ${formatCurrency(changeVal)}`).bold(false);
 }
 
+// How many items go in one write before a cooldown pause — same reasoning
+// as splitting out the logo: a long run of bold item lines sent as a single
+// uninterrupted write is itself enough sustained draw to brown out a weak
+// printer's power supply partway through, independent of the logo. Chunking
+// spreads that draw out with real recovery windows instead of one long burst.
+const ITEMS_PER_SEGMENT = 5;
+
 export function buildOrderReceipt(
   order: Order,
   orderCode: string,
@@ -132,89 +146,107 @@ export function buildOrderReceipt(
     segments.push(logoBuilder);
   }
 
-  const b = new EscPosBuilder(accentMode);
-  b.align('center').bold(true).doubleSize(true).line(orderCode);
-  b.doubleSize(false).bold(false);
-  b.separator(cols);
+  // Header is its own segment (own cooldown before whatever comes next) —
+  // this doubleSize+bold order code is the heaviest single burst left once
+  // the logo is off, and a printer with a weak power supply has been
+  // observed browning out even on a short, logo-free print before.
+  const header = new EscPosBuilder(accentMode);
+  header.align('center').bold(true).doubleSize(true).line(orderCode);
+  header.doubleSize(false).bold(false);
+  header.separator(cols);
 
-  b.align('left');
-  b.line('Cliente:');
-  b.bold(true).line(order.customerName).bold(false);
-  b.newline();
-  b.line(`Entrega: ${DELIVERY_METHOD_LABELS[order.deliveryMethod]}`);
+  header.align('left');
+  header.line('Cliente:');
+  header.bold(true).line(order.customerName).bold(false);
+  header.newline();
+  header.line(`Entrega: ${DELIVERY_METHOD_LABELS[order.deliveryMethod]}`);
 
   if (config.printTelefone) {
-    b.newline();
-    b.line('Telefone:');
-    b.line(order.customerPhone);
+    header.newline();
+    header.line('Telefone:');
+    header.line(order.customerPhone);
   }
 
   if (config.printEndereco && order.deliveryMethod === 'delivery' && order.customerAddress) {
-    b.newline();
-    b.line('Endereço:');
-    b.line(order.customerAddress);
+    header.newline();
+    header.line('Endereço:');
+    header.line(order.customerAddress);
   }
 
-  b.newline();
-  b.separator(cols);
-  b.newline();
-  b.bold(true).line(`ITENS (${order.items.reduce((s, i) => s + i.quantity, 0)})`).bold(false);
-  b.newline();
+  header.newline();
+  header.separator(cols);
+  segments.push(header);
 
-  order.items.forEach(item => printItemSpec(b, item, config));
+  // Items, chunked so a long order also gets recovery pauses partway
+  // through its list instead of only before/after it.
+  for (let i = 0; i < order.items.length; i += ITEMS_PER_SEGMENT) {
+    const chunk = order.items.slice(i, i + ITEMS_PER_SEGMENT);
+    const itemsBuilder = new EscPosBuilder(accentMode);
+    itemsBuilder.align('left');
+    if (i === 0) {
+      itemsBuilder.newline();
+      itemsBuilder.bold(true).line(`ITENS (${order.items.reduce((s, it) => s + it.quantity, 0)})`).bold(false);
+      itemsBuilder.newline();
+    }
+    chunk.forEach(item => printItemSpec(itemsBuilder, item, config));
+    segments.push(itemsBuilder);
+  }
+
+  const footer = new EscPosBuilder(accentMode);
+  footer.align('left');
 
   if (order.hashiCount || order.kitAutoIncluded) {
-    b.line('Kit Descartável:');
-    if (order.hashiCount) b.line(`  Hashi: ${order.hashiCount}`);
+    footer.line('Kit Descartável:');
+    if (order.hashiCount) footer.line(`  Hashi: ${order.hashiCount}`);
     if (order.kitAutoIncluded) {
       const k = order.kitAutoIncluded;
-      if (k.shoyuSachets) b.line(`  Shoyu: ${k.shoyuSachets}`);
-      if (k.wasabiPortions) b.line(`  Wasabi: ${k.wasabiPortions}`);
-      if (k.gengibrePortions) b.line(`  Gengibre: ${k.gengibrePortions}`);
-      if (k.guardanapos) b.line(`  Guardanapos: ${k.guardanapos}`);
+      if (k.shoyuSachets) footer.line(`  Shoyu: ${k.shoyuSachets}`);
+      if (k.wasabiPortions) footer.line(`  Wasabi: ${k.wasabiPortions}`);
+      if (k.gengibrePortions) footer.line(`  Gengibre: ${k.gengibrePortions}`);
+      if (k.guardanapos) footer.line(`  Guardanapos: ${k.guardanapos}`);
     }
-    b.newline();
+    footer.newline();
   }
 
   if (config.printObservacoes && order.notes) {
-    b.line('Observação Geral:');
-    b.line(order.notes);
-    b.newline();
+    footer.line('Observação Geral:');
+    footer.line(order.notes);
+    footer.newline();
   }
 
-  b.separator(cols);
-  b.newline();
+  footer.separator(cols);
+  footer.newline();
 
   const subtotal = order.total + order.discountAmount - order.deliveryFee;
   const rightPad = (label: string, value: string) => {
     const spaces = Math.max(1, cols - label.length - value.length);
     return `${label}${' '.repeat(spaces)}${value}`;
   };
-  b.line(rightPad('Subtotal', `R$ ${formatCurrency(subtotal)}`));
-  if (order.deliveryFee > 0) b.line(rightPad('Taxa Entrega', `R$ ${formatCurrency(order.deliveryFee)}`));
+  footer.line(rightPad('Subtotal', `R$ ${formatCurrency(subtotal)}`));
+  if (order.deliveryFee > 0) footer.line(rightPad('Taxa Entrega', `R$ ${formatCurrency(order.deliveryFee)}`));
   if (order.discountAmount > 0) {
-    if (order.couponCode) b.line(`Cupom: ${order.couponCode}`);
-    b.line(rightPad('Desconto', `-R$ ${formatCurrency(order.discountAmount)}`));
+    if (order.couponCode) footer.line(`Cupom: ${order.couponCode}`);
+    footer.line(rightPad('Desconto', `-R$ ${formatCurrency(order.discountAmount)}`));
   }
-  b.bold(true).line(rightPad('TOTAL', `R$ ${formatCurrency(order.total)}`)).bold(false);
+  footer.bold(true).line(rightPad('TOTAL', `R$ ${formatCurrency(order.total)}`)).bold(false);
 
   if (config.printFormaPagamento) {
-    b.newline();
-    b.separator(cols);
-    b.newline();
-    b.line('Forma de Pagamento:');
-    printPaymentSpec(b, order);
+    footer.newline();
+    footer.separator(cols);
+    footer.newline();
+    footer.line('Forma de Pagamento:');
+    printPaymentSpec(footer, order);
   }
 
-  b.newline();
-  b.separator(cols);
+  footer.newline();
+  footer.separator(cols);
   const created = new Date(order.createdAt);
-  b.line(`Data: ${created.toLocaleDateString('pt-BR')}`);
-  b.line(`Hora: ${created.toLocaleTimeString('pt-BR')}`);
-  b.separator(cols);
+  footer.line(`Data: ${created.toLocaleDateString('pt-BR')}`);
+  footer.line(`Hora: ${created.toLocaleTimeString('pt-BR')}`);
+  footer.separator(cols);
 
-  b.feed(3);
-  if (config.autoCutPaper) b.cutPaper();
-  segments.push(b);
+  footer.feed(3);
+  if (config.autoCutPaper) footer.cutPaper();
+  segments.push(footer);
   return segments;
 }
