@@ -34,6 +34,14 @@ export interface VisualConfig {
   };
   loyaltyConfig?: LoyaltyConfig;
   printingConfig?: PrintingConfig;
+  // Pix details shown automatically in the WhatsApp order message when the
+  // customer picks "Pix" as payment method, so they can pay immediately
+  // without waiting for the establishment to reply with the key. All
+  // optional/blank by default — the block is only appended to the message
+  // when pixKey is actually filled in for that establishment.
+  pixKeyType?: string; // e.g. "CPF", "CNPJ", "Telefone", "E-mail", "Aleatória"
+  pixPayeeName?: string;
+  pixKey?: string;
 }
 
 // Rules for the Clientes & Fidelidade loyalty program — configured by the

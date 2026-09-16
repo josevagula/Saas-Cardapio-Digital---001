@@ -316,6 +316,17 @@ export default function PublicMenuPage() {
     messageText += `💳 *PAGAMENTO:*\n`;
     messageText += `Forma de Pagamento: ${payStr}`;
 
+    // Pix key is only configured per establishment (Personalização) and only
+    // shown when the customer actually chose Pix — lets them pay right away
+    // instead of waiting for the establishment to reply with the key.
+    if (order.paymentMethod === 'pix' && visualConfig.pixKey) {
+      messageText += `\n\n============================\n`;
+      messageText += `🔑 *DADOS PARA PAGAMENTO PIX:*\n`;
+      messageText += `Pix ${visualConfig.pixKeyType || ''}\n`;
+      messageText += `Favorecido : ${visualConfig.pixPayeeName || ''}\n\n`;
+      messageText += `${visualConfig.pixKey}`;
+    }
+
     const txt = encodeURIComponent(messageText);
     // api.whatsapp.com/send (rather than wa.me) avoids the emoji/astral-character
     // corruption some Android WhatsApp versions hit when wa.me hands the URL

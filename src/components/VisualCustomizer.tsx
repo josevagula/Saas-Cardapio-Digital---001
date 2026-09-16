@@ -44,6 +44,9 @@ export default function VisualCustomizer() {
   const [menuDescription, setMenuDescription] = useState(visualConfig.menuDescription || '');
   const [phone, setPhone] = useState(visualConfig.phone);
   const [address, setAddress] = useState(visualConfig.address);
+  const [pixKeyType, setPixKeyType] = useState(visualConfig.pixKeyType || '');
+  const [pixPayeeName, setPixPayeeName] = useState(visualConfig.pixPayeeName || '');
+  const [pixKey, setPixKey] = useState(visualConfig.pixKey || '');
   const [deliveryFee, setDeliveryFee] = useState(visualConfig.deliveryFee.toString());
   const [primaryColor, setPrimaryColor] = useState(visualConfig.primaryColor);
   const [fontFamily, setFontFamily] = useState(visualConfig.fontFamily);
@@ -158,11 +161,20 @@ export default function VisualCustomizer() {
     if (isDemoMode) return;
     try {
       const formattedSlug = menuSlug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
-      setVisualConfig({
+      // Merges onto prev instead of replacing the whole object — this form
+      // never touches loyaltyConfig/printingConfig/autoKitConfig, and a
+      // plain object literal here would silently wipe them (e.g. undoing a
+      // printer's lowPowerMode/printLogo settings) the next time someone
+      // saves an unrelated change on this screen.
+      setVisualConfig(prev => ({
+        ...prev,
         establishmentName: establishmentName || 'Sushi & Temaki',
         menuDescription: menuDescription || '',
         phone: phone || '',
         address: address || '',
+        pixKeyType: pixKeyType || '',
+        pixPayeeName: pixPayeeName || '',
+        pixKey: pixKey.trim(),
         deliveryFee: parseFloat(deliveryFee) || 0,
         deliveryTime: deliveryTime || '30-45 min',
         primaryColor: primaryColor || '#F97316',
@@ -178,7 +190,7 @@ export default function VisualCustomizer() {
         operatingDaysList,
         autoStatusByTime: true,
         isStoreOpenManual
-      });
+      }));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err) {
@@ -355,6 +367,46 @@ export default function VisualCustomizer() {
                   onChange={(e) => setDeliveryTime(e.target.value)}
                   placeholder="Ex: 30-45 min"
                   className="w-full pl-10 pr-4 py-2.5 text-sm input-sushi focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Chave Pix */}
+          <div className="bg-[#181512] p-4.5 rounded-xl border border-[#2A211A] space-y-3 shadow-xs">
+            <span className="text-xs font-bold text-[#F5F0EA] flex items-center gap-1.5 uppercase tracking-wider border-b border-[#2A211A] pb-3">
+              <Tag className="w-4 h-4 text-[#FB923C]" /> Pix
+            </span>
+            <p className="text-[11px] text-[#A8A29A]">Preenchido, esses dados são enviados junto com o pedido no WhatsApp sempre que o cliente escolher pagar via Pix — assim ele já pode pagar na hora.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Tipo de Chave</label>
+                <input
+                  type="text"
+                  value={pixKeyType}
+                  onChange={(e) => setPixKeyType(e.target.value)}
+                  placeholder="Ex: CNPJ, CPF, Telefone, E-mail"
+                  className="w-full px-3.5 py-2.5 text-sm input-sushi focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Favorecido</label>
+                <input
+                  type="text"
+                  value={pixPayeeName}
+                  onChange={(e) => setPixPayeeName(e.target.value)}
+                  placeholder="Nome de quem recebe"
+                  className="w-full px-3.5 py-2.5 text-sm input-sushi focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Chave Pix</label>
+                <input
+                  type="text"
+                  value={pixKey}
+                  onChange={(e) => setPixKey(e.target.value)}
+                  placeholder="Número/e-mail/chave"
+                  className="w-full px-3.5 py-2.5 text-sm input-sushi focus:outline-none"
                 />
               </div>
             </div>
