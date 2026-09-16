@@ -3,13 +3,15 @@ import { Order } from '../types';
 // Read-only calculation layer for the Analytics Avançado module — every
 // function here only ever derives numbers from the account's own `orders`
 // (never writes to it), the same "never trust a separately-persisted
-// snapshot" rule as computeRealSalesSummary in salesStats.ts. A cancelled
-// order counts nowhere, consistent with the rest of the app.
+// snapshot" rule as computeRealSalesSummary in salesStats.ts. Only orders
+// that reached "Concluídos" (status 'delivered') count here — pending,
+// preparing, dispatched and cancelled orders are all excluded, since an
+// order that hasn't actually been delivered isn't a real sale yet.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function isActiveOrder(o: Order): boolean {
-  return o.status !== 'cancelled';
+  return o.status === 'delivered';
 }
 
 function startOfDay(d: Date): Date {
