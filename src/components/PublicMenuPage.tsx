@@ -322,9 +322,8 @@ export default function PublicMenuPage() {
     if (order.paymentMethod === 'pix' && visualConfig.pixKey) {
       messageText += `\n\n============================\n`;
       messageText += `🔑 *DADOS PARA PAGAMENTO PIX:*\n`;
-      messageText += `Pix ${visualConfig.pixKeyType || ''}\n`;
-      messageText += `Favorecido : ${visualConfig.pixPayeeName || ''}\n\n`;
-      messageText += `${visualConfig.pixKey}`;
+      messageText += `Pix ${visualConfig.pixKeyType || ''}: ${visualConfig.pixKey}\n`;
+      messageText += `Favorecido: ${visualConfig.pixPayeeName || ''}`;
     }
 
     const txt = encodeURIComponent(messageText);
