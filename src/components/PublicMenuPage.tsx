@@ -474,9 +474,16 @@ export default function PublicMenuPage() {
     }
 
     // A real emoji picked from the category icon picker (not one of the
-    // legacy Lucide icon names above) — just render it as text.
+    // legacy Lucide icon names above) — just render it as text, centered in
+    // a fixed box the same size as the Lucide icons above so it lines up
+    // with them instead of sitting off-center (emoji glyphs carry their own
+    // uneven vertical metrics that "leading-none" alone doesn't fix).
     if (cat.icon) {
-      return <span className="text-sm leading-none">{cat.icon}</span>;
+      return (
+        <span className="w-3.5 h-3.5 flex items-center justify-center text-sm leading-none">
+          {cat.icon}
+        </span>
+      );
     }
 
     const lower = cat.name.toLowerCase();

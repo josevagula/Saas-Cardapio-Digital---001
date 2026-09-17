@@ -5,9 +5,8 @@ import {
   FILTER_PRESETS,
   FilterPreset,
   rangeForPreset,
-  computeTicketMedioBreakdown,
-  ticketMedioHistory,
-  computeRecompraBreakdown,
+  computeTicketMedioForRange,
+  computeRecompraForRange,
   recompraHistory,
   computeClientesAtivos,
   computeClientesInativos,
@@ -43,26 +42,29 @@ export default function AdvancedAnalytics() {
     return map;
   }, [customers]);
 
-  // Fixed-definition metrics (Ticket Médio's own multi-window breakdown,
-  // Taxa de Recompra's own windows, Clientes Ativos/Inativos, LTV, VIP) are
-  // defined by their own formulas in the spec and don't move with the
-  // global filter below — only the history charts at the bottom do.
-  const ticketBreakdown = useMemo(() => computeTicketMedioBreakdown(orders), [orders]);
-  const ticketHistory = useMemo(() => ticketMedioHistory(orders, 30), [orders]);
-  const recompraBreakdown = useMemo(() => computeRecompraBreakdown(orders), [orders]);
-  const recompraTrend = useMemo(() => recompraHistory(orders, 6), [orders]);
-  const ativos = useMemo(() => computeClientesAtivos(orders), [orders]);
-  const inativos = useMemo(() => computeClientesInativos(orders), [orders]);
-  const ltv = useMemo(() => computeLtv(orders, 6), [orders]);
-  const vipRanking = useMemo(() => computeVipRanking(orders, pointsByPhone), [orders, pointsByPhone]);
-
   const globalRange = useMemo(
     () => rangeForPreset(filterPreset, { start: customStart, end: customEnd }),
     [filterPreset, customStart, customEnd]
   );
+  const filterLabel = FILTER_PRESETS.find(p => p.id === filterPreset)?.label ?? '';
+
+  // Every card below is computed for globalRange, so all of them move
+  // together with the Hoje/Ontem/7 dias/.../Personalizado filter — only
+  // the two longer-run trend charts (Recompra 6 meses, LTV histórico) stay
+  // on their own fixed lookback, since they're context trends rather than
+  // period stats themselves.
+  const ticketStat = useMemo(() => computeTicketMedioForRange(orders, globalRange), [orders, globalRange]);
+  const recompraStat = useMemo(() => computeRecompraForRange(orders, globalRange), [orders, globalRange]);
+  const recompraTrend = useMemo(() => recompraHistory(orders, 6), [orders]);
+  const ativos = useMemo(() => computeClientesAtivos(orders, globalRange), [orders, globalRange]);
+  const inativos = useMemo(() => computeClientesInativos(orders, globalRange), [orders, globalRange]);
+  const ltv = useMemo(() => computeLtv(orders, globalRange, 6), [orders, globalRange]);
+  const vipRanking = useMemo(() => computeVipRanking(orders, globalRange, pointsByPhone), [orders, globalRange, pointsByPhone]);
+
   const globalHistory = useMemo(() => historyForRange(orders, globalRange), [orders, globalRange]);
   const globalRevenueTotal = useMemo(() => globalHistory.reduce((s, d) => s + d.revenue, 0), [globalHistory]);
   const globalOrdersTotal = useMemo(() => globalHistory.reduce((s, d) => s + d.orders, 0), [globalHistory]);
+  const ticketEvolution = useMemo(() => globalHistory.map(d => ({ date: d.date, amount: d.ticket })), [globalHistory]);
 
   const vipTierCounts = useMemo(() => {
     const counts: Record<string, number> = { Diamante: 0, Ouro: 0, Prata: 0, Bronze: 0 };
@@ -127,16 +129,11 @@ export default function AdvancedAnalytics() {
               Ticket Médio
             </h3>
           </div>
-          <div className="space-y-2">
-            {ticketBreakdown.map(stat => (
-              <div key={stat.key} className="flex items-center justify-between text-[11px]">
-                <span className="text-[#A8A29A] font-semibold">{stat.label}</span>
-                <div className="text-right">
-                  <span className="font-mono font-bold text-[#F5F0EA]">R$ {formatCurrency(stat.value)}</span>
-                  <span className={`ml-1.5 font-mono text-[10px] ${changeColorClass(stat.changePercent)}`}>{formatChangePercent(stat.changePercent)}</span>
-                </div>
-              </div>
-            ))}
+          <p className="text-2xl font-display font-black text-[#F5F0EA] font-mono">R$ {formatCurrency(ticketStat.value)}</p>
+          <p className="text-[10px] text-[#A8A29A] mt-1">{filterLabel}</p>
+          <div className="mt-3 pt-3 border-t border-[#2A211A] flex items-center justify-between text-[11px]">
+            <span className="text-[#A8A29A]">vs. período anterior</span>
+            <span className={`font-mono font-bold ${changeColorClass(ticketStat.changePercent)}`}>{formatChangePercent(ticketStat.changePercent)}</span>
           </div>
         </div>
 
@@ -148,16 +145,11 @@ export default function AdvancedAnalytics() {
               Taxa de Recompra
             </h3>
           </div>
-          <div className="space-y-2">
-            {recompraBreakdown.map(stat => (
-              <div key={stat.key} className="flex items-center justify-between text-[11px]">
-                <span className="text-[#A8A29A] font-semibold">{stat.label}</span>
-                <div className="text-right">
-                  <span className="font-mono font-bold text-[#F5F0EA]">{stat.value}%</span>
-                  <span className={`ml-1.5 font-mono text-[10px] ${changeColorClass(stat.changePercent)}`}>{formatChangePercent(stat.changePercent)}</span>
-                </div>
-              </div>
-            ))}
+          <p className="text-2xl font-display font-black text-[#F5F0EA] font-mono">{recompraStat.value}%</p>
+          <p className="text-[10px] text-[#A8A29A] mt-1">{filterLabel}</p>
+          <div className="mt-3 pt-3 border-t border-[#2A211A] flex items-center justify-between text-[11px]">
+            <span className="text-[#A8A29A]">vs. período anterior</span>
+            <span className={`font-mono font-bold ${changeColorClass(recompraStat.changePercent)}`}>{formatChangePercent(recompraStat.changePercent)}</span>
           </div>
         </div>
 
@@ -170,10 +162,10 @@ export default function AdvancedAnalytics() {
             </h3>
           </div>
           <p className="text-2xl font-display font-black text-[#F5F0EA] font-mono">{ativos.total}</p>
-          <p className="text-[10px] text-[#A8A29A] mt-1">Pedido nos últimos 30 dias</p>
+          <p className="text-[10px] text-[#A8A29A] mt-1">Pedido no período · {filterLabel}</p>
           <div className="mt-3 pt-3 border-t border-[#2A211A] space-y-1.5 text-[11px]">
             <div className="flex items-center justify-between">
-              <span className="text-[#A8A29A]">Crescimento (30d)</span>
+              <span className="text-[#A8A29A]">vs. período anterior</span>
               <span className={`font-mono font-bold ${changeColorClass(ativos.crescimento)}`}>{formatChangePercent(ativos.crescimento)}</span>
             </div>
             <div className="flex items-center justify-between">
@@ -192,7 +184,7 @@ export default function AdvancedAnalytics() {
             </h3>
           </div>
           <p className="text-2xl font-display font-black text-[#F5F0EA] font-mono">{inativos.length}</p>
-          <p className="text-[10px] text-[#A8A29A] mt-1">Sem pedido há 31+ dias</p>
+          <p className="text-[10px] text-[#A8A29A] mt-1">Sem pedido há 31+ dias · até {filterLabel.toLowerCase()}</p>
           <div className="mt-3 pt-3 border-t border-[#2A211A] space-y-1.5 text-[11px]">
             <div className="flex items-center justify-between">
               <span className="text-amber-300">Leve (31-60d)</span>
@@ -220,7 +212,7 @@ export default function AdvancedAnalytics() {
               Lifetime Value (LTV) Médio
             </h3>
           </div>
-          <p className="text-[11px] text-[#A8A29A] mb-3">Ticket médio × frequência × tempo médio de relacionamento (médias da base).</p>
+          <p className="text-[11px] text-[#A8A29A] mb-3">Ticket médio × frequência × tempo médio de relacionamento (clientes ativos no período · {filterLabel}).</p>
           <p className="text-2xl font-display font-black text-[#F5F0EA] font-mono mb-4">R$ {formatCurrency(ltv.avgLtv)}</p>
 
           <div className="h-32 mb-4">
@@ -255,7 +247,7 @@ export default function AdvancedAnalytics() {
               Clientes VIP
             </h3>
           </div>
-          <p className="text-[11px] text-[#A8A29A] mb-3">Score: 40% gasto total + 25% pedidos + 20% frequência + 15% pontos.</p>
+          <p className="text-[11px] text-[#A8A29A] mb-3">Score: 40% gasto total + 25% pedidos + 20% frequência + 15% pontos (no período · {filterLabel}).</p>
 
           <div className="grid grid-cols-4 gap-2 mb-4">
             {(['Diamante', 'Ouro', 'Prata', 'Bronze'] as const).map(tier => (
@@ -290,7 +282,7 @@ export default function AdvancedAnalytics() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-sm font-display font-bold text-[#F5F0EA]">Evolução no Período Selecionado</h4>
-              <p className="text-[11px] text-[#A8A29A] mt-0.5">Responde ao filtro global acima ({FILTER_PRESETS.find(p => p.id === filterPreset)?.label})</p>
+              <p className="text-[11px] text-[#A8A29A] mt-0.5">Responde ao filtro global acima ({filterLabel})</p>
             </div>
             <div className="text-right">
               <p className="text-sm font-black text-[#FB923C] font-mono">R$ {formatCurrency(globalRevenueTotal)}</p>
@@ -320,11 +312,11 @@ export default function AdvancedAnalytics() {
         <div className="bg-[#141210] p-5 rounded-xl border border-[#2A211A] shadow-sm">
           <h4 className="text-sm font-display font-bold text-[#F5F0EA] mb-4 flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-[#FB923C]" />
-            Evolução do Ticket Médio (30 dias)
+            Evolução do Ticket Médio · {filterLabel}
           </h4>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ticketHistory}>
+              <AreaChart data={ticketEvolution}>
                 <defs>
                   <linearGradient id="analyticsTicketGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#FB923C" stopOpacity={0.35} />

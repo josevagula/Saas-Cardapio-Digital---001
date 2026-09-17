@@ -32,8 +32,8 @@ export interface DateRange {
 }
 
 // --- Global filter presets (Hoje, Ontem, 7 dias, 30 dias, 90 dias, Este
-// mês, Mês passado, Este ano, Personalizado) — drives the history charts at
-// the bottom of the page. ---
+// mês, Mês passado, Este ano, Personalizado) — drives every card and chart
+// on the page (Ticket Médio, Recompra, Ativos/Inativos, LTV, VIP, gráficos). ---
 export type FilterPreset =
   | 'hoje' | 'ontem' | '7d' | '30d' | '90d'
   | 'este_mes' | 'mes_passado' | 'este_ano' | 'personalizado';
@@ -128,40 +128,20 @@ export interface PeriodStat {
   changePercent: number | null;
 }
 
-export function computeTicketMedioBreakdown(orders: Order[]): PeriodStat[] {
-  const configs: { key: string; label: string; preset: FilterPreset }[] = [
-    { key: 'hoje', label: 'Hoje', preset: 'hoje' },
-    { key: '7d', label: '7 dias', preset: '7d' },
-    { key: '30d', label: '30 dias', preset: '30d' },
-    { key: 'este_mes', label: 'Este mês', preset: 'este_mes' },
-    { key: 'este_ano', label: 'Este ano', preset: 'este_ano' }
-  ];
-  return configs.map(c => {
-    const range = rangeForPreset(c.preset);
-    const prevRange = previousEquivalentRange(range);
-    const current = ticketMedio(ordersBetween(orders, range));
-    const previous = ticketMedio(ordersBetween(orders, prevRange));
-    const changePercent = previous > 0 ? ((current - previous) / previous) * 100 : null;
-    return {
-      key: c.key,
-      label: c.label,
-      value: Math.round(current * 100) / 100,
-      changePercent: changePercent !== null ? Math.round(changePercent * 10) / 10 : null
-    };
-  });
-}
-
-export function ticketMedioHistory(orders: Order[], days = 30): { date: string; amount: number }[] {
-  const today = startOfDay(new Date());
-  const result: { date: string; amount: number }[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const day = new Date(today);
-    day.setDate(today.getDate() - i);
-    const dayOrders = orders.filter(o => isActiveOrder(o) && sameDay(new Date(o.createdAt), day));
-    const avg = dayOrders.length ? dayOrders.reduce((s, o) => s + o.total, 0) / dayOrders.length : 0;
-    result.push({ date: day.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), amount: Math.round(avg * 100) / 100 });
-  }
-  return result;
+// Ticket médio for the selected global period, compared against the
+// immediately preceding period of the same length — this is what makes the
+// Ticket Médio card move with the Hoje/Ontem/7 dias/... filter.
+export function computeTicketMedioForRange(orders: Order[], range: DateRange): PeriodStat {
+  const prevRange = previousEquivalentRange(range);
+  const current = ticketMedio(ordersBetween(orders, range));
+  const previous = ticketMedio(ordersBetween(orders, prevRange));
+  const changePercent = previous > 0 ? ((current - previous) / previous) * 100 : null;
+  return {
+    key: 'periodo',
+    label: 'Ticket Médio',
+    value: Math.round(current * 100) / 100,
+    changePercent: changePercent !== null ? Math.round(changePercent * 10) / 10 : null
+  };
 }
 
 // --- 2. Taxa de Recompra ---
@@ -176,25 +156,18 @@ function recompraRate(orders: Order[], range: DateRange): number {
   return (recompradores / totalClientes) * 100;
 }
 
-export function computeRecompraBreakdown(orders: Order[]): PeriodStat[] {
-  const configs = [
-    { key: '30d', label: '30 dias', days: 30 },
-    { key: '90d', label: '90 dias', days: 90 },
-    { key: '12m', label: '12 meses', days: 365 }
-  ];
-  return configs.map(c => {
-    const range = lastNDaysRange(c.days);
-    const prevRange = previousEquivalentRange(range);
-    const current = recompraRate(orders, range);
-    const previous = recompraRate(orders, prevRange);
-    const changePercent = previous > 0 ? ((current - previous) / previous) * 100 : null;
-    return {
-      key: c.key,
-      label: c.label,
-      value: Math.round(current * 10) / 10,
-      changePercent: changePercent !== null ? Math.round(changePercent * 10) / 10 : null
-    };
-  });
+// Same idea as computeTicketMedioForRange, for Taxa de Recompra.
+export function computeRecompraForRange(orders: Order[], range: DateRange): PeriodStat {
+  const prevRange = previousEquivalentRange(range);
+  const current = recompraRate(orders, range);
+  const previous = recompraRate(orders, prevRange);
+  const changePercent = previous > 0 ? ((current - previous) / previous) * 100 : null;
+  return {
+    key: 'periodo',
+    label: 'Taxa de Recompra',
+    value: Math.round(current * 10) / 10,
+    changePercent: changePercent !== null ? Math.round(changePercent * 10) / 10 : null
+  };
 }
 
 export function recompraHistory(orders: Order[], months = 6): { date: string; rate: number }[] {
@@ -243,7 +216,7 @@ function monthsSpan(c: CustomerAggregate): number {
   return Math.max(1, (c.lastOrderAt.getTime() - c.firstOrderAt.getTime()) / (30 * DAY_MS));
 }
 
-// --- 3. Clientes Ativos (>=1 pedido nos últimos 30 dias) ---
+// --- 3. Clientes Ativos (>=1 pedido dentro do período selecionado) ---
 
 export interface ClientesAtivosResult {
   total: number;
@@ -252,20 +225,21 @@ export interface ClientesAtivosResult {
   rows: CustomerAggregate[];
 }
 
-export function computeClientesAtivos(orders: Order[]): ClientesAtivosResult {
-  const all = aggregateCustomers(orders);
-  const now = new Date();
-  const cutoff = new Date(now);
-  cutoff.setDate(cutoff.getDate() - 30);
-  const prevCutoffStart = new Date(now);
-  prevCutoffStart.setDate(prevCutoffStart.getDate() - 60);
+export function computeClientesAtivos(orders: Order[], range: DateRange): ClientesAtivosResult {
+  // All-time aggregates as of the period's end date, so firstOrderAt/lastOrderAt
+  // reflect real history — "novos" below needs the customer's true first order,
+  // not just their first order inside this slice.
+  const upToEnd = orders.filter(o => new Date(o.createdAt) <= range.end);
+  const allCustomers = aggregateCustomers(upToEnd);
+  const inRangePhones = new Set(aggregateCustomers(ordersBetween(orders, range)).map(c => c.phone));
+  const ativos = allCustomers.filter(c => inRangePhones.has(c.phone));
 
-  const ativos = all.filter(c => c.lastOrderAt >= cutoff);
-  const ativosPrevWindow = all.filter(c => c.lastOrderAt >= prevCutoffStart && c.lastOrderAt < cutoff);
-  const crescimento = ativosPrevWindow.length > 0
-    ? ((ativos.length - ativosPrevWindow.length) / ativosPrevWindow.length) * 100
+  const prevRange = previousEquivalentRange(range);
+  const prevPhones = new Set(aggregateCustomers(ordersBetween(orders, prevRange)).map(c => c.phone));
+  const crescimento = prevPhones.size > 0
+    ? ((ativos.length - prevPhones.size) / prevPhones.size) * 100
     : null;
-  const novos = ativos.filter(c => c.firstOrderAt >= cutoff).length;
+  const novos = ativos.filter(c => c.firstOrderAt >= range.start && c.firstOrderAt <= range.end).length;
 
   return {
     total: ativos.length,
@@ -284,16 +258,20 @@ export interface InactiveCustomerRow extends CustomerAggregate {
   tier: InactivityTier;
 }
 
-export function computeClientesInativos(orders: Order[]): InactiveCustomerRow[] {
-  const all = aggregateCustomers(orders);
-  const now = new Date();
-  const cutoff = new Date(now);
+// "Sem pedido há 31+ dias" measured from the selected period's end date —
+// for the default "hoje"-ending presets that's just now; for a past range
+// (Ontem, Mês passado, Personalizado) it shows who was already inactive as
+// of that date.
+export function computeClientesInativos(orders: Order[], range: DateRange): InactiveCustomerRow[] {
+  const upToEnd = orders.filter(o => new Date(o.createdAt) <= range.end);
+  const all = aggregateCustomers(upToEnd);
+  const cutoff = new Date(range.end);
   cutoff.setDate(cutoff.getDate() - 30);
 
   return all
     .filter(c => c.lastOrderAt < cutoff)
     .map(c => {
-      const daysSince = Math.floor((now.getTime() - c.lastOrderAt.getTime()) / DAY_MS);
+      const daysSince = Math.floor((range.end.getTime() - c.lastOrderAt.getTime()) / DAY_MS);
       const tier: InactivityTier = daysSince <= 60 ? 'Leve' : daysSince <= 120 ? 'Médio' : 'Grave';
       return { ...c, daysSince, tier };
     })
@@ -346,9 +324,13 @@ function cohortLtvAverage(customers: CustomerAggregate[]): { avgLtv: number; row
   return { avgLtv: Math.round(avgLtv * 100) / 100, rows };
 }
 
-export function computeLtv(orders: Order[], monthsHistory = 6): LtvResult {
-  const all = aggregateCustomers(orders);
-  const { avgLtv, rows } = cohortLtvAverage(all);
+// avgLtv/top are scoped to customers active within the selected period
+// (cohort projection based on their behavior in that window); the trend
+// line below stays a straight 6-month lookback regardless of the filter —
+// it's a long-run context chart, not itself a period stat.
+export function computeLtv(orders: Order[], range: DateRange, monthsHistory = 6): LtvResult {
+  const cohort = aggregateCustomers(ordersBetween(orders, range));
+  const { avgLtv, rows } = cohortLtvAverage(cohort);
 
   const now = new Date();
   const history: { date: string; avgLtv: number }[] = [];
@@ -388,8 +370,8 @@ function normalize(value: number, range: { min: number; max: number }): number {
   return ((value - range.min) / (range.max - range.min)) * 100;
 }
 
-export function computeVipRanking(orders: Order[], pointsByPhone: Record<string, number>): VipRow[] {
-  const all = aggregateCustomers(orders);
+export function computeVipRanking(orders: Order[], range: DateRange, pointsByPhone: Record<string, number>): VipRow[] {
+  const all = aggregateCustomers(ordersBetween(orders, range));
   if (all.length === 0) return [];
 
   const withMetrics = all.map(c => ({
