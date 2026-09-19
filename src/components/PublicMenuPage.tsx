@@ -631,9 +631,9 @@ export default function PublicMenuPage() {
               </div>
             </div>
 
-            <div className="mt-4 p-3 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-start gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
-              <p className="text-[11px] leading-snug text-[#D1FAE5]">
+            <div className="mt-4 p-3 rounded-xl bg-[#EF4444]/15 border border-[#EF4444]/60 flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
+              <p className="text-[11px] leading-snug text-[#EF4444] font-semibold">
                 <span className="font-black">Atenção:</span> clique no botão abaixo para enviar o seu pedido pelo WhatsApp, para começar a preparar o seu pedido.
               </p>
             </div>
