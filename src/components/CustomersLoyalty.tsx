@@ -24,7 +24,7 @@ import {
 import { WasabiTag, SubtleSushiDivider, SushiRollIcon } from './SushiIcons';
 
 export default function CustomersLoyalty() {
-  const { customers, products, categories, visualConfig, setVisualConfig, redeemReward, fetchCustomerLoyaltyHistory } = useApp();
+  const { customers: storedCustomers, loyaltyByPhone, products, categories, visualConfig, setVisualConfig, redeemReward, fetchCustomerLoyaltyHistory } = useApp();
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'config'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   // Redemption is in-flight/feedback state per customer id — a customer
@@ -49,9 +49,23 @@ export default function CustomersLoyalty() {
   const [activeLoyalty, setActiveLoyalty] = useState(savedLoyaltyConfig.active);
   const [justSaved, setJustSaved] = useState(false);
 
+  // Points, order count and last order date shown here come ONLY from orders
+  // currently in Pedidos Concluídos (status 'delivered', minus redemptions —
+  // see computeLoyaltyByPhone), never from the stored customers columns,
+  // which can hold stale values from old/cancelled/duplicated credits.
+  const customers = storedCustomers.map(c => {
+    const stats = loyaltyByPhone[c.phone];
+    return {
+      ...c,
+      loyaltyPoints: stats?.points ?? 0,
+      orderCount: stats?.orderCount ?? 0,
+      lastOrderDate: stats?.lastOrderDate || c.lastOrderDate
+    };
+  });
+
   // Only customers with at least one completed (delivered) order belong in
-  // the loyalty club list — orderCount only increments on delivery (see
-  // creditOrderLoyalty), so this deliberately excludes someone who merely
+  // the loyalty club list — orderCount is now the number of delivered orders,
+  // so this deliberately excludes someone who merely
   // placed an order that's still pending/cancelled. Also filters out a
   // short list of exact known test-data names — deliberately NOT a
   // "3-6 alphanumeric characters" pattern anymore, since that also matched

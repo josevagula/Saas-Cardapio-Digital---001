@@ -637,6 +637,24 @@ export async function fetchLoyaltyLedger(ownerId: string, customerPhone: string)
   }));
 }
 
+// Points already spent on redemptions, per customer phone — subtracted from
+// what delivered orders earned to get the real balance (see
+// computeLoyaltyByPhone). Redemptions are rare, so one unpaginated read of
+// this account's 'redeem' rows is fine.
+export async function fetchLoyaltyRedeemedByPhone(ownerId: string): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from('loyalty_ledger')
+    .select('customer_phone, points_delta')
+    .eq('user_id', ownerId)
+    .eq('type', 'redeem');
+  if (error) throw new Error(`Failed to load loyalty redemptions: ${error.message}`);
+  const byPhone: Record<string, number> = {};
+  for (const r of data || []) {
+    byPhone[r.customer_phone] = (byPhone[r.customer_phone] ?? 0) + Math.abs(r.points_delta);
+  }
+  return byPhone;
+}
+
 // DRE-only: total value of reward redemptions in a date range (across every
 // customer), for the "Benefícios Fidelidade / Resgates de pontos" deduction
 // line — separate from fetchLoyaltyLedger above, which is scoped to one

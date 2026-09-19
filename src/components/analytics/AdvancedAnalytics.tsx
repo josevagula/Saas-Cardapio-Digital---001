@@ -27,7 +27,7 @@ import {
 const TOOLTIP_STYLE = { backgroundColor: '#141210', borderRadius: '12px', color: '#F5F0EA', border: '1px solid #2A211A', fontSize: '11px', padding: '8px 12px' };
 
 export default function AdvancedAnalytics() {
-  const { orders, customers } = useApp();
+  const { orders, loyaltyByPhone } = useApp();
 
   const [filterPreset, setFilterPreset] = useState<FilterPreset>('30d');
   const [customStart, setCustomStart] = useState(() => {
@@ -38,9 +38,9 @@ export default function AdvancedAnalytics() {
 
   const pointsByPhone = useMemo(() => {
     const map: Record<string, number> = {};
-    customers.forEach(c => { map[c.phone] = c.loyaltyPoints; });
+    Object.entries(loyaltyByPhone).forEach(([phone, stats]) => { map[phone] = stats.points; });
     return map;
-  }, [customers]);
+  }, [loyaltyByPhone]);
 
   const globalRange = useMemo(
     () => rangeForPreset(filterPreset, { start: customStart, end: customEnd }),

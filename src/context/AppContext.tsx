@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { VisualConfig, Category, Product, Order, Coupon, CustomerInfo, SalesAnalytics, OrderItem, OrderStatus, PaymentMethod, DeliveryMethod, SelectedExtra } from '../types';
 import {
   INITIAL_VISUAL_CONFIG,
@@ -27,6 +27,7 @@ import {
   syncOrderRevenueRpc,
   removeOrderRevenueRpc,
   fetchLoyaltyLedger,
+  fetchLoyaltyRedeemedByPhone,
   type LoyaltyLedgerEntry,
   syncCategories,
   syncProducts,
@@ -44,7 +45,7 @@ import { retryUntilSuccess, getSyncPendingCount } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { API_BASE } from '../lib/apiBase';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
-import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption } from '../utils/loyalty';
+import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption, computeLoyaltyByPhone, type CustomerLoyaltyStats } from '../utils/loyalty';
 import { formatOrderCode } from '../utils/formatters';
 import { handleOrderReceivedForPrinting, handleOrderConfirmedForPrinting } from '../lib/printing/printBridge';
 import { setWatchedPrinters } from '../lib/printing/printService';
@@ -180,6 +181,10 @@ interface AppContextType {
   // to the raw internal id. Resolves immediately with the same order if it
   // already has a number.
   ensureOrderNumber: (order: Order) => Promise<Order>;
+  // Per-phone points/order count/last order date derived ONLY from orders in
+  // Pedidos Concluídos (minus redemptions) — the numbers Clientes &
+  // Fidelidade shows, instead of the stored customers columns.
+  loyaltyByPhone: Record<string, CustomerLoyaltyStats>;
   redeemReward: (customerPhone: string) => Promise<{ success: boolean; message: string }>;
   fetchCustomerLoyaltyHistory: (customerPhone: string) => Promise<LoyaltyLedgerEntry[]>;
   addCoupon: (coupon: Coupon) => void;
@@ -310,6 +315,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return INITIAL_CUSTOMERS;
   });
+
+  // Points already spent on redemptions per customer phone (loyalty ledger
+  // 'redeem' entries) — the only thing besides delivered orders that
+  // loyaltyByPhone needs. Loaded with the workspace; bumped locally on redeem.
+  const [redeemedByPhone, setRedeemedByPhone] = useState<Record<string, number>>({});
+  const loyaltyByPhone = useMemo(() => computeLoyaltyByPhone(orders, redeemedByPhone), [orders, redeemedByPhone]);
 
   const [analytics, setAnalytics] = useState<SalesAnalytics>(() => {
     const saved = localStorage.getItem('sushi_analytics');
@@ -455,7 +466,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // partial/empty local state, which would get mirrored back to
       // Supabase as real deletions.
       return retryUntilSuccess(() =>
-        fetchWorkspace(userId).then(data => {
+        Promise.all([fetchWorkspace(userId), fetchLoyaltyRedeemedByPhone(userId)]).then(([data, redeemed]) => {
+          setRedeemedByPhone(redeemed);
           setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
           setCategories(data.categories);
           setProducts(data.products);
@@ -470,6 +482,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
       );
     }
+    setRedeemedByPhone({});
     setWorkspaceReady(true);
     syncGateUserIdRef.current = userId;
   }, [userId, authLoading, publicMenuSlug]);
@@ -1266,9 +1279,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const loyaltyConfig = visualConfig.loyaltyConfig ?? DEFAULT_LOYALTY_CONFIG;
     const customer = customers.find(c => c.phone === customerPhone);
     if (!customer) return { success: false, message: 'Cliente não encontrado.' };
-    if (!hasUnlockedReward(customer.loyaltyPoints, loyaltyConfig)) {
+    // Balance comes from delivered orders only (see computeLoyaltyByPhone),
+    // never the stored customers.loyalty_points, which may hold stale points.
+    const currentPoints = loyaltyByPhone[customerPhone]?.points ?? 0;
+    if (!hasUnlockedReward(currentPoints, loyaltyConfig)) {
       return { success: false, message: 'Este cliente ainda não atingiu a meta de pontos.' };
     }
+    const markRedeemed = () => setRedeemedByPhone(prev => ({
+      ...prev,
+      [customerPhone]: (prev[customerPhone] ?? 0) + loyaltyConfig.pointsNeededForReward
+    }));
 
     const rewardProduct = loyaltyConfig.rewardType === 'product'
       ? products.find(p => p.id === loyaltyConfig.rewardProductId)
@@ -1283,6 +1303,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!userId || isDemoMode) {
       const newBalance = pointsAfterRedemption(customer.loyaltyPoints, loyaltyConfig);
       setCustomers(prev => prev.map(c => c.phone === customerPhone ? { ...c, loyaltyPoints: newBalance } : c));
+      markRedeemed();
       return { success: true, message: `Prêmio resgatado: ${rewardLabel}.` };
     }
 
@@ -1293,6 +1314,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         rewardValue, loyaltyConfig.rewardType, idempotencyKey
       );
       setCustomers(prev => prev.map(c => c.phone === customerPhone ? { ...c, loyaltyPoints: newBalance } : c));
+      markRedeemed();
       return { success: true, message: `Prêmio resgatado: ${rewardLabel}.` };
     } catch (err: any) {
       if (err?.message === 'insufficient_points') {
@@ -1540,6 +1562,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateOrderStatus,
       deleteOrder,
       ensureOrderNumber,
+      loyaltyByPhone,
       redeemReward,
       fetchCustomerLoyaltyHistory,
       addCoupon,

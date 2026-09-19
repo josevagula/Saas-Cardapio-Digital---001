@@ -1,4 +1,36 @@
-import { LoyaltyConfig } from '../types';
+import { LoyaltyConfig, Order } from '../types';
+
+export interface CustomerLoyaltyStats {
+  points: number;
+  orderCount: number;
+  lastOrderDate: string;
+}
+
+// A customer's loyalty numbers derived ONLY from orders that currently sit in
+// Pedidos Concluídos (status 'delivered') — never from the running
+// loyalty_points/order_count columns on the customer row, which can carry
+// stale values from orders that were later cancelled/reverted/deleted or
+// credited twice by past bugs. Balance = points earned by those delivered
+// orders minus points already spent on redemptions (redeemedByPhone, from
+// the loyalty ledger's 'redeem' entries), floored at 0.
+export function computeLoyaltyByPhone(
+  orders: Order[],
+  redeemedByPhone: Record<string, number>
+): Record<string, CustomerLoyaltyStats> {
+  const stats: Record<string, CustomerLoyaltyStats> = {};
+  for (const order of orders) {
+    if (order.status !== 'delivered') continue;
+    const entry = stats[order.customerPhone] ?? (stats[order.customerPhone] = { points: 0, orderCount: 0, lastOrderDate: '' });
+    entry.points += order.pointsEarned || 0;
+    entry.orderCount += 1;
+    const day = order.createdAt ? order.createdAt.slice(0, 10) : '';
+    if (day > entry.lastOrderDate) entry.lastOrderDate = day;
+  }
+  for (const phone of Object.keys(stats)) {
+    stats[phone].points = Math.max(0, stats[phone].points - (redeemedByPhone[phone] ?? 0));
+  }
+  return stats;
+}
 
 // Single source of truth for the Clube de Fidelidade math — used by order
 // placement, delivery crediting, reversal and the config UI's own preview,
