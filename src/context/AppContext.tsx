@@ -26,9 +26,8 @@ import {
   redeemLoyaltyRewardRpc,
   syncOrderRevenueRpc,
   removeOrderRevenueRpc,
-  fetchLoyaltyLedger,
+  fetchLoyaltyRedemptions,
   fetchLoyaltyRedeemedByPhone,
-  type LoyaltyLedgerEntry,
   syncCategories,
   syncProducts,
   syncOrders,
@@ -45,7 +44,7 @@ import { retryUntilSuccess, getSyncPendingCount } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { API_BASE } from '../lib/apiBase';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
-import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption, computeLoyaltyByPhone, type CustomerLoyaltyStats } from '../utils/loyalty';
+import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption, computeLoyaltyByPhone, buildLoyaltyHistory, type CustomerLoyaltyStats, type LoyaltyHistoryItem } from '../utils/loyalty';
 import { formatOrderCode } from '../utils/formatters';
 import { handleOrderReceivedForPrinting, handleOrderConfirmedForPrinting } from '../lib/printing/printBridge';
 import { setWatchedPrinters } from '../lib/printing/printService';
@@ -186,7 +185,7 @@ interface AppContextType {
   // Fidelidade shows, instead of the stored customers columns.
   loyaltyByPhone: Record<string, CustomerLoyaltyStats>;
   redeemReward: (customerPhone: string) => Promise<{ success: boolean; message: string }>;
-  fetchCustomerLoyaltyHistory: (customerPhone: string) => Promise<LoyaltyLedgerEntry[]>;
+  fetchCustomerLoyaltyHistory: (customerPhone: string) => Promise<LoyaltyHistoryItem[]>;
   addCoupon: (coupon: Coupon) => void;
   addCategory: (category: Omit<Category, 'id'>) => void;
   updateCategory: (category: Category) => void;
@@ -1327,9 +1326,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Every points movement for one customer (earned, reversed, redeemed) —
   // read on demand (opening the history panel), not kept in memory for
   // every customer at once. Demo mode has no server-side ledger to read.
-  const fetchCustomerLoyaltyHistory = async (customerPhone: string): Promise<LoyaltyLedgerEntry[]> => {
-    if (!userId || isDemoMode) return [];
-    return fetchLoyaltyLedger(userId, customerPhone);
+  const fetchCustomerLoyaltyHistory = async (customerPhone: string): Promise<LoyaltyHistoryItem[]> => {
+    const redemptions = userId && !isDemoMode ? await fetchLoyaltyRedemptions(userId, customerPhone) : [];
+    return buildLoyaltyHistory(orders, customerPhone, redemptions, formatOrderCode);
   };
 
   // Reverses everything an order added when it was placed — it must count

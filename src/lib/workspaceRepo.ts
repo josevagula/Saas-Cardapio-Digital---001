@@ -637,6 +637,27 @@ export async function fetchLoyaltyLedger(ownerId: string, customerPhone: string)
   }));
 }
 
+// Real redemptions of one customer (the only part of the ledger the
+// Histórico de Pontos still reads — earned points come from delivered orders).
+export async function fetchLoyaltyRedemptions(
+  ownerId: string,
+  customerPhone: string
+): Promise<{ id: number; createdAt: string; points: number; label: string }[]> {
+  const { data, error } = await supabase
+    .from('loyalty_ledger')
+    .select('id, created_at, points_delta, reward_snapshot')
+    .eq('user_id', ownerId)
+    .eq('customer_phone', customerPhone)
+    .eq('type', 'redeem');
+  if (error) throw new Error(`Failed to load loyalty redemptions: ${error.message}`);
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    createdAt: r.created_at,
+    points: Math.abs(r.points_delta),
+    label: r.reward_snapshot?.label ?? 'Prêmio resgatado'
+  }));
+}
+
 // Points already spent on redemptions, per customer phone — subtracted from
 // what delivered orders earned to get the real balance (see
 // computeLoyaltyByPhone). Redemptions are rare, so one unpaginated read of

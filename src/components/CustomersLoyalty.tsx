@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { CustomerInfo, LoyaltyConfig } from '../types';
 import { DEFAULT_LOYALTY_CONFIG } from '../data/mockData';
-import { hasUnlockedReward } from '../utils/loyalty';
-import { LoyaltyLedgerEntry } from '../lib/workspaceRepo';
+import { hasUnlockedReward, LoyaltyHistoryItem } from '../utils/loyalty';
 import {
   Users,
   Gift,
@@ -33,7 +32,7 @@ export default function CustomersLoyalty() {
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [redeemFeedback, setRedeemFeedback] = useState<{ id: string; success: boolean; message: string } | null>(null);
   const [historyCustomer, setHistoryCustomer] = useState<CustomerInfo | null>(null);
-  const [historyEntries, setHistoryEntries] = useState<LoyaltyLedgerEntry[]>([]);
+  const [historyEntries, setHistoryEntries] = useState<LoyaltyHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Loyalty Program Config — mirrors visualConfig.loyaltyConfig (the value
@@ -136,9 +135,8 @@ export default function CustomersLoyalty() {
     }))
     .filter(group => group.products.length > 0);
 
-  const ledgerTypeLabel: Record<LoyaltyLedgerEntry['type'], string> = {
+  const historyTypeLabel: Record<LoyaltyHistoryItem['type'], string> = {
     earn: 'Pontos ganhos',
-    reversal: 'Estorno',
     redeem: 'Resgate de prêmio'
   };
 
@@ -471,22 +469,21 @@ export default function CustomersLoyalty() {
                 </div>
               ) : (
                 historyEntries.map(entry => (
-                  <div key={entry.id} className="p-3 rounded-xl bg-[#181512] border border-[#2A211A] flex items-center justify-between gap-3">
+                  <div key={entry.key} className="p-3 rounded-xl bg-[#181512] border border-[#2A211A] flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-[#F5F0EA]">{ledgerTypeLabel[entry.type]}</p>
+                      <p className="text-xs font-bold text-[#F5F0EA]">{historyTypeLabel[entry.type]}</p>
                       <p className="text-[10px] text-[#A8A29A] font-mono">
-                        {new Date(entry.createdAt).toLocaleString('pt-BR')}
-                        {entry.orderId ? ` · Pedido ${entry.orderId}` : ''}
+                        {new Date(entry.date).toLocaleString('pt-BR')}
+                        {entry.orderCode ? ` · Pedido ${entry.orderCode}` : ''}
                       </p>
-                      {entry.rewardSnapshot && (
-                        <p className="text-[10px] text-[#FB923C] mt-0.5">{entry.rewardSnapshot.label}</p>
+                      {entry.label && (
+                        <p className="text-[10px] text-[#FB923C] mt-0.5">{entry.label}</p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className={`font-mono font-extrabold text-xs ${entry.pointsDelta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         {entry.pointsDelta >= 0 ? '+' : ''}{entry.pointsDelta} pts
                       </p>
-                      <p className="text-[10px] text-[#A8A29A] font-mono">{entry.balanceBefore} → {entry.balanceAfter}</p>
                     </div>
                   </div>
                 ))

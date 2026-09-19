@@ -32,6 +32,34 @@ export function computeLoyaltyByPhone(
   return stats;
 }
 
+export interface LoyaltyHistoryItem {
+  key: string;
+  type: 'earn' | 'redeem';
+  date: string; // ISO timestamp
+  pointsDelta: number;
+  orderCode?: string;
+  label?: string;
+}
+
+// The Histórico de Pontos of one customer, built ONLY from real records: one
+// 'earn' line per order currently in Pedidos Concluídos (with the points that
+// order earned) plus that customer's real redemptions. Nothing from orders
+// that left Concluídos (cancelled/reverted/deleted) and no invented balances.
+export function buildLoyaltyHistory(
+  orders: Order[],
+  customerPhone: string,
+  redemptions: { id: number; createdAt: string; points: number; label: string }[],
+  orderCode: (order: Order) => string
+): LoyaltyHistoryItem[] {
+  const earned: LoyaltyHistoryItem[] = orders
+    .filter(o => o.status === 'delivered' && o.customerPhone === customerPhone)
+    .map(o => ({ key: `earn:${o.id}`, type: 'earn' as const, date: o.createdAt, pointsDelta: o.pointsEarned || 0, orderCode: orderCode(o) }));
+  const redeemed: LoyaltyHistoryItem[] = redemptions.map(r => ({
+    key: `redeem:${r.id}`, type: 'redeem' as const, date: r.createdAt, pointsDelta: -r.points, label: r.label
+  }));
+  return [...earned, ...redeemed].sort((a, b) => b.date.localeCompare(a.date));
+}
+
 // Single source of truth for the Clube de Fidelidade math — used by order
 // placement, delivery crediting, reversal and the config UI's own preview,
 // so none of them can drift into computing points a different way.
