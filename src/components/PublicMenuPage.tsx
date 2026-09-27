@@ -326,6 +326,12 @@ export default function PublicMenuPage() {
       messageText += `Favorecido: ${visualConfig.pixPayeeName || ''}`;
     }
 
+    // Placed right under the payment data (or the payment line, if no Pix key
+    // is configured) so the customer sees it right where they'd pay.
+    if (order.paymentMethod === 'pix') {
+      messageText += `\n\n⚠️ *Após realizar o pagamento, envie o comprovante do Pix aqui nesta conversa.*`;
+    }
+
     const txt = encodeURIComponent(messageText);
     // api.whatsapp.com/send (rather than wa.me) avoids the emoji/astral-character
     // corruption some Android WhatsApp versions hit when wa.me hands the URL
