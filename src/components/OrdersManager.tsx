@@ -9,6 +9,7 @@ import {
   Truck,
   ShoppingBag,
   MessageSquare,
+  ChevronLeft,
   ChevronRight,
   ExternalLink,
   Phone,
@@ -155,6 +156,26 @@ export default function OrdersManager() {
     return '';
   };
 
+  // 'preparing' has no previous stage (legacy 'received' isn't a tab anymore),
+  // and 'cancelled' can't be undone — cancelling already reversed its metrics.
+  const getPreviousStatus = (current: OrderStatus): OrderStatus | null => {
+    if (current === 'dispatched') return 'preparing';
+    if (current === 'delivered') return 'dispatched';
+    return null;
+  };
+
+  const handleRevertStatus = (order: Order, previousStatus: OrderStatus) => {
+    const label = tabs.find(t => t.id === previousStatus)?.label ?? previousStatus;
+    // Leaving 'delivered' claws back the loyalty points and the automatic
+    // Receita (see updateOrderStatus in AppContext) — worth a confirmation.
+    const message = order.status === 'delivered'
+      ? `Voltar o pedido ${formatOrderCode(order)} para "${label}"? Os pontos de fidelidade e a receita gerados na entrega serão removidos.`
+      : `Voltar o pedido ${formatOrderCode(order)} para "${label}"?`;
+    if (window.confirm(message)) {
+      updateOrderStatus(order.id, previousStatus);
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-orders-manager">
       {/* Header */}
@@ -233,6 +254,7 @@ export default function OrdersManager() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredOrders.map(order => {
             const nextStatus = getNextStatus(order.status);
+            const previousStatus = getPreviousStatus(order.status);
             return (
               <div 
                 key={order.id} 
@@ -400,6 +422,17 @@ export default function OrdersManager() {
                     >
                       <MessageSquare className="w-4.5 h-4.5" />
                     </button>
+
+                    {previousStatus && (
+                      <button
+                        onClick={() => handleRevertStatus(order, previousStatus)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#141210] text-slate-300 border border-[#2A211A] hover:bg-[#2A211A] hover:text-[#F5F0EA] transition-colors text-xs font-bold cursor-pointer"
+                        title="Voltar para a etapa anterior"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>Voltar</span>
+                      </button>
+                    )}
 
                     {nextStatus && (
                       <button
