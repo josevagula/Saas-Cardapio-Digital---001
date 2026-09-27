@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import OrderFiltersBar from './OrderFiltersBar';
+import { applyOrderFilters, customerOptionsFromOrders, defaultOrderFilters, OrderFilterState, productOptionsFromOrders } from '../utils/orderFilters';
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus } from '../types';
 import { safeNumber, formatCurrency, parseCashAmount, formatOrderCode } from '../utils/formatters';
@@ -81,9 +83,16 @@ export default function OrdersManager() {
   const matchesTab = (order: Order, tabId: OrderStatus) =>
     tabId === 'preparing' ? (order.status === 'preparing' || order.status === 'received') : order.status === tabId;
 
+  const [filters, setFilters] = useState<OrderFilterState>(() => defaultOrderFilters());
+  const productOptions = useMemo(() => productOptionsFromOrders(orders), [orders]);
+  const customerOptions = useMemo(() => customerOptionsFromOrders(orders), [orders]);
+  // Date/product/person filters apply across every tab (and its count);
+  // the tab then narrows by status on top of that.
+  const ordersMatchingFilters = useMemo(() => applyOrderFilters(orders, filters), [orders, filters]);
+
   // Newest first — as new orders arrive they appear at the top, and older
   // ones are pushed further down the list over time.
-  const filteredOrders = orders
+  const filteredOrders = ordersMatchingFilters
     .filter(o => matchesTab(o, activeTab))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -203,11 +212,22 @@ export default function OrdersManager() {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="mb-4">
+        <OrderFiltersBar
+          value={filters}
+          onChange={setFilters}
+          productOptions={productOptions}
+          customerOptions={customerOptions}
+          resultCount={ordersMatchingFilters.length}
+        />
+      </div>
+
       {/* Tabs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {tabs.map(tab => {
           const Icon = tab.icon;
-          const count = orders.filter(o => matchesTab(o, tab.id)).length;
+          const count = ordersMatchingFilters.filter(o => matchesTab(o, tab.id)).length;
           const isActive = activeTab === tab.id;
 
           return (
@@ -248,7 +268,11 @@ export default function OrdersManager() {
         <div className="bg-[#141210] p-12 text-center rounded-2xl border border-[#2A211A] shadow-sm">
           <ShoppingBag className="w-12 h-12 text-[#A8A29A]/50 mx-auto mb-4" />
           <h4 className="text-lg font-bold text-[#F5F0EA]">Sem pedidos nesta coluna</h4>
-          <p className="text-sm text-[#A8A29A] mt-1">Não há nenhum pedido no status selecionado no momento.</p>
+          <p className="text-sm text-[#A8A29A] mt-1">
+            {ordersMatchingFilters.length !== orders.length
+              ? 'Nenhum pedido deste status corresponde aos filtros selecionados.'
+              : 'Não há nenhum pedido no status selecionado no momento.'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

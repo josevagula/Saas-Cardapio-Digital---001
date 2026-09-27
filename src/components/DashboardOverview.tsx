@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product } from '../types';
+import OrderFiltersBar from './OrderFiltersBar';
+import { applyOrderFilters, customerOptionsFromOrders, defaultOrderFilters, hasActiveOrderFilters, OrderFilterState, productOptionsFromOrders, productSalesInOrders } from '../utils/orderFilters';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId, ordersInRange, revenueHistoryByDay, PAYMENT_METHOD_LABELS } from '../utils/salesStats';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -19,7 +21,16 @@ import {
 } from 'lucide-react';
 
 export default function DashboardOverview() {
-  const { products, orders, visualConfig, isDemoMode } = useApp();
+  const { products, orders: allOrders, visualConfig, isDemoMode } = useApp();
+
+  // Product/person filter — everything below (KPIs, chart, payment split,
+  // leaderboards) is computed from the filtered orders. The date side is
+  // handled by the existing Semanal/Mensal/Personalizado selector.
+  const [filters, setFilters] = useState<OrderFilterState>(() => defaultOrderFilters());
+  const filtersActive = hasActiveOrderFilters(filters);
+  const productOptions = useMemo(() => productOptionsFromOrders(allOrders), [allOrders]);
+  const customerOptions = useMemo(() => customerOptionsFromOrders(allOrders), [allOrders]);
+  const orders = useMemo(() => applyOrderFilters(allOrders, filters), [allOrders, filters]);
 
   // Chart view state and custom date ranges
   const [chartView, setChartView] = useState<'semanal' | 'mensal' | 'personalizado'>('semanal');
@@ -91,6 +102,9 @@ export default function DashboardOverview() {
   };
   const periodOrders = getPeriodOrders();
 
+  const selectedProductName = productOptions.find(p => p.id === filters.productId)?.name;
+  const selectedProductSales = filters.productId ? productSalesInOrders(periodOrders, filters.productId) : null;
+
   // KPI figures: always computed from real orders (the demo's own rebased
   // mock orders included) so Receita Mensal, Hoje, Ticket Médio and Total
   // de Pedidos all agree with each other and with the revenue chart below,
@@ -142,7 +156,7 @@ export default function DashboardOverview() {
   // browser used to double-count it; fixed above, but this sidesteps that
   // counter entirely and is always exactly what was ordered).
   const realUnitsSoldByProductId = useMemo(() => computeRealUnitsSoldByProductId(orders), [orders]);
-  const unitsSoldFor = (p: Product) => isDemoMode ? p.salesCount : (realUnitsSoldByProductId[p.id] || 0);
+  const unitsSoldFor = (p: Product) => isDemoMode && !filtersActive ? p.salesCount : (realUnitsSoldByProductId[p.id] || 0);
 
   // Track initial load & date filter changes to trigger chart rise animation
   const [animKey, setAnimKey] = useState<number>(0);
@@ -215,6 +229,37 @@ export default function DashboardOverview() {
           </button>
 
         </div>
+      </div>
+
+      {/* Filters — order-0 on mobile so they stay above everything they affect */}
+      <div className="order-0 md:order-none mb-5 sm:mb-8 space-y-3">
+        <OrderFiltersBar
+          value={filters}
+          onChange={setFilters}
+          productOptions={productOptions}
+          customerOptions={customerOptions}
+          showDate={false}
+          resultCount={orders.filter(o => o.status !== 'cancelled').length}
+        />
+        {selectedProductSales && (
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-[#1F1209] px-3.5 py-2.5 rounded-lg border border-[#4A2A10] text-xs">
+            <span className="text-slate-300 font-medium">
+              <span className="text-[#F5F0EA] font-bold">{selectedProductName}</span>
+              {' '}· {chartView === 'semanal' ? '7 dias' : chartView === 'mensal' ? 'mês corrente' : 'período selecionado'}
+            </span>
+            <span className="font-mono text-[#A8A29A]">
+              <span className="text-[#F5F0EA] font-bold">{selectedProductSales.units} un.</span>
+              {' '}vendidas ·{' '}
+              <span className="text-[#FB923C] font-black">{formatCurrency(selectedProductSales.revenue)}</span>
+              {' '}em vendas do produto
+            </span>
+          </div>
+        )}
+        {filtersActive && (
+          <p className="text-[10px] text-[#A8A29A]">
+            Os números abaixo consideram apenas os pedidos que correspondem aos filtros{filters.productId ? ' (pedidos que contêm o produto — valor total do pedido)' : ''}.
+          </p>
+        )}
       </div>
 
       {/* KPI Cards Grid — order-1 on mobile so it takes the top slot above the chart; back to document order from md up */}
