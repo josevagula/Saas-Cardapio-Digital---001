@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product, Category, PaymentMethod, DeliveryMethod, SelectedComboPiece, SelectedHalfAndHalf, SelectedExtra, OrderItem } from '../types';
 import { safeNumber, formatCurrency, parseCashAmount } from '../utils/formatters';
+import { computeDeliveryEstimate } from '../utils/deliveryEstimate';
 import { 
   ShoppingBag, 
   ShoppingCart,
@@ -270,27 +271,15 @@ export default function PublicMenuPage() {
     return 'Outros';
   };
 
-  // Turns the free-text "Tempo de Entrega Estimado" from Personalização
-  // ("30-45 min", "40 minutos", "1h", "1 a 2 horas") into a clock-time window
-  // counted from when the order was placed. Falls back to the text as typed
-  // when it can't be read as a number of minutes/hours.
+  // Falls back to the text as typed when it can't be read as minutes/hours.
   const getDeliveryEstimateLine = (placedAt: Date, isPickup: boolean): string | null => {
-    const raw = (visualConfig.deliveryTime || '30-45 min').trim();
-    if (!raw) return null;
+    const estimate = computeDeliveryEstimate(placedAt, visualConfig.deliveryTime);
+    if (!estimate) return null;
     const label = isPickup ? 'Previsão para retirada' : 'Previsão de entrega';
-    const numbers = (raw.match(/\d+/g) || []).map(Number);
-    const inHours = /\d\s*(h|hr|hora)/i.test(raw) && !/min/i.test(raw);
-    const toMinutes = (n: number) => (inHours ? n * 60 : n);
-    const minMinutes = numbers.length > 0 ? toMinutes(numbers[0]) : NaN;
-    const maxMinutes = numbers.length > 1 ? toMinutes(numbers[1]) : minMinutes;
-    if (!Number.isFinite(minMinutes) || minMinutes <= 0 || maxMinutes < minMinutes || maxMinutes > 24 * 60) {
-      return `${label}: ${raw}`;
-    }
-    const clock = (minutes: number) =>
-      new Date(placedAt.getTime() + minutes * 60 * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    return minMinutes === maxMinutes
-      ? `${label}: por volta das ${clock(minMinutes)} (${raw})`
-      : `${label}: entre ${clock(minMinutes)} e ${clock(maxMinutes)} (${raw})`;
+    if (!estimate.from || !estimate.to) return `${label}: ${estimate.raw}`;
+    return estimate.from === estimate.to
+      ? `${label}: por volta das ${estimate.from} (${estimate.raw})`
+      : `${label}: entre ${estimate.from} e ${estimate.to} (${estimate.raw})`;
   };
 
   const sendOrderToWhatsApp = (order: any) => {

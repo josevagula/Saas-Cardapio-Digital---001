@@ -4,6 +4,7 @@ import { applyOrderFilters, customerOptionsFromOrders, defaultOrderFilters, Orde
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus } from '../types';
 import { safeNumber, formatCurrency, parseCashAmount, formatOrderCode } from '../utils/formatters';
+import { computeDeliveryEstimate } from '../utils/deliveryEstimate';
 import { printOrderOnPrinter, hasEverPrintedOrder, subscribeQueue, PrintJob } from '../lib/printing/printService';
 import { DEFAULT_PRINTING_CONFIG } from '../data/mockData';
 import {
@@ -170,10 +171,12 @@ export default function OrdersManager() {
   const currentSheetDay = sheetIndex >= 0 ? sheetDays[sheetIndex] : null;
 
   const sheetStatusStyle = (status: OrderStatus): { label: string; className: string } => {
-    if (status === 'dispatched') return { label: 'A Caminho', className: 'bg-yellow-400/15 text-yellow-300 border-yellow-400/50' };
-    if (status === 'delivered') return { label: 'Concluído', className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/50' };
-    if (status === 'cancelled') return { label: 'Cancelado', className: 'bg-red-500/15 text-red-300 border-red-500/50' };
-    return { label: 'Em Preparação', className: 'bg-orange-500/15 text-orange-300 border-orange-500/50' };
+    // Solid fill in the status color (not just tinted text) so the state reads
+    // at a glance down the column.
+    if (status === 'dispatched') return { label: 'A Caminho', className: 'bg-yellow-400 text-black border-yellow-300' };
+    if (status === 'delivered') return { label: 'Concluído', className: 'bg-emerald-600 text-white border-emerald-500' };
+    if (status === 'cancelled') return { label: 'Cancelado', className: 'bg-red-600 text-white border-red-500' };
+    return { label: 'Em Preparação', className: 'bg-orange-500 text-white border-orange-400' };
   };
 
   const shortDay = (dayKey: string) => {
@@ -686,10 +689,12 @@ export default function OrdersManager() {
               </span>
             </div>
 
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[520px]">
               <thead>
                 <tr className="bg-[#0C0A08] text-[10px] font-mono uppercase tracking-wider text-[#A8A29A]">
                   <th className="text-left font-bold px-4 py-2.5 w-20 sm:w-28">Horário</th>
+                  <th className="text-left font-bold px-4 py-2.5 w-28 sm:w-40">Horário para a Entrega</th>
                   <th className="text-left font-bold px-4 py-2.5">Nome do Cliente</th>
                   <th className="text-left font-bold px-4 py-2.5 w-32 sm:w-44">Status de Entrega</th>
                 </tr>
@@ -697,14 +702,24 @@ export default function OrdersManager() {
               <tbody>
                 {currentSheetDay[1].map((order, idx) => {
                   const status = sheetStatusStyle(order.status);
+                  const estimate = computeDeliveryEstimate(new Date(order.createdAt), visualConfig.deliveryTime);
                   return (
                     <tr key={order.id} className={`border-t border-[#2A211A] ${idx % 2 === 1 ? 'bg-[#181512]' : ''}`}>
                       <td className="px-4 py-2.5 font-mono text-slate-300 whitespace-nowrap">
                         {new Date(order.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </td>
+                      <td className="px-4 py-2.5 font-mono text-[#FB923C] whitespace-nowrap">
+                        {!estimate
+                          ? '—'
+                          : !estimate.from || !estimate.to
+                            ? estimate.raw
+                            : estimate.from === estimate.to
+                              ? `~${estimate.from}`
+                              : `${estimate.from} – ${estimate.to}`}
+                      </td>
                       <td className="px-4 py-2.5 text-[#F5F0EA] font-medium break-words">{order.customerName}</td>
                       <td className="px-4 py-2.5">
-                        <span className={`inline-block px-2.5 py-1 rounded-md border text-[11px] font-bold whitespace-nowrap ${status.className}`}>
+                        <span className={`block w-full text-center px-2.5 py-1.5 rounded-md border text-[11px] font-bold whitespace-nowrap shadow-sm ${status.className}`}>
                           {status.label}
                         </span>
                       </td>
@@ -713,6 +728,7 @@ export default function OrdersManager() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )
       ) : showArchived ? (
