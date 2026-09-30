@@ -171,12 +171,12 @@ export default function OrdersManager() {
   const currentSheetDay = sheetIndex >= 0 ? sheetDays[sheetIndex] : null;
 
   const sheetStatusStyle = (status: OrderStatus): { label: string; className: string } => {
-    // Solid fill in the status color (not just tinted text) so the state reads
-    // at a glance down the column.
-    if (status === 'dispatched') return { label: 'A Caminho', className: 'bg-yellow-400 text-black border-yellow-300' };
-    if (status === 'delivered') return { label: 'Concluído', className: 'bg-emerald-600 text-white border-emerald-500' };
-    if (status === 'cancelled') return { label: 'Cancelado', className: 'bg-red-600 text-white border-red-500' };
-    return { label: 'Em Preparação', className: 'bg-orange-500 text-white border-orange-400' };
+    // Light fill of the status color, with the border and text in a darker
+    // shade of that same color.
+    if (status === 'dispatched') return { label: 'A Caminho', className: 'bg-yellow-100 text-yellow-800 border-yellow-600' };
+    if (status === 'delivered') return { label: 'Concluído', className: 'bg-emerald-100 text-emerald-800 border-emerald-600' };
+    if (status === 'cancelled') return { label: 'Cancelado', className: 'bg-red-100 text-red-800 border-red-600' };
+    return { label: 'Em Preparação', className: 'bg-orange-100 text-orange-800 border-orange-600' };
   };
 
   const shortDay = (dayKey: string) => {
@@ -719,7 +719,7 @@ export default function OrdersManager() {
                       </td>
                       <td className="px-4 py-2.5 text-[#F5F0EA] font-medium break-words">{order.customerName}</td>
                       <td className="px-4 py-2.5">
-                        <span className={`block w-full text-center px-2.5 py-1.5 rounded-md border text-[11px] font-bold whitespace-nowrap shadow-sm ${status.className}`}>
+                        <span className={`block w-full text-center px-2.5 py-1.5 rounded-md border-2 text-[11px] font-bold whitespace-nowrap ${status.className}`}>
                           {status.label}
                         </span>
                       </td>
