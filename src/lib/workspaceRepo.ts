@@ -113,7 +113,8 @@ const orderToRow = (o: Order, userId: string) => ({
   change_amount: o.changeAmount ?? null,
   hashi_count: o.hashiCount ?? null,
   kit_auto_included: o.kitAutoIncluded ?? null,
-  is_upsell_order: o.isUpsellOrder ?? null
+  is_upsell_order: o.isUpsellOrder ?? null,
+  archived_at: o.archivedAt ?? null
   // order_number deliberately omitted — it's only ever written by the
   // assign_order_number RPC below, never by this general upsert (used both
   // for the initial public insert and the admin's routine syncOrders). If it
@@ -144,7 +145,8 @@ export const rowToOrder = (r: any): Order => ({
   hashiCount: r.hashi_count ?? undefined,
   kitAutoIncluded: r.kit_auto_included ?? undefined,
   isUpsellOrder: r.is_upsell_order ?? undefined,
-  orderNumber: r.order_number ?? undefined
+  orderNumber: r.order_number ?? undefined,
+  archivedAt: r.archived_at ?? undefined
 });
 
 const couponToRow = (c: Coupon, userId: string) => ({

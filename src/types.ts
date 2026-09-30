@@ -240,6 +240,9 @@ export interface Order {
   // admin order screen. Assigned asynchronously after the order is placed —
   // absent (undefined) until then, so it's optional.
   orderNumber?: number;
+  // Set when staff moves a completed order into "Pedidos Arquivados". Only a
+  // display flag — status stays 'delivered', so metrics are unaffected.
+  archivedAt?: string;
 }
 
 export interface Coupon {

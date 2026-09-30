@@ -173,6 +173,10 @@ interface AppContextType {
   reorderProductInCategory: (productId: string, direction: -1 | 1, categoryId: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   deleteOrder: (orderId: string) => void;
+  // Moves completed orders into "Pedidos Arquivados" (or back out). Display
+  // only — status stays 'delivered', so loyalty/receitas/analytics are kept.
+  archiveOrders: (orderIds: string[]) => void;
+  unarchiveOrder: (orderId: string) => void;
   // Refetches an order until its sequential order_number lands (assigned by
   // a separate RPC shortly after checkout — see the orders realtime INSERT
   // handler below) when it's still missing locally, so printing/sharing an
@@ -1396,8 +1400,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Only delivered orders can sit in the archive — any other status pulls
+    // the order back out so it can't vanish from every Pedidos tab.
     setOrders(prev => prev.map(o =>
-      o.id === orderId ? { ...o, status } : o
+      o.id === orderId ? { ...o, status, archivedAt: status === 'delivered' ? o.archivedAt : undefined } : o
     ));
   };
 
@@ -1416,6 +1422,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (userId && !isDemoMode) {
       retryUntilSuccess(() => deleteOrderRow(orderId));
     }
+  };
+
+  const archiveOrders = (orderIds: string[]) => {
+    const ids = new Set(orderIds);
+    const now = new Date().toISOString();
+    setOrders(prev => prev.map(o =>
+      ids.has(o.id) && o.status === 'delivered' && !o.archivedAt ? { ...o, archivedAt: now } : o
+    ));
+  };
+
+  const unarchiveOrder = (orderId: string) => {
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, archivedAt: undefined } : o)));
   };
 
   const addCoupon = (newCoupon: Coupon) => {
@@ -1560,6 +1578,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       updateOrderStatus,
       deleteOrder,
+      archiveOrders,
+      unarchiveOrder,
       ensureOrderNumber,
       loyaltyByPhone,
       redeemReward,

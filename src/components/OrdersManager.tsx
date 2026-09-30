@@ -20,12 +20,37 @@ import {
   X,
   Ban,
   Trash2,
-  Printer
+  Printer,
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  CalendarDays
 } from 'lucide-react';
 
+// Local-time YYYY-MM-DD, so an order placed at 23:30 lands on that day and
+// not on the next one (toISOString would shift it to UTC).
+const localDayKey = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const formatDayHeading = (dayKey: string) => {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const full = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const capitalized = full.charAt(0).toUpperCase() + full.slice(1);
+  if (dayKey === localDayKey(today.toISOString())) return `Hoje · ${capitalized}`;
+  if (dayKey === localDayKey(yesterday.toISOString())) return `Ontem · ${capitalized}`;
+  return capitalized;
+};
+
 export default function OrdersManager() {
-  const { orders, updateOrderStatus, deleteOrder, visualConfig, ensureOrderNumber } = useApp();
+  const { orders, updateOrderStatus, deleteOrder, archiveOrders, unarchiveOrder, visualConfig, ensureOrderNumber } = useApp();
   const [activeTab, setActiveTab] = useState<OrderStatus>('preparing');
+  const [showArchived, setShowArchived] = useState(false);
   const [printFeedback, setPrintFeedback] = useState<{ id: string; message: string } | null>(null);
   // Surfaces a failed print job right here in Pedidos instead of only in
   // Configurações > Impressão, which staff had no reason to check unless
@@ -80,8 +105,11 @@ export default function OrdersManager() {
   ];
 
   // Orders received before this tab existed are legacy 'received' — treat them as part of "Em Preparação".
-  const matchesTab = (order: Order, tabId: OrderStatus) =>
-    tabId === 'preparing' ? (order.status === 'preparing' || order.status === 'received') : order.status === tabId;
+  // Archived orders live only in "Pedidos Arquivados", not in Concluídos.
+  const matchesTab = (order: Order, tabId: OrderStatus) => {
+    if (order.archivedAt) return false;
+    return tabId === 'preparing' ? (order.status === 'preparing' || order.status === 'received') : order.status === tabId;
+  };
 
   const [filters, setFilters] = useState<OrderFilterState>(() => defaultOrderFilters());
   const productOptions = useMemo(() => productOptionsFromOrders(orders), [orders]);
@@ -95,6 +123,31 @@ export default function OrdersManager() {
   const filteredOrders = ordersMatchingFilters
     .filter(o => matchesTab(o, activeTab))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const completedToArchive = ordersMatchingFilters.filter(o => matchesTab(o, 'delivered'));
+  const archivedCount = orders.filter(o => o.archivedAt).length;
+
+  // Archive grouped by the day the order was placed, newest day first.
+  const archivedByDay = useMemo(() => {
+    const groups = new Map<string, Order[]>();
+    ordersMatchingFilters
+      .filter(o => o.archivedAt)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .forEach(o => {
+        const key = localDayKey(o.createdAt);
+        const list = groups.get(key);
+        if (list) list.push(o);
+        else groups.set(key, [o]);
+      });
+    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a));
+  }, [ordersMatchingFilters]);
+
+  const handleArchiveCompleted = () => {
+    if (completedToArchive.length === 0) return;
+    if (window.confirm(`Arquivar ${completedToArchive.length} pedido(s) concluído(s)? Eles saem da coluna "Concluídos" e ficam em "Pedidos Arquivados", separados por dia.`)) {
+      archiveOrders(completedToArchive.map(o => o.id));
+    }
+  };
 
   // Generate Automated WhatsApp message based on current status
   const triggerWhatsAppSimulator = (order: Order) => {
@@ -185,18 +238,275 @@ export default function OrdersManager() {
     }
   };
 
+  const renderOrderCard = (order: Order) => {
+      const isArchived = !!order.archivedAt;
+      // Archived orders are read-only history: no stage moves or cancelling
+      // until they're taken back out with "Desarquivar".
+      const nextStatus = isArchived ? null : getNextStatus(order.status);
+      const previousStatus = isArchived ? null : getPreviousStatus(order.status);
+      return (
+        <div 
+          key={order.id} 
+          className="bg-[#141210] rounded-2xl border border-[#2A211A] shadow-sm hover:border-[#3A2E24] transition-all flex flex-col justify-between overflow-hidden"
+        >
+          {/* Card Top */}
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-4 border-b border-[#2A211A] pb-3">
+              <div>
+                <span className="text-xs font-mono font-bold text-[#FB923C]">{formatOrderCode(order)}</span>
+                <p className="text-sm font-semibold text-[#F5F0EA] mt-0.5 truncate">{order.customerName}</p>
+              </div>
+              <span className="text-xs font-mono font-medium text-slate-300 bg-[#0C0A08] border border-[#2A211A] px-2 py-0.5 rounded-md">
+                {new Date(order.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+
+            {/* Order Items */}
+            <div className="space-y-2 mb-4">
+              {order.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-start text-xs text-slate-300">
+                  <div className="flex-1">
+                    <span className="font-bold text-[#F97316] font-mono mr-1">{item.quantity}x</span>
+                    <span className="font-medium text-slate-200">{item.product.name}</span>
+                    {item.comboFlavors && item.comboFlavors.length > 0 && (
+                      <p className="text-[10px] text-[#FB923C] font-bold mt-0.5 ml-5">
+                        🍣 Sabores: {item.comboFlavors.map(f => `${f.pieces}x ${f.flavorName}`).join(', ')}
+                      </p>
+                    )}
+                    {item.halfAndHalf && (
+                      <p className="text-[10px] text-[#FB923C] font-bold mt-0.5 ml-5">
+                        🍣 Meio a Meio: {item.halfAndHalf.flavor1} / {item.halfAndHalf.flavor2}
+                      </p>
+                    )}
+                    {item.removedIngredients && item.removedIngredients.length > 0 && (
+                      <p className="text-[10px] text-red-400 font-bold mt-0.5 ml-5 flex items-center gap-1">
+                        <span>⛔ RETIRAR:</span>
+                        <span className="line-through">{item.removedIngredients.join(', ')}</span>
+                      </p>
+                    )}
+                    {item.extras && item.extras.length > 0 && (
+                      <p className="text-[10px] text-emerald-400 font-bold mt-0.5 ml-5">
+                        ➕ {item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}
+                      </p>
+                    )}
+                    {item.notes && (
+                      <p className="text-[10px] text-amber-300 italic mt-0.5 ml-5">"Obs: {item.notes}"</p>
+                    )}
+                  </div>
+                  <span className="font-mono text-[#A8A29A]">
+                    R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity + (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0))}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Payment and Delivery Mode */}
+            <div className="space-y-1.5 border-t border-[#2A211A] pt-3 text-[11px] text-[#A8A29A] font-mono">
+              <div className="flex justify-between">
+                <span>
+                  Forma: {(() => {
+                    if (order.paymentMethod === 'credit_card' || order.paymentMethod === 'debit_card') return 'Cartão';
+                    if (order.paymentMethod !== 'cash') return order.paymentMethod.replace('_', ' ').toUpperCase();
+                    if (!order.needsChange) return 'DINHEIRO (Sem troco)';
+                    const noteVal = parseCashAmount(order.changeAmount || '');
+                    const changeVal = noteVal > order.total ? noteVal - order.total : 0;
+                    const noteFormatted = noteVal > 0 ? `R$ ${noteVal.toFixed(2).replace('.', ',')}` : order.changeAmount;
+                    const changeFormatted = changeVal > 0 ? ` [Troco: R$ ${changeVal.toFixed(2).replace('.', ',')}]` : '';
+                    return `DINHEIRO (Para ${noteFormatted}${changeFormatted})`;
+                  })()}
+                </span>
+                <span className="text-[#FB923C] font-semibold">{order.deliveryMethod === 'pickup' ? 'RETIRADA NO LOCAL' : order.deliveryMethod.toUpperCase()}</span>
+              </div>
+              {order.deliveryMethod === 'delivery' && (
+                <div className="text-slate-300 truncate mt-1">
+                  📍 {order.customerAddress}
+                </div>
+              )}
+              {order.couponCode && (
+                <div className="flex justify-between items-center pt-1">
+                  <span className="text-emerald-400 font-semibold">
+                    🎟️ Cupom: {order.couponCode}
+                  </span>
+                  {!!order.discountAmount && (
+                    <span className="text-emerald-400 font-semibold">
+                      - R$ {formatCurrency(order.discountAmount)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card Footer Actions */}
+          <div className="p-4 bg-[#181512] border-t border-[#2A211A]">
+          {/* Stacked (price block, then actions) at every width — the
+              card's own column width shrinks with the grid (1/2/3
+              columns), so even a "desktop" viewport can give this
+              footer no more room than a phone does; a side-by-side
+              layout gated by viewport alone kept clipping the
+              next-status button under those narrower columns. */}
+          <div className="flex flex-col gap-3">
+            <div className="font-mono text-xs space-y-0.5 min-w-0 shrink-0">
+              <div className="flex justify-between gap-3 text-[#A8A29A]">
+                <span>Subtotal:</span>
+                <span>R$ {formatCurrency(order.total + order.discountAmount - order.deliveryFee)}</span>
+              </div>
+              {order.deliveryFee > 0 && (
+                <div className="flex justify-between gap-3 text-[#A8A29A]">
+                  <span>Taxa:</span>
+                  <span>R$ {formatCurrency(order.deliveryFee)}</span>
+                </div>
+              )}
+              <div className="flex justify-between gap-3">
+                <span className="text-[#A8A29A]">Total:</span>
+                <span className="text-sm font-extrabold text-[#F5F0EA]">R$ {formatCurrency(order.total)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {order.status !== 'cancelled' && !isArchived && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Cancelar o pedido ${formatOrderCode(order)}? Ele vai para a coluna "Cancelados" e a ação não pode ser desfeita.`)) {
+                      updateOrderStatus(order.id, 'cancelled');
+                    }
+                  }}
+                  className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
+                  title="Cancelar Pedido"
+                >
+                  <Ban className="w-4.5 h-4.5" />
+                </button>
+              )}
+
+              {order.status === 'cancelled' && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Excluir o pedido ${formatOrderCode(order)}? Essa ação não pode ser desfeita.`)) {
+                      deleteOrder(order.id);
+                    }
+                  }}
+                  className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
+                  title="Excluir Pedido"
+                >
+                  <Trash2 className="w-4.5 h-4.5" />
+                </button>
+              )}
+
+              <button
+                onClick={() => handlePrintOrder(order)}
+                className={
+                  printErrors[order.id]
+                    ? 'p-2 rounded-lg bg-[#2A0F0F] text-red-400 border border-red-500/60 hover:bg-[#3A1515] transition-colors cursor-pointer animate-pulse'
+                    : 'p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer'
+                }
+                title={printErrors[order.id] ? `Falha ao imprimir — clique para tentar novamente (${printErrors[order.id]})` : (hasEverPrintedOrder(order.id) ? 'Reimprimir Pedido' : 'Imprimir Pedido')}
+              >
+                <Printer className="w-4.5 h-4.5" />
+              </button>
+
+              <button
+                onClick={() => triggerWhatsAppSimulator(order)}
+                className="p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer"
+                title="Enviar Status WhatsApp"
+              >
+                <MessageSquare className="w-4.5 h-4.5" />
+              </button>
+
+              {order.status === 'delivered' && !isArchived && (
+                <button
+                  onClick={() => archiveOrders([order.id])}
+                  className="p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer"
+                  title="Arquivar Pedido"
+                >
+                  <Archive className="w-4.5 h-4.5" />
+                </button>
+              )}
+
+              {isArchived && (
+                <button
+                  onClick={() => unarchiveOrder(order.id)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#141210] text-slate-300 border border-[#2A211A] hover:bg-[#2A211A] hover:text-[#F5F0EA] transition-colors text-xs font-bold cursor-pointer"
+                  title="Devolver para a coluna Concluídos"
+                >
+                  <ArchiveRestore className="w-3.5 h-3.5" />
+                  <span>Desarquivar</span>
+                </button>
+              )}
+
+              {previousStatus && (
+                <button
+                  onClick={() => handleRevertStatus(order, previousStatus)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#141210] text-slate-300 border border-[#2A211A] hover:bg-[#2A211A] hover:text-[#F5F0EA] transition-colors text-xs font-bold cursor-pointer"
+                  title="Voltar para a etapa anterior"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Voltar</span>
+                </button>
+              )}
+
+              {nextStatus && (
+                <button
+                  onClick={() => updateOrderStatus(order.id, nextStatus)}
+                  className="flex items-center gap-1 px-3.5 py-1.5 btn-sushi-primary text-white text-xs font-bold shadow-md cursor-pointer"
+                >
+                  <span>{getStatusActionLabel(order.status)}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+          {printErrors[order.id] ? (
+            <p className="text-[10px] text-red-400 font-semibold mt-2 text-right">
+              Falha ao imprimir: {printErrors[order.id]} — clique no ícone de impressora para tentar novamente.
+            </p>
+          ) : printFeedback?.id === order.id && (
+            <p className="text-[10px] text-emerald-400 font-semibold mt-2 text-right">{printFeedback.message}</p>
+          )}
+          </div>
+        </div>
+      );
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#0C0A08] font-sans text-slate-100" id="sushi-orders-manager">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <span className="text-[10px] font-mono font-bold text-[#FB923C] uppercase tracking-widest">Painel Operacional</span>
-          <h2 className="text-2xl font-display font-extrabold text-[#F5F0EA] tracking-tight mt-0.5">Gestão de Pedidos</h2>
-          <p className="text-xs text-[#A8A29A] mt-0.5">Monitore e gerencie o fluxo de entrega, atualize status dos clientes e despache pedidos.</p>
+          <h2 className="text-2xl font-display font-extrabold text-[#F5F0EA] tracking-tight mt-0.5">{showArchived ? 'Pedidos Arquivados' : 'Gestão de Pedidos'}</h2>
+          <p className="text-xs text-[#A8A29A] mt-0.5">
+            {showArchived
+              ? 'Histórico dos pedidos concluídos que foram arquivados, separados por dia.'
+              : 'Monitore e gerencie o fluxo de entrega, atualize status dos clientes e despache pedidos.'}
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {activeTab === 'cancelled' && filteredOrders.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap md:justify-end">
+          {!showArchived && (
+            <button
+              onClick={handleArchiveCompleted}
+              disabled={completedToArchive.length === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#4A2A10] bg-[#1F1209] text-[#F97316] hover:bg-[#2A180C] transition-colors cursor-pointer text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Mover todos os pedidos concluídos para Pedidos Arquivados"
+            >
+              <Archive className="w-3.5 h-3.5 shrink-0" />
+              <span>Arquivar Concluídos ({completedToArchive.length})</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowArchived(v => !v)}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border transition-colors cursor-pointer text-xs font-bold ${
+              showArchived
+                ? 'border-[#2A211A] bg-[#141210] text-slate-300 hover:bg-[#2A211A] hover:text-[#F5F0EA]'
+                : 'border-[#F97316] bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white shadow-md shadow-orange-950/40'
+            }`}
+          >
+            {showArchived ? <ArrowLeft className="w-3.5 h-3.5 shrink-0" /> : <Archive className="w-3.5 h-3.5 shrink-0" />}
+            <span>{showArchived ? 'Voltar aos Pedidos' : `Pedidos Arquivados (${archivedCount})`}</span>
+          </button>
+
+          {!showArchived && activeTab === 'cancelled' && filteredOrders.length > 0 && (
             <button
               onClick={() => {
                 if (window.confirm(`Excluir todos os ${filteredOrders.length} pedidos cancelados? Essa ação não pode ser desfeita.`)) {
@@ -224,6 +534,7 @@ export default function OrdersManager() {
       </div>
 
       {/* Tabs */}
+      {!showArchived && (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {tabs.map(tab => {
           const Icon = tab.icon;
@@ -262,9 +573,41 @@ export default function OrdersManager() {
           );
         })}
       </div>
+      )}
 
       {/* Content Grid */}
-      {filteredOrders.length === 0 ? (
+      {showArchived ? (
+        archivedByDay.length === 0 ? (
+          <div className="bg-[#141210] p-12 text-center rounded-2xl border border-[#2A211A] shadow-sm">
+            <Archive className="w-12 h-12 text-[#A8A29A]/50 mx-auto mb-4" />
+            <h4 className="text-lg font-bold text-[#F5F0EA]">Nenhum pedido arquivado</h4>
+            <p className="text-sm text-[#A8A29A] mt-1">
+              {archivedCount > 0
+                ? 'Nenhum pedido arquivado corresponde aos filtros selecionados.'
+                : 'Use "Arquivar Concluídos" para mover os pedidos concluídos para cá.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {archivedByDay.map(([dayKey, dayOrders]) => (
+              <section key={dayKey}>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-2 border-b border-[#2A211A]">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-[#FB923C]" />
+                    <h3 className="text-sm font-display font-bold text-[#F5F0EA]">{formatDayHeading(dayKey)}</h3>
+                  </div>
+                  <span className="text-xs font-mono text-[#A8A29A]">
+                    {dayOrders.length} {dayOrders.length === 1 ? 'pedido' : 'pedidos'} · R$ {formatCurrency(dayOrders.reduce((sum, o) => sum + safeNumber(o.total), 0))}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {dayOrders.map(renderOrderCard)}
+                </div>
+              </section>
+            ))}
+          </div>
+        )
+      ) : filteredOrders.length === 0 ? (
         <div className="bg-[#141210] p-12 text-center rounded-2xl border border-[#2A211A] shadow-sm">
           <ShoppingBag className="w-12 h-12 text-[#A8A29A]/50 mx-auto mb-4" />
           <h4 className="text-lg font-bold text-[#F5F0EA]">Sem pedidos nesta coluna</h4>
@@ -276,210 +619,7 @@ export default function OrdersManager() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredOrders.map(order => {
-            const nextStatus = getNextStatus(order.status);
-            const previousStatus = getPreviousStatus(order.status);
-            return (
-              <div 
-                key={order.id} 
-                className="bg-[#141210] rounded-2xl border border-[#2A211A] shadow-sm hover:border-[#3A2E24] transition-all flex flex-col justify-between overflow-hidden"
-              >
-                {/* Card Top */}
-                <div className="p-5">
-                  <div className="flex items-center justify-between mb-4 border-b border-[#2A211A] pb-3">
-                    <div>
-                      <span className="text-xs font-mono font-bold text-[#FB923C]">{formatOrderCode(order)}</span>
-                      <p className="text-sm font-semibold text-[#F5F0EA] mt-0.5 truncate">{order.customerName}</p>
-                    </div>
-                    <span className="text-xs font-mono font-medium text-slate-300 bg-[#0C0A08] border border-[#2A211A] px-2 py-0.5 rounded-md">
-                      {new Date(order.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-
-                  {/* Order Items */}
-                  <div className="space-y-2 mb-4">
-                    {order.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-start text-xs text-slate-300">
-                        <div className="flex-1">
-                          <span className="font-bold text-[#F97316] font-mono mr-1">{item.quantity}x</span>
-                          <span className="font-medium text-slate-200">{item.product.name}</span>
-                          {item.comboFlavors && item.comboFlavors.length > 0 && (
-                            <p className="text-[10px] text-[#FB923C] font-bold mt-0.5 ml-5">
-                              🍣 Sabores: {item.comboFlavors.map(f => `${f.pieces}x ${f.flavorName}`).join(', ')}
-                            </p>
-                          )}
-                          {item.halfAndHalf && (
-                            <p className="text-[10px] text-[#FB923C] font-bold mt-0.5 ml-5">
-                              🍣 Meio a Meio: {item.halfAndHalf.flavor1} / {item.halfAndHalf.flavor2}
-                            </p>
-                          )}
-                          {item.removedIngredients && item.removedIngredients.length > 0 && (
-                            <p className="text-[10px] text-red-400 font-bold mt-0.5 ml-5 flex items-center gap-1">
-                              <span>⛔ RETIRAR:</span>
-                              <span className="line-through">{item.removedIngredients.join(', ')}</span>
-                            </p>
-                          )}
-                          {item.extras && item.extras.length > 0 && (
-                            <p className="text-[10px] text-emerald-400 font-bold mt-0.5 ml-5">
-                              ➕ {item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}
-                            </p>
-                          )}
-                          {item.notes && (
-                            <p className="text-[10px] text-amber-300 italic mt-0.5 ml-5">"Obs: {item.notes}"</p>
-                          )}
-                        </div>
-                        <span className="font-mono text-[#A8A29A]">
-                          R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity + (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0))}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Payment and Delivery Mode */}
-                  <div className="space-y-1.5 border-t border-[#2A211A] pt-3 text-[11px] text-[#A8A29A] font-mono">
-                    <div className="flex justify-between">
-                      <span>
-                        Forma: {(() => {
-                          if (order.paymentMethod === 'credit_card' || order.paymentMethod === 'debit_card') return 'Cartão';
-                          if (order.paymentMethod !== 'cash') return order.paymentMethod.replace('_', ' ').toUpperCase();
-                          if (!order.needsChange) return 'DINHEIRO (Sem troco)';
-                          const noteVal = parseCashAmount(order.changeAmount || '');
-                          const changeVal = noteVal > order.total ? noteVal - order.total : 0;
-                          const noteFormatted = noteVal > 0 ? `R$ ${noteVal.toFixed(2).replace('.', ',')}` : order.changeAmount;
-                          const changeFormatted = changeVal > 0 ? ` [Troco: R$ ${changeVal.toFixed(2).replace('.', ',')}]` : '';
-                          return `DINHEIRO (Para ${noteFormatted}${changeFormatted})`;
-                        })()}
-                      </span>
-                      <span className="text-[#FB923C] font-semibold">{order.deliveryMethod === 'pickup' ? 'RETIRADA NO LOCAL' : order.deliveryMethod.toUpperCase()}</span>
-                    </div>
-                    {order.deliveryMethod === 'delivery' && (
-                      <div className="text-slate-300 truncate mt-1">
-                        📍 {order.customerAddress}
-                      </div>
-                    )}
-                    {order.couponCode && (
-                      <div className="flex justify-between items-center pt-1">
-                        <span className="text-emerald-400 font-semibold">
-                          🎟️ Cupom: {order.couponCode}
-                        </span>
-                        {!!order.discountAmount && (
-                          <span className="text-emerald-400 font-semibold">
-                            - R$ {formatCurrency(order.discountAmount)}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card Footer Actions */}
-                <div className="p-4 bg-[#181512] border-t border-[#2A211A]">
-                {/* Stacked (price block, then actions) at every width — the
-                    card's own column width shrinks with the grid (1/2/3
-                    columns), so even a "desktop" viewport can give this
-                    footer no more room than a phone does; a side-by-side
-                    layout gated by viewport alone kept clipping the
-                    next-status button under those narrower columns. */}
-                <div className="flex flex-col gap-3">
-                  <div className="font-mono text-xs space-y-0.5 min-w-0 shrink-0">
-                    <div className="flex justify-between gap-3 text-[#A8A29A]">
-                      <span>Subtotal:</span>
-                      <span>R$ {formatCurrency(order.total + order.discountAmount - order.deliveryFee)}</span>
-                    </div>
-                    {order.deliveryFee > 0 && (
-                      <div className="flex justify-between gap-3 text-[#A8A29A]">
-                        <span>Taxa:</span>
-                        <span>R$ {formatCurrency(order.deliveryFee)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between gap-3">
-                      <span className="text-[#A8A29A]">Total:</span>
-                      <span className="text-sm font-extrabold text-[#F5F0EA]">R$ {formatCurrency(order.total)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
-                    {order.status !== 'cancelled' && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Cancelar o pedido ${formatOrderCode(order)}? Ele vai para a coluna "Cancelados" e a ação não pode ser desfeita.`)) {
-                            updateOrderStatus(order.id, 'cancelled');
-                          }
-                        }}
-                        className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
-                        title="Cancelar Pedido"
-                      >
-                        <Ban className="w-4.5 h-4.5" />
-                      </button>
-                    )}
-
-                    {order.status === 'cancelled' && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Excluir o pedido ${formatOrderCode(order)}? Essa ação não pode ser desfeita.`)) {
-                            deleteOrder(order.id);
-                          }
-                        }}
-                        className="p-2 rounded-lg bg-[#1F0B0B] text-red-400 border border-[#4A1616] hover:bg-[#2A0F0F] hover:text-red-300 transition-colors cursor-pointer"
-                        title="Excluir Pedido"
-                      >
-                        <Trash2 className="w-4.5 h-4.5" />
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handlePrintOrder(order)}
-                      className={
-                        printErrors[order.id]
-                          ? 'p-2 rounded-lg bg-[#2A0F0F] text-red-400 border border-red-500/60 hover:bg-[#3A1515] transition-colors cursor-pointer animate-pulse'
-                          : 'p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer'
-                      }
-                      title={printErrors[order.id] ? `Falha ao imprimir — clique para tentar novamente (${printErrors[order.id]})` : (hasEverPrintedOrder(order.id) ? 'Reimprimir Pedido' : 'Imprimir Pedido')}
-                    >
-                      <Printer className="w-4.5 h-4.5" />
-                    </button>
-
-                    <button
-                      onClick={() => triggerWhatsAppSimulator(order)}
-                      className="p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer"
-                      title="Enviar Status WhatsApp"
-                    >
-                      <MessageSquare className="w-4.5 h-4.5" />
-                    </button>
-
-                    {previousStatus && (
-                      <button
-                        onClick={() => handleRevertStatus(order, previousStatus)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#141210] text-slate-300 border border-[#2A211A] hover:bg-[#2A211A] hover:text-[#F5F0EA] transition-colors text-xs font-bold cursor-pointer"
-                        title="Voltar para a etapa anterior"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                        <span>Voltar</span>
-                      </button>
-                    )}
-
-                    {nextStatus && (
-                      <button
-                        onClick={() => updateOrderStatus(order.id, nextStatus)}
-                        className="flex items-center gap-1 px-3.5 py-1.5 btn-sushi-primary text-white text-xs font-bold shadow-md cursor-pointer"
-                      >
-                        <span>{getStatusActionLabel(order.status)}</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {printErrors[order.id] ? (
-                  <p className="text-[10px] text-red-400 font-semibold mt-2 text-right">
-                    Falha ao imprimir: {printErrors[order.id]} — clique no ícone de impressora para tentar novamente.
-                  </p>
-                ) : printFeedback?.id === order.id && (
-                  <p className="text-[10px] text-emerald-400 font-semibold mt-2 text-right">{printFeedback.message}</p>
-                )}
-                </div>
-              </div>
-            );
-          })}
+          {filteredOrders.map(renderOrderCard)}
         </div>
       )}
 
