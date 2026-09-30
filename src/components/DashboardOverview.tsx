@@ -13,12 +13,23 @@ import {
   ShoppingBag,
   DollarSign,
   Users,
-  ArrowUpRight,
-  Activity,
   Flame,
   AlertTriangle,
-  FileDown
+  FileDown,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+
+// Local-time YYYY-MM-DD (matches <input type="date">); toISOString would
+// shift late-evening orders onto the next day in UTC.
+const toDayKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const fromDayKey = (key: string) => {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 
 export default function DashboardOverview() {
   const { products, orders: allOrders, visualConfig, isDemoMode } = useApp();
@@ -105,13 +116,58 @@ export default function DashboardOverview() {
   const selectedProductName = productOptions.find(p => p.id === filters.productId)?.name;
   const selectedProductSales = filters.productId ? productSalesInOrders(periodOrders, filters.productId) : null;
 
-  // KPI figures: always computed from real orders (the demo's own rebased
-  // mock orders included) so Receita Mensal, Hoje, Ticket Médio and Total
-  // de Pedidos all agree with each other and with the revenue chart below,
-  // instead of the demo showing a fixed, disconnected "impressive" number
-  // that didn't match how many orders (or how much revenue) were actually
-  // behind it.
-  const kpi = { dailyRevenue: realStats.dailyRevenue, weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue, totalOrders: periodOrders.length, ticketAverage: realStats.ticketAverage };
+  // Chart totals: always computed from real orders (the demo's own rebased
+  // mock orders included) so they agree with the day summary cards below.
+  const kpi = { weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue };
+
+  // Day summary (Faturado / Total de Pedidos / Ticket Médio) — all three are
+  // computed from the same set of non-cancelled orders placed on one chosen
+  // day, so ticket médio is always exactly faturado ÷ pedidos. null = "hoje",
+  // which keeps following the real date across a midnight rollover.
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+  const todayDayKey = toDayKey(new Date());
+  const dayKey = selectedDayKey && selectedDayKey < todayDayKey ? selectedDayKey : todayDayKey;
+  const isToday = dayKey === todayDayKey;
+  const selectedDay = fromDayKey(dayKey);
+  const shiftDay = (delta: number) => {
+    const d = fromDayKey(dayKey);
+    d.setDate(d.getDate() + delta);
+    const next = toDayKey(d);
+    setSelectedDayKey(next >= todayDayKey ? null : next);
+  };
+
+  const daySummary = useMemo(() => {
+    const summarize = (day: Date) => {
+      const dayOrders = ordersInRange(orders, day, day);
+      const revenue = Math.round(dayOrders.reduce((s, o) => s + o.total, 0) * 100) / 100;
+      return { revenue, count: dayOrders.length, ticket: dayOrders.length > 0 ? Math.round((revenue / dayOrders.length) * 100) / 100 : 0 };
+    };
+    const current = summarize(selectedDay);
+    const prevDay = new Date(selectedDay);
+    prevDay.setDate(prevDay.getDate() - 1);
+    const previous = summarize(prevDay);
+    const cancelled = orders.filter(o => o.status === 'cancelled' && toDayKey(new Date(o.createdAt)) === dayKey).length;
+    // Receita do mês of the chosen day: the whole month for a past month,
+    // the 1st up to today for the current one.
+    const monthStart = new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1);
+    const monthEnd = new Date(selectedDay.getFullYear(), selectedDay.getMonth() + 1, 0);
+    const monthRevenue = Math.round(ordersInRange(orders, monthStart, monthEnd).reduce((s, o) => s + o.total, 0) * 100) / 100;
+    return { ...current, previous, cancelled, monthRevenue };
+  }, [orders, dayKey, todayKey]);
+
+  const dayLabel = isToday
+    ? 'Hoje'
+    : dayKey === (() => { const y = new Date(); y.setDate(y.getDate() - 1); return toDayKey(y); })()
+      ? 'Ontem'
+      : selectedDay.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const dayLongLabel = selectedDay.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  const monthLabel = selectedDay.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const compareLabel = (current: number, previous: number) => {
+    if (previous <= 0) return current > 0 ? 'Sem vendas no dia anterior' : null;
+    const pct = Math.round(((current - previous) / previous) * 1000) / 10;
+    return `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toLocaleString('pt-BR')}% vs dia anterior`;
+  };
+  const revenueCompare = compareLabel(daySummary.revenue, daySummary.previous.revenue);
 
   // Determine active chart data and total based on the selected view —
   // always real orders, demo included (see kpi above).
@@ -262,88 +318,128 @@ export default function DashboardOverview() {
         )}
       </div>
 
-      {/* KPI Cards Grid — order-1 on mobile so it takes the top slot above the chart; back to document order from md up */}
-      <div className="order-1 md:order-none grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-5 sm:mb-8">
-        {/* Monthly Revenue */}
-        <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-[#A8A29A] font-bold">Receita Mensal</span>
-            <div className="p-1 sm:p-1.5 bg-[#1F1209] text-[#FB923C] rounded-lg border border-[#4A2A10]">
-              <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
+      {/* Day summary — order-1 on mobile so it takes the top slot above the chart; back to document order from md up */}
+      <div className="order-1 md:order-none mb-5 sm:mb-8">
+        {/* Day picker */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 sm:mb-4">
+          <div className="min-w-0">
+            <span className="text-[10px] font-mono font-bold text-[#FB923C] uppercase tracking-widest">Resumo do dia</span>
+            <p className="text-sm font-display font-bold text-[#F5F0EA] first-letter:uppercase truncate">{dayLongLabel}</p>
           </div>
-          <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
-            {formatCurrency(kpi.monthlyRevenue)}
-          </h3>
-          <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#F97316] font-bold">
-            {isDemoMode ? (
-              <>
-                <ArrowUpRight className="w-3 h-3" />
-                <span>+14.3% este mês</span>
-              </>
-            ) : (
-              <span className="text-[#A8A29A]">Baseado em vendas reais</span>
-            )}
-          </div>
-        </div>
-
-        {/* Daily Revenue */}
-        <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-[#A8A29A] font-bold">Hoje</span>
-            <div className="p-1 sm:p-1.5 bg-[#1F1209] text-[#FB923C] rounded-lg border border-[#4A2A10]">
-              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
-            {formatCurrency(kpi.dailyRevenue)}
-          </h3>
-          <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#A8A29A] font-medium">
-            <Activity className="w-3 h-3 text-[#FB923C] animate-pulse" />
-            <span>Atualizado há pouco</span>
-          </div>
-        </div>
-
-        {/* Total Orders */}
-        <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-[#A8A29A] font-bold">Total de Pedidos</span>
-            <div className="p-1 sm:p-1.5 bg-[#1F1209] text-[#FB923C] rounded-lg border border-[#4A2A10]">
-              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
-            {kpi.totalOrders}
-          </h3>
-          <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#F97316] font-bold">
-            <span className="text-[#A8A29A]">
-              {chartView === 'semanal' && 'Pedidos reais (7 dias)'}
-              {chartView === 'mensal' && 'Pedidos reais (mês corrente)'}
-              {chartView === 'personalizado' && 'Pedidos reais (período selecionado)'}
-            </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => shiftDay(-1)}
+              className="p-2 rounded-lg bg-[#141210] text-slate-300 border border-[#2A211A] hover:bg-[#2A211A] hover:text-white transition-colors cursor-pointer"
+              title="Dia anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#141210] border border-[#2A211A] rounded-lg focus-within:border-[#FB923C] flex-1 sm:flex-none">
+              <CalendarDays className="w-3.5 h-3.5 text-[#FB923C] shrink-0" />
+              <input
+                type="date"
+                value={dayKey}
+                max={todayDayKey}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v) setSelectedDayKey(v >= todayDayKey ? null : v);
+                }}
+                style={{ colorScheme: 'dark' }}
+                className="bg-transparent text-xs text-white focus:outline-none cursor-pointer w-full"
+                aria-label="Escolher dia"
+              />
+            </label>
+            <button
+              onClick={() => shiftDay(1)}
+              disabled={isToday}
+              className="p-2 rounded-lg bg-[#141210] text-slate-300 border border-[#2A211A] hover:bg-[#2A211A] hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Próximo dia"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setSelectedDayKey(null)}
+              disabled={isToday}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer disabled:cursor-default bg-[#1F1209] text-[#F97316] border-[#4A2A10] hover:bg-[#2A180C] disabled:bg-gradient-to-r disabled:from-[#C2410C] disabled:to-[#F97316] disabled:text-white disabled:border-[#F97316]"
+            >
+              Hoje
+            </button>
           </div>
         </div>
 
-        {/* Ticket Average */}
-        <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-[#A8A29A] font-bold">Ticket Médio</span>
-            <div className="p-1 sm:p-1.5 bg-[#1F1209] text-[#FB923C] rounded-lg border border-[#4A2A10]">
-              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+          {/* Revenue on the selected day */}
+          <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-[#A8A29A] font-bold">Faturado · {dayLabel}</span>
+              <div className="p-1 sm:p-1.5 bg-[#1F1209] text-[#FB923C] rounded-lg border border-[#4A2A10]">
+                <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+            </div>
+            <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
+              {formatCurrency(daySummary.revenue)}
+            </h3>
+            <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] font-bold">
+              {revenueCompare ? (
+                <span className={daySummary.revenue >= daySummary.previous.revenue ? 'text-emerald-400' : 'text-red-400'}>{revenueCompare}</span>
+              ) : (
+                <span className="text-[#A8A29A] font-medium">Nenhuma venda neste dia</span>
+              )}
             </div>
           </div>
-          <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
-            {formatCurrency(kpi.ticketAverage)}
-          </h3>
-          <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#FB923C] font-bold">
-            {isDemoMode ? (
-              <>
-                <ArrowUpRight className="w-3 h-3" />
-                <span>Fidelidade ativa: 72%</span>
-              </>
-            ) : (
-              <span className="text-[#A8A29A]">Média por pedido real</span>
-            )}
+
+          {/* Orders on the selected day */}
+          <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-[#A8A29A] font-bold">Pedidos · {dayLabel}</span>
+              <div className="p-1 sm:p-1.5 bg-[#1F1209] text-[#FB923C] rounded-lg border border-[#4A2A10]">
+                <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+            </div>
+            <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
+              {daySummary.count}
+            </h3>
+            <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#A8A29A] font-medium">
+              <span>
+                {daySummary.cancelled > 0
+                  ? `${daySummary.cancelled} cancelado${daySummary.cancelled > 1 ? 's' : ''} (não conta${daySummary.cancelled > 1 ? 'm' : ''})`
+                  : `Dia anterior: ${daySummary.previous.count}`}
+              </span>
+            </div>
+          </div>
+
+          {/* Ticket médio on the selected day */}
+          <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-[#A8A29A] font-bold">Ticket Médio · {dayLabel}</span>
+              <div className="p-1 sm:p-1.5 bg-[#1F1209] text-[#FB923C] rounded-lg border border-[#4A2A10]">
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+            </div>
+            <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
+              {formatCurrency(daySummary.ticket)}
+            </h3>
+            <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#A8A29A] font-medium">
+              <span>
+                {daySummary.count > 0 ? 'Faturado ÷ pedidos do dia' : 'Sem pedidos neste dia'}
+              </span>
+            </div>
+          </div>
+
+          {/* Revenue for the month of the selected day */}
+          <div className="bg-[#141210] p-3.5 sm:p-5 rounded-xl border border-[#2A211A] shadow-sm relative overflow-hidden transition-all hover:border-[#3A2E24]">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-[#A8A29A] font-bold">Receita do Mês</span>
+              <div className="p-1 sm:p-1.5 bg-[#1F1209] text-[#FB923C] rounded-lg border border-[#4A2A10]">
+                <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+            </div>
+            <h3 className="text-base sm:text-xl font-display font-black text-[#F5F0EA] mt-2 sm:mt-3 font-mono">
+              {formatCurrency(daySummary.monthRevenue)}
+            </h3>
+            <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#A8A29A] font-medium">
+              <span className="first-letter:uppercase">{monthLabel}</span>
+            </div>
           </div>
         </div>
       </div>
