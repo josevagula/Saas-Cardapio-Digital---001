@@ -171,12 +171,14 @@ export default function OrdersManager() {
   const currentSheetDay = sheetIndex >= 0 ? sheetDays[sheetIndex] : null;
 
   const sheetStatusStyle = (status: OrderStatus): { label: string; className: string } => {
-    // Light fill of the status color, with the border and text in a darker
-    // shade of that same color.
-    if (status === 'dispatched') return { label: 'A Caminho', className: 'bg-yellow-100 text-yellow-800 border-yellow-600' };
-    if (status === 'delivered') return { label: 'Concluído', className: 'bg-emerald-100 text-emerald-800 border-emerald-600' };
-    if (status === 'cancelled') return { label: 'Cancelado', className: 'bg-red-100 text-red-800 border-red-600' };
-    return { label: 'Em Preparação', className: 'bg-orange-100 text-orange-800 border-orange-600' };
+    // Light fill of the status color, with the border and text in the same
+    // darker shade. Literal hex on purpose: index.css remaps Tailwind's
+    // emerald/blue scales to orange for the theme, which turned "Concluído"
+    // orange when it used emerald-* classes.
+    if (status === 'dispatched') return { label: 'A Caminho', className: 'bg-[#FDE047] text-[#854D0E] border-[#854D0E]' };
+    if (status === 'delivered') return { label: 'Concluído', className: 'bg-[#86EFAC] text-[#166534] border-[#166534]' };
+    if (status === 'cancelled') return { label: 'Cancelado', className: 'bg-[#FCA5A5] text-[#991B1B] border-[#991B1B]' };
+    return { label: 'Em Preparação', className: 'bg-[#FDBA74] text-[#9A3412] border-[#9A3412]' };
   };
 
   const shortDay = (dayKey: string) => {
