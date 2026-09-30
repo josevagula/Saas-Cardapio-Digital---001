@@ -24,7 +24,8 @@ import {
   Archive,
   ArchiveRestore,
   ArrowLeft,
-  CalendarDays
+  CalendarDays,
+  Table2
 } from 'lucide-react';
 
 // Local-time YYYY-MM-DD, so an order placed at 23:30 lands on that day and
@@ -50,7 +51,13 @@ const formatDayHeading = (dayKey: string) => {
 export default function OrdersManager() {
   const { orders, updateOrderStatus, deleteOrder, archiveOrders, unarchiveOrder, visualConfig, ensureOrderNumber } = useApp();
   const [activeTab, setActiveTab] = useState<OrderStatus>('preparing');
-  const [showArchived, setShowArchived] = useState(false);
+  // 'board' = status columns, 'archived' = Pedidos Arquivados,
+  // 'sheet' = Planilha (every order of a day, by arrival time).
+  const [view, setView] = useState<'board' | 'archived' | 'sheet'>('board');
+  const showArchived = view === 'archived';
+  const showSheet = view === 'sheet';
+  // null = latest day with orders, so the sheet opens on the current shift.
+  const [sheetDayKey, setSheetDayKey] = useState<string | null>(null);
   const [printFeedback, setPrintFeedback] = useState<{ id: string; message: string } | null>(null);
   // Surfaces a failed print job right here in Pedidos instead of only in
   // Configurações > Impressão, which staff had no reason to check unless
@@ -141,6 +148,38 @@ export default function OrdersManager() {
       });
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a));
   }, [ordersMatchingFilters]);
+
+  // Planilha: one page per day that actually had orders (archived ones
+  // included — it's the full log of the day), oldest page first, and rows in
+  // arrival order within each day.
+  const sheetDays = useMemo(() => {
+    const groups = new Map<string, Order[]>();
+    ordersMatchingFilters.forEach(o => {
+      const key = localDayKey(o.createdAt);
+      const list = groups.get(key);
+      if (list) list.push(o);
+      else groups.set(key, [o]);
+    });
+    groups.forEach(list => list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [ordersMatchingFilters]);
+  const sheetIndex = (() => {
+    const idx = sheetDayKey ? sheetDays.findIndex(([key]) => key === sheetDayKey) : -1;
+    return idx >= 0 ? idx : sheetDays.length - 1;
+  })();
+  const currentSheetDay = sheetIndex >= 0 ? sheetDays[sheetIndex] : null;
+
+  const sheetStatusStyle = (status: OrderStatus): { label: string; className: string } => {
+    if (status === 'dispatched') return { label: 'A Caminho', className: 'bg-yellow-400/15 text-yellow-300 border-yellow-400/50' };
+    if (status === 'delivered') return { label: 'Concluído', className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/50' };
+    if (status === 'cancelled') return { label: 'Cancelado', className: 'bg-red-500/15 text-red-300 border-red-500/50' };
+    return { label: 'Em Preparação', className: 'bg-orange-500/15 text-orange-300 border-orange-500/50' };
+  };
+
+  const shortDay = (dayKey: string) => {
+    const [, m, d] = dayKey.split('-');
+    return `${d}/${m}`;
+  };
 
   const handleArchiveCompleted = () => {
     if (completedToArchive.length === 0) return;
@@ -473,16 +512,29 @@ export default function OrdersManager() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <span className="text-[10px] font-mono font-bold text-[#FB923C] uppercase tracking-widest">Painel Operacional</span>
-          <h2 className="text-2xl font-display font-extrabold text-[#F5F0EA] tracking-tight mt-0.5">{showArchived ? 'Pedidos Arquivados' : 'Gestão de Pedidos'}</h2>
+          <h2 className="text-2xl font-display font-extrabold text-[#F5F0EA] tracking-tight mt-0.5">{showArchived ? 'Pedidos Arquivados' : showSheet ? 'Planilha de Pedidos' : 'Gestão de Pedidos'}</h2>
           <p className="text-xs text-[#A8A29A] mt-0.5">
             {showArchived
               ? 'Histórico dos pedidos concluídos que foram arquivados, separados por dia.'
-              : 'Monitore e gerencie o fluxo de entrega, atualize status dos clientes e despache pedidos.'}
+              : showSheet
+                ? 'Todos os pedidos do dia por ordem de chegada, uma página por dia.'
+                : 'Monitore e gerencie o fluxo de entrega, atualize status dos clientes e despache pedidos.'}
           </p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap md:justify-end">
-          {!showArchived && (
+          {view === 'board' && (
+            <button
+              onClick={() => { setSheetDayKey(null); setView('sheet'); }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#2A211A] bg-[#141210] text-slate-200 hover:bg-[#2A211A] hover:text-[#F5F0EA] transition-colors cursor-pointer text-xs font-bold"
+              title="Ver os pedidos em forma de planilha, por dia"
+            >
+              <Table2 className="w-3.5 h-3.5 shrink-0 text-[#FB923C]" />
+              <span>Planilha</span>
+            </button>
+          )}
+
+          {view === 'board' && (
             <button
               onClick={handleArchiveCompleted}
               disabled={completedToArchive.length === 0}
@@ -495,18 +547,18 @@ export default function OrdersManager() {
           )}
 
           <button
-            onClick={() => setShowArchived(v => !v)}
+            onClick={() => setView(view === 'board' ? 'archived' : 'board')}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border transition-colors cursor-pointer text-xs font-bold ${
-              showArchived
+              view !== 'board'
                 ? 'border-[#2A211A] bg-[#141210] text-slate-300 hover:bg-[#2A211A] hover:text-[#F5F0EA]'
                 : 'border-[#F97316] bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white shadow-md shadow-orange-950/40'
             }`}
           >
-            {showArchived ? <ArrowLeft className="w-3.5 h-3.5 shrink-0" /> : <Archive className="w-3.5 h-3.5 shrink-0" />}
-            <span>{showArchived ? 'Voltar aos Pedidos' : `Pedidos Arquivados (${archivedCount})`}</span>
+            {view !== 'board' ? <ArrowLeft className="w-3.5 h-3.5 shrink-0" /> : <Archive className="w-3.5 h-3.5 shrink-0" />}
+            <span>{view !== 'board' ? 'Voltar aos Pedidos' : `Pedidos Arquivados (${archivedCount})`}</span>
           </button>
 
-          {!showArchived && activeTab === 'cancelled' && filteredOrders.length > 0 && (
+          {view === 'board' && activeTab === 'cancelled' && filteredOrders.length > 0 && (
             <button
               onClick={() => {
                 if (window.confirm(`Excluir todos os ${filteredOrders.length} pedidos cancelados? Essa ação não pode ser desfeita.`)) {
@@ -534,7 +586,7 @@ export default function OrdersManager() {
       </div>
 
       {/* Tabs */}
-      {!showArchived && (
+      {view === 'board' && (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {tabs.map(tab => {
           const Icon = tab.icon;
@@ -576,7 +628,94 @@ export default function OrdersManager() {
       )}
 
       {/* Content Grid */}
-      {showArchived ? (
+      {showSheet ? (
+        !currentSheetDay ? (
+          <div className="bg-[#141210] p-12 text-center rounded-2xl border border-[#2A211A] shadow-sm">
+            <Table2 className="w-12 h-12 text-[#A8A29A]/50 mx-auto mb-4" />
+            <h4 className="text-lg font-bold text-[#F5F0EA]">Nenhum pedido para mostrar</h4>
+            <p className="text-sm text-[#A8A29A] mt-1">
+              {ordersMatchingFilters.length !== orders.length
+                ? 'Nenhum pedido corresponde aos filtros selecionados.'
+                : 'Os pedidos aparecem aqui assim que chegarem.'}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-[#141210] rounded-2xl border border-[#2A211A] shadow-sm overflow-hidden">
+            {/* Day pages */}
+            <div className="flex items-center gap-2 p-3 border-b border-[#2A211A] bg-[#181512]">
+              <button
+                onClick={() => setSheetDayKey(sheetDays[sheetIndex - 1][0])}
+                disabled={sheetIndex <= 0}
+                className="p-2 rounded-lg bg-[#141210] text-slate-300 border border-[#2A211A] hover:bg-[#2A211A] hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                title="Dia anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0">
+                {sheetDays.map(([key], idx) => (
+                  <button
+                    key={key}
+                    onClick={() => setSheetDayKey(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer shrink-0 ${
+                      idx === sheetIndex
+                        ? 'bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white border-[#F97316]'
+                        : 'bg-[#141210] text-[#A8A29A] border-[#2A211A] hover:text-white hover:border-[#3A2E24]'
+                    }`}
+                  >
+                    {shortDay(key)}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setSheetDayKey(sheetDays[sheetIndex + 1][0])}
+                disabled={sheetIndex >= sheetDays.length - 1}
+                className="p-2 rounded-lg bg-[#141210] text-slate-300 border border-[#2A211A] hover:bg-[#2A211A] hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                title="Próximo dia"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-[#2A211A]">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-[#FB923C]" />
+                <h3 className="text-sm font-display font-bold text-[#F5F0EA]">{formatDayHeading(currentSheetDay[0])}</h3>
+              </div>
+              <span className="text-xs font-mono text-[#A8A29A]">
+                {currentSheetDay[1].length} {currentSheetDay[1].length === 1 ? 'pedido' : 'pedidos'}
+              </span>
+            </div>
+
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-[#0C0A08] text-[10px] font-mono uppercase tracking-wider text-[#A8A29A]">
+                  <th className="text-left font-bold px-4 py-2.5 w-20 sm:w-28">Horário</th>
+                  <th className="text-left font-bold px-4 py-2.5">Nome do Cliente</th>
+                  <th className="text-left font-bold px-4 py-2.5 w-32 sm:w-44">Status de Entrega</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentSheetDay[1].map((order, idx) => {
+                  const status = sheetStatusStyle(order.status);
+                  return (
+                    <tr key={order.id} className={`border-t border-[#2A211A] ${idx % 2 === 1 ? 'bg-[#181512]' : ''}`}>
+                      <td className="px-4 py-2.5 font-mono text-slate-300 whitespace-nowrap">
+                        {new Date(order.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-4 py-2.5 text-[#F5F0EA] font-medium break-words">{order.customerName}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-block px-2.5 py-1 rounded-md border text-[11px] font-bold whitespace-nowrap ${status.className}`}>
+                          {status.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : showArchived ? (
         archivedByDay.length === 0 ? (
           <div className="bg-[#141210] p-12 text-center rounded-2xl border border-[#2A211A] shadow-sm">
             <Archive className="w-12 h-12 text-[#A8A29A]/50 mx-auto mb-4" />
