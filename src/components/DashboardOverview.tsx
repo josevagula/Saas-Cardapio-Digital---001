@@ -109,7 +109,7 @@ export default function DashboardOverview() {
       const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
       return ordersInRange(orders, periodStart, today);
     }
-    return ordersInRange(orders, new Date(startDate), new Date(endDate));
+    return ordersInRange(orders, fromDayKey(startDate), fromDayKey(endDate));
   };
   const periodOrders = getPeriodOrders();
 
@@ -182,7 +182,10 @@ export default function DashboardOverview() {
     displayedTotal = kpi.monthlyRevenue;
   } else {
     // Custom date range: real orders placed within the selected window.
-    const days = revenueHistoryByDay(orders, new Date(startDate), new Date(endDate));
+    // fromDayKey, not new Date(key): a bare YYYY-MM-DD parses as UTC
+    // midnight, which in Brazil is 21:00 of the previous day — that shifted
+    // the range start back by 3 hours and dropped the last day entirely.
+    const days = revenueHistoryByDay(orders, fromDayKey(startDate), fromDayKey(endDate));
     displayedChartData = days;
     displayedTotal = Math.round(days.reduce((s, d) => s + d.amount, 0) * 100) / 100;
   }

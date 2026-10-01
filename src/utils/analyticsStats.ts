@@ -3,15 +3,14 @@ import { Order } from '../types';
 // Read-only calculation layer for the Analytics Avançado module — every
 // function here only ever derives numbers from the account's own `orders`
 // (never writes to it), the same "never trust a separately-persisted
-// snapshot" rule as computeRealSalesSummary in salesStats.ts. Only orders
-// that reached "Concluídos" (status 'delivered') count here — pending,
-// preparing, dispatched and cancelled orders are all excluded, since an
-// order that hasn't actually been delivered isn't a real sale yet.
+// snapshot" rule as computeRealSalesSummary in salesStats.ts. Every order
+// counts except cancelled ones — the same rule as salesStats.ts, so the
+// Analytics Avançado totals always match the Dashboard's for the same period.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function isActiveOrder(o: Order): boolean {
-  return o.status === 'delivered';
+  return o.status !== 'cancelled';
 }
 
 function startOfDay(d: Date): Date {
@@ -417,7 +416,9 @@ export interface DailyHistoryPoint {
 }
 
 export function historyForRange(orders: Order[], range: DateRange): DailyHistoryPoint[] {
-  const dayCount = Math.min(400, Math.max(1, Math.round((range.end.getTime() - range.start.getTime()) / DAY_MS) + 1));
+  // Measured to the START of the end day — range.end is 23:59:59, and
+  // rounding from there counted one extra day past the end of the range.
+  const dayCount = Math.min(400, Math.max(1, Math.round((startOfDay(range.end).getTime() - range.start.getTime()) / DAY_MS) + 1));
   const days: DailyHistoryPoint[] = [];
   for (let i = 0; i < dayCount; i++) {
     const day = new Date(range.start);
