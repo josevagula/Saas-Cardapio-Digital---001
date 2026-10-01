@@ -73,12 +73,31 @@ export type Align = 'left' | 'center' | 'right';
 // firmware that ignores ESC 7 entirely just prints at its normal darkness.
 const LOW_POWER_HEATING = { dots: 3, time: 60, interval: 8 };
 
+// Used only to estimate how long the printer takes to PHYSICALLY print a
+// segment (see estimatedPrintMs). BLE delivers a segment in a fraction of a
+// second, but the head then keeps printing it for several seconds out of the
+// printer's own buffer — so a pause measured from "write finished" lands
+// while the head is still running at full draw and gives it no rest at all.
+// 203dpi heads are 8 dots/mm; the default ESC/POS line pitch is ~1/6" (~34
+// dots). Speeds are deliberately on the slow side of what cheap 58/80mm units
+// manage (and slower again with low-power heating, which stretches each dot's
+// heating cycle) — overestimating only adds a little idle time between
+// segments, while underestimating would bring back the overlap.
+const DOTS_PER_MM = 8;
+const LINE_PITCH_DOTS = 34;
+const PRINT_SPEED_MM_PER_S = 40;
+const LOW_POWER_PRINT_SPEED_MM_PER_S = 25;
+
 export class EscPosBuilder {
   private bytes: number[] = [];
   private mode: AccentMode;
+  private lowPower: boolean;
+  private doubleSizeOn = false;
+  private paperDots = 0;
 
   constructor(mode: AccentMode = 'ascii', lowPower: boolean = false) {
     this.mode = mode;
+    this.lowPower = lowPower;
     this.bytes.push(0x1B, 0x40); // ESC @ — initialize printer (also resets heating params, so this must be reapplied on every segment/builder, not just the first)
     if (mode === 'cp860') {
       this.bytes.push(0x1B, 0x74, CP860_CODEPAGE_SELECTOR); // ESC t 3
@@ -101,6 +120,7 @@ export class EscPosBuilder {
 
   doubleSize(on: boolean): this {
     this.bytes.push(0x1D, 0x21, on ? 0x11 : 0x00); // GS ! n
+    this.doubleSizeOn = on;
     return this;
   }
 
@@ -117,6 +137,7 @@ export class EscPosBuilder {
 
   newline(): this {
     this.bytes.push(0x0A);
+    this.paperDots += this.doubleSizeOn ? LINE_PITCH_DOTS * 2 : LINE_PITCH_DOTS;
     return this;
   }
 
@@ -128,6 +149,7 @@ export class EscPosBuilder {
 
   feed(lines = 1): this {
     this.bytes.push(0x1B, 0x64, lines); // ESC d n
+    this.paperDots += lines * LINE_PITCH_DOTS;
     return this;
   }
 
@@ -142,6 +164,7 @@ export class EscPosBuilder {
     const yH = (heightPx >> 8) & 0xFF;
     this.bytes.push(0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH);
     for (let i = 0; i < data.length; i++) this.bytes.push(data[i]);
+    this.paperDots += heightPx;
     return this;
   }
 
@@ -152,5 +175,12 @@ export class EscPosBuilder {
 
   toBytes(): Uint8Array {
     return new Uint8Array(this.bytes);
+  }
+
+  // Rough time the head needs to physically print everything in this
+  // builder — see the constants above for why this matters.
+  estimatedPrintMs(): number {
+    const speed = this.lowPower ? LOW_POWER_PRINT_SPEED_MM_PER_S : PRINT_SPEED_MM_PER_S;
+    return Math.round((this.paperDots / DOTS_PER_MM / speed) * 1000);
   }
 }

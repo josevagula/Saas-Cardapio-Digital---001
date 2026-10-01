@@ -18,8 +18,9 @@ import {
   reconnectKnownBluetoothPrinter
 } from './bluetoothTransport';
 import { buildOrderReceipt, buildTestReceipt, colsForPaperWidth } from './receiptTemplates';
-import { AccentMode } from './escpos';
+import { AccentMode, EscPosBuilder } from './escpos';
 import { buildLogoRaster, LogoRaster } from './logoRaster';
+import { printLog } from './printLog';
 
 // Cached per logoUrl+paperWidth so re-printing (especially auto-print, once
 // per incoming order) doesn't re-download/re-convert the same logo every
@@ -146,10 +147,21 @@ function saveLog(currentJobs: PrintJob[]) {
   Array.from(jobBytes.keys()).forEach(id => { if (!keepIds.has(id)) jobBytes.delete(id); });
 }
 
-// Each job is one or more byte segments — normally just one, but the logo
-// (when printed) is its own leading segment so it can be sent as a separate
-// transport write, with a cooldown pause after it (see runJob below).
-const jobBytes = new Map<string, Uint8Array[]>();
+// Each job is one or more byte segments (logo, header, item chunks, footer —
+// see receiptTemplates.ts), each sent as a separate transport write with a
+// cooldown pause after it (see runJob below). estimatedPrintMs is how long
+// the head needs to physically print that segment, so the pause can start
+// when the printing actually ends rather than when the bytes were delivered.
+interface JobSegment {
+  bytes: Uint8Array;
+  estimatedPrintMs: number;
+}
+
+function toJobSegments(builders: EscPosBuilder[]): JobSegment[] {
+  return builders.map(b => ({ bytes: b.toBytes(), estimatedPrintMs: b.estimatedPrintMs() }));
+}
+
+const jobBytes = new Map<string, JobSegment[]>();
 let jobs: PrintJob[] = loadLog();
 const queueListeners = new Set<(jobs: PrintJob[]) => void>();
 
@@ -346,11 +358,28 @@ async function drainPrinterQueue(printerId: string) {
   }
 }
 
-// Pause between segments (currently: after the logo, before the rest of the
-// receipt) so a printer with a weak power supply gets a real recovery
-// window after the single most current-hungry thing it's asked to print —
-// see the comment on the logo-segment split in receiptTemplates.ts.
+// Pause between segments so a printer with a weak power supply gets a real
+// recovery window between bursts of heating — see the segment split in
+// receiptTemplates.ts.
+//
+// The pause only starts once the segment has (by estimate) finished
+// PHYSICALLY printing. Previously it was measured from the end of the BLE
+// write, which completes in a fraction of a second while the head goes on
+// printing for several more seconds out of the printer's own buffer: the
+// next segment was already queued up behind it before the head ever
+// stopped, so the "cooldowns" never produced an actual idle moment and the
+// whole receipt printed as one continuous, full-draw burst — the exact load
+// pattern that browns out these units mid-receipt.
 const INTER_SEGMENT_COOLDOWN_MS = 700;
+
+// Same idea between back-to-back jobs (e.g. several orders arriving at
+// once): without it the next receipt's bytes landed while the previous one
+// was still printing, chaining them into one long uninterrupted burst.
+const INTER_JOB_COOLDOWN_MS = 1500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // How long a job is willing to wait, on top of its own retry backoff, for a
 // printer that's mid-reconnect (heartbeat drop, watchdog sweep, etc.) to
@@ -410,11 +439,19 @@ function waitForConnection(printerId: string, timeoutMs: number): Promise<boolea
   });
 }
 
+function describeJob(job: PrintJob): string {
+  return `job ${job.id.slice(0, 8)} (${job.kind}${job.orderCode ? ` ${job.orderCode}` : ''}, impressora "${job.printerName}", tentativa ${job.attempts + 1}/${MAX_ATTEMPTS})`;
+}
+
 async function runJob(job: PrintJob) {
   upsertJob({ ...job, status: 'imprimindo', updatedAt: new Date().toISOString() });
+  const label = describeJob(job);
+  printLog('info', `Início: ${label}`);
   let transport = transports.get(job.printerId);
   if (!transport || !transport.isConnected()) {
-    await waitForConnection(job.printerId, RECONNECT_WAIT_MS);
+    printLog('warn', `Impressora não conectada, aguardando reconexão (até ${RECONNECT_WAIT_MS}ms): ${label}`);
+    const connected = await waitForConnection(job.printerId, RECONNECT_WAIT_MS);
+    printLog(connected ? 'info' : 'warn', connected ? `Reconectada: ${label}` : `Reconexão não ocorreu a tempo: ${label}`);
     transport = transports.get(job.printerId);
   }
   const segments = jobBytes.get(job.id);
@@ -422,30 +459,42 @@ async function runJob(job: PrintJob) {
     await failJob(job, !segments ? 'Conteúdo da impressão não está mais disponível — use Reimprimir.' : 'Impressora desconectada.');
     return;
   }
+  const startedAt = Date.now();
+  let i = 0;
   try {
-    for (let i = 0; i < segments.length; i++) {
-      await transport.write(segments[i]);
-      if (i + 1 < segments.length) await new Promise(resolve => setTimeout(resolve, INTER_SEGMENT_COOLDOWN_MS));
+    for (; i < segments.length; i++) {
+      const seg = segments[i];
+      printLog('info', `Enviando bloco ${i + 1}/${segments.length} (${seg.bytes.length} bytes, impressão estimada ${seg.estimatedPrintMs}ms): ${label}`);
+      await transport.write(seg.bytes);
+      if (i + 1 < segments.length) await sleep(seg.estimatedPrintMs + INTER_SEGMENT_COOLDOWN_MS);
     }
     jobBytes.delete(job.id);
     upsertJob({ ...job, status: 'impresso', updatedAt: new Date().toISOString(), errorMessage: undefined });
+    printLog('info', `Concluído em ${Date.now() - startedAt}ms: ${label}`);
   } catch (e: any) {
     // A write failing here means the printer accepted and physically printed
     // everything up to this point and then stopped mid-job — a real GATT
     // write exception this far in is a mid-print drop, not a pre-flight
     // connectivity gap (that's already handled above via waitForConnection).
+    printLog('error', `Falha no bloco ${i + 1}/${segments.length}, ${Date.now() - startedAt}ms após o início (impressora provavelmente desligou/desconectou): ${label}`, e?.message || String(e));
     await failJob(job, e?.message || 'Falha ao enviar dados para a impressora.');
+    return;
   }
+  // Let the last segment finish printing, plus a rest, before
+  // drainPrinterQueue moves on to the next job for this printer.
+  await sleep(segments[segments.length - 1].estimatedPrintMs + INTER_JOB_COOLDOWN_MS);
 }
 
 async function failJob(job: PrintJob, message: string) {
   const attempts = job.attempts + 1;
   if (attempts >= MAX_ATTEMPTS) {
+    printLog('error', `Desistindo após ${attempts} tentativas: ${describeJob(job)}`, message);
     // Bytes are deliberately kept (not deleted) here — "Tentar novamente" in
     // the queue view re-sends the same payload without rebuilding it.
     upsertJob({ ...job, status: 'erro', attempts, updatedAt: new Date().toISOString(), errorMessage: message });
     return;
   }
+  printLog('warn', `Nova tentativa em ${1500 * attempts}ms: ${describeJob(job)}`, message);
   upsertJob({ ...job, status: 'pendente', attempts, updatedAt: new Date().toISOString(), errorMessage: message });
   // drainPrinterQueue's loop re-picks this same job (still 'pendente') the
   // instant runJob returns — without actually waiting out this backoff
@@ -459,7 +508,7 @@ async function failJob(job: PrintJob, message: string) {
   await new Promise(resolve => setTimeout(resolve, 1500 * attempts));
 }
 
-function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'updatedAt'>, bytes: Uint8Array[]) {
+function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'updatedAt'>, segments: JobSegment[]) {
   const full: PrintJob = {
     ...job,
     status: 'pendente',
@@ -467,7 +516,7 @@ function enqueue(job: Omit<PrintJob, 'status' | 'attempts' | 'createdAt' | 'upda
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  jobBytes.set(full.id, bytes);
+  jobBytes.set(full.id, segments);
   upsertJob(full);
   drainPrinterQueue(job.printerId);
 }
@@ -487,6 +536,7 @@ function recordBuildFailure(
   message: string
 ) {
   const now = new Date().toISOString();
+  printLog('error', `Falha ao montar o recibo (nada foi enviado à impressora "${job.printerName}")`, message);
   upsertJob({ ...job, status: 'erro', attempts: MAX_ATTEMPTS, createdAt: now, updatedAt: now, errorMessage: message });
 }
 
@@ -511,7 +561,7 @@ export async function printTest(
   try {
     const logo = printLogoEnabled ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
     const segments = buildTestReceipt(establishmentName, accentMode, colsForPaperWidth(paperWidth), logo, lowPowerEnabled);
-    enqueue(jobStub, segments.map(s => s.toBytes()));
+    enqueue(jobStub, toJobSegments(segments));
   } catch (e: any) {
     recordBuildFailure(jobStub, e?.message || 'Falha ao preparar a impressão de teste.');
   }
@@ -534,7 +584,7 @@ export async function printOrderOnPrinter(
     // every establishment that had already configured printing.
     const logo = config.printLogo !== false ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
     const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo, !!config.lowPowerMode);
-    enqueue(jobStub, segments.map(s => s.toBytes()));
+    enqueue(jobStub, toJobSegments(segments));
   } catch (e: any) {
     recordBuildFailure(jobStub, e?.message || 'Falha ao preparar o recibo para impressão.');
   }

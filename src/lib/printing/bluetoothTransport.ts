@@ -14,6 +14,8 @@
 // PrinterProfile gets its own BluetoothPrinterTransport instance, and
 // nothing here assumes a single global connection.
 
+import { printLog } from './printLog';
+
 export type PrinterConnectionStatus = 'conectado' | 'desconectado' | 'reconectando';
 
 export interface PrinterTransport {
@@ -49,6 +51,11 @@ export function isWebBluetoothSupported(): boolean {
 const WRITE_CHUNK_SIZE = 180;
 const WRITE_CHUNK_DELAY_MS = 20;
 const CONNECT_TIMEOUT_MS = 12000;
+// Checked every HEARTBEAT_CHECK_MS, sent only after HEARTBEAT_IDLE_MS of no
+// writes at all — keeps the longest silent gap at ~25s, same as the old
+// fixed 25s heartbeat.
+const HEARTBEAT_CHECK_MS = 5000;
+const HEARTBEAT_IDLE_MS = 20000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -82,6 +89,8 @@ export class BluetoothPrinterTransport implements PrinterTransport {
   private manuallyDisconnected = false;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private pendingBackoffResolve: (() => void) | null = null;
+  private lastWriteAt = 0;
+  private connectedAt = 0;
 
   constructor(device: BluetoothDevice) {
     this.device = device;
@@ -115,6 +124,9 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     }
     this.characteristic = found.characteristic;
     this.writeWithoutResponse = found.withoutResponse;
+    printLog('info', `Conectado a "${this.deviceName}" (escrita ${found.withoutResponse ? 'sem' : 'com'} resposta)${this.reconnectAttempts ? ` após ${this.reconnectAttempts} tentativa(s) de reconexão` : ''}`);
+    this.connectedAt = Date.now();
+    this.lastWriteAt = this.connectedAt;
     this.reconnectAttempts = 0;
     this.setStatus('conectado');
     this.startHeartbeat();
@@ -135,15 +147,22 @@ export class BluetoothPrinterTransport implements PrinterTransport {
   // write (ESC @ — the standard ESC/POS "initialize printer" command, safe
   // to send at any time: no visible output, no paper feed) keeps the link
   // active so it never gets the chance to go idle.
+  //
+  // Skipped whenever anything else was written recently: a link that's
+  // actively carrying data doesn't need keeping alive, and an ESC @ landing
+  // between a receipt's segments (or while the printer is still printing the
+  // previous one out of its buffer) resets the printer mid-job — including
+  // the low-power ESC 7 heating parameters — for no benefit.
   private startHeartbeat() {
     this.stopHeartbeat();
     this.heartbeatTimer = setInterval(() => {
+      if (Date.now() - this.lastWriteAt < HEARTBEAT_IDLE_MS) return;
       this.write(new Uint8Array([0x1B, 0x40])).catch(() => {
         // A failed heartbeat write means the link is already gone — the
         // browser's own 'gattserverdisconnected' event (handled below) is
         // what actually drives reconnection, so nothing else to do here.
       });
-    }, 25000);
+    }, HEARTBEAT_CHECK_MS);
   }
 
   private stopHeartbeat() {
@@ -154,6 +173,14 @@ export class BluetoothPrinterTransport implements PrinterTransport {
   }
 
   private handleGattDisconnected = () => {
+    const sinceWrite = this.lastWriteAt ? Date.now() - this.lastWriteAt : -1;
+    printLog('warn', `"${this.deviceName}" desconectou`, {
+      manual: this.manuallyDisconnected,
+      conectadoHaMs: this.connectedAt ? Date.now() - this.connectedAt : null,
+      // A few seconds or less usually means it dropped while printing
+      // (power-off mid-receipt) rather than an idle sleep timeout.
+      msDesdeUltimaEscrita: sinceWrite >= 0 ? sinceWrite : null
+    });
     this.stopHeartbeat();
     this.characteristic = null;
     if (this.manuallyDisconnected) {
@@ -185,7 +212,8 @@ export class BluetoothPrinterTransport implements PrinterTransport {
         this.connect(),
         sleep(CONNECT_TIMEOUT_MS).then(() => { throw new Error('Tempo esgotado ao tentar reconectar.'); })
       ]);
-    } catch {
+    } catch (e: any) {
+      printLog('warn', `Reconexão ${this.reconnectAttempts} com "${this.deviceName}" falhou`, e?.message || String(e));
       if (!this.manuallyDisconnected) this.attemptReconnect();
     }
   }
@@ -239,13 +267,20 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     if (!this.characteristic) throw new Error('Impressora não conectada.');
     for (let offset = 0; offset < data.length; offset += WRITE_CHUNK_SIZE) {
       const chunk = data.slice(offset, offset + WRITE_CHUNK_SIZE);
+      // Re-checked per chunk: a disconnect mid-write nulls it, and failing
+      // here gives a clear error instead of a TypeError on a stale reference.
+      const characteristic = this.characteristic;
+      if (!characteristic) throw new Error(`Impressora desconectou durante o envio (byte ${offset} de ${data.length}).`);
+      this.lastWriteAt = Date.now();
+      printLog('debug', `chunk ${offset}-${offset + chunk.length} de ${data.length} bytes`);
       if (this.writeWithoutResponse) {
-        await this.characteristic.writeValueWithoutResponse(chunk);
+        await characteristic.writeValueWithoutResponse(chunk);
       } else {
-        await this.characteristic.writeValue(chunk);
+        await characteristic.writeValue(chunk);
       }
       if (offset + WRITE_CHUNK_SIZE < data.length) await sleep(WRITE_CHUNK_DELAY_MS);
     }
+    this.lastWriteAt = Date.now();
   }
 }
 
