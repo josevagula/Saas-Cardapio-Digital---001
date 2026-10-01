@@ -271,15 +271,12 @@ export default function PublicMenuPage() {
     return 'Outros';
   };
 
-  // Falls back to the text as typed when it can't be read as minutes/hours.
+  // Shows only the configured duration (e.g. "45-60 min"), not the clock-time window.
   const getDeliveryEstimateLine = (placedAt: Date, isPickup: boolean): string | null => {
     const estimate = computeDeliveryEstimate(placedAt, visualConfig.deliveryTime);
     if (!estimate) return null;
     const label = isPickup ? 'Previsão para retirada' : 'Previsão de entrega';
-    if (!estimate.from || !estimate.to) return `${label}: ${estimate.raw}`;
-    return estimate.from === estimate.to
-      ? `${label}: por volta das ${estimate.from} (${estimate.raw})`
-      : `${label}: entre ${estimate.from} e ${estimate.to} (${estimate.raw})`;
+    return `${label}: ${estimate.raw}`;
   };
 
   const sendOrderToWhatsApp = (order: any) => {
