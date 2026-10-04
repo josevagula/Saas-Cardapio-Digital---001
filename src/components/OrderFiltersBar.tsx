@@ -20,6 +20,9 @@ const DATE_OPTIONS: { id: OrderDatePreset; label: string }[] = [
 ];
 
 const FIELD_CLASS = 'w-full pl-8 pr-2.5 py-2 text-xs bg-[#0C0A08] border border-[#2A211A] rounded-lg focus:outline-none focus:border-[#FB923C] text-white';
+const localDateString = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 const DATE_INPUT_CLASS = 'px-2 py-1 text-xs bg-[#0C0A08] border border-[#2A211A] rounded-md focus:outline-none focus:border-[#FB923C] text-white cursor-pointer';
 
 export default function OrderFiltersBar({ value, onChange, productOptions, customerOptions, showDate = true, resultCount }: Props) {
@@ -54,7 +57,15 @@ export default function OrderFiltersBar({ value, onChange, productOptions, custo
             <CalendarDays className="w-3.5 h-3.5 text-[#A8A29A] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={value.datePreset}
-              onChange={(e) => set({ datePreset: e.target.value as OrderDatePreset })}
+              onChange={(e) => {
+                const datePreset = e.target.value as OrderDatePreset;
+                if (datePreset === 'personalizado') {
+                  const today = localDateString(new Date());
+                  set({ datePreset, customStart: today, customEnd: today });
+                } else {
+                  set({ datePreset });
+                }
+              }}
               style={{ colorScheme: 'dark' }}
               className={`${FIELD_CLASS} cursor-pointer`}
             >
@@ -92,15 +103,18 @@ export default function OrderFiltersBar({ value, onChange, productOptions, custo
         </div>
       </div>
 
+      {/* Personalizado picks a single day: start and end are kept equal. */}
       {showDate && value.datePreset === 'personalizado' && (
         <div className="flex flex-wrap items-center gap-3 mt-2.5 p-2.5 bg-[#181512] rounded-lg border border-[#2A211A]">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-[#A8A29A] uppercase font-mono font-bold">Início:</span>
-            <input type="date" value={value.customStart} onChange={(e) => set({ customStart: e.target.value })} style={{ colorScheme: 'dark' }} className={DATE_INPUT_CLASS} />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-[#A8A29A] uppercase font-mono font-bold">Fim:</span>
-            <input type="date" value={value.customEnd} onChange={(e) => set({ customEnd: e.target.value })} style={{ colorScheme: 'dark' }} className={DATE_INPUT_CLASS} />
+            <span className="text-[10px] text-[#A8A29A] uppercase font-mono font-bold">Data:</span>
+            <input
+              type="date"
+              value={value.customStart}
+              onChange={(e) => e.target.value && set({ customStart: e.target.value, customEnd: e.target.value })}
+              style={{ colorScheme: 'dark' }}
+              className={DATE_INPUT_CLASS}
+            />
           </div>
         </div>
       )}
