@@ -125,9 +125,9 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="relative h-screen w-screen overflow-hidden">
+      <div className="relative h-dvh w-full overflow-hidden">
         <div
-          className={`flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-[#0A0F0D] text-slate-100 font-sans transition-all duration-300 ${planCancelled ? 'blur-md pointer-events-none select-none' : ''}`}
+          className={`flex flex-col md:flex-row h-full w-full overflow-hidden bg-[#0A0F0D] text-slate-100 font-sans transition-all duration-300 ${planCancelled ? 'blur-md pointer-events-none select-none' : ''}`}
           id="sushi-admin-workspace"
           aria-hidden={planCancelled}
         >
@@ -135,7 +135,7 @@ export default function App() {
           <Sidebar />
 
           {/* Mobile Top Header (only on mobile) */}
-          <div className="md:hidden bg-[#141210] border-b border-[#2A211A] p-3.5 flex items-center gap-3 shrink-0 z-30 shadow-md">
+          <div className="md:hidden sticky top-0 bg-[#141210] border-b border-[#2A211A] p-3.5 flex items-center gap-3 shrink-0 z-30 shadow-md">
             <button
               onClick={() => setMobileSidebarOpen(true)}
               className="p-2 rounded-xl bg-[#181512] border border-[#2A211A] text-[#F5F0EA] hover:text-[#FB923C] cursor-pointer transition-colors"
@@ -169,7 +169,7 @@ export default function App() {
           )}
 
           {/* Main Panel views */}
-          <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
+          <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto overscroll-contain relative">
             <Suspense fallback={<LoadingScreen />}>
               {currentView === 'dashboard' && <DashboardOverview />}
               {currentView === 'menu_manager' && <DigitalMenuManager />}
