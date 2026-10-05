@@ -12,8 +12,10 @@ import {
   computeClientesInativos,
   computeLtv,
   computeVipRanking,
-  historyForRange
+  historyForRange,
+  customerKey
 } from '../../utils/analyticsStats';
+import { localISO } from '../financial/financeShared';
 import { CARD_CLASS, VIP_TIER_BADGE_CLASS, formatChangePercent, changeColorClass } from './analyticsShared';
 import { ClientesAtivosTable, ClientesInativosTable, VipRankingTable } from './AnalyticsTables';
 import {
@@ -32,13 +34,18 @@ export default function AdvancedAnalytics() {
   const [filterPreset, setFilterPreset] = useState<FilterPreset>('30d');
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 29);
-    return d.toISOString().slice(0, 10);
+    return localISO(d);
   });
-  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().slice(0, 10));
+  const [customEnd, setCustomEnd] = useState(() => localISO(new Date()));
 
+  // Keyed like the customer aggregates (phone digits), summing the points of
+  // the same number written in different formats.
   const pointsByPhone = useMemo(() => {
     const map: Record<string, number> = {};
-    Object.entries(loyaltyByPhone).forEach(([phone, stats]) => { map[phone] = stats.points; });
+    Object.entries(loyaltyByPhone).forEach(([phone, stats]) => {
+      const key = customerKey(phone);
+      map[key] = (map[key] ?? 0) + stats.points;
+    });
     return map;
   }, [loyaltyByPhone]);
 

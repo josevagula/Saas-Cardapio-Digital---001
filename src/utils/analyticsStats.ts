@@ -13,6 +13,14 @@ export function isActiveOrder(o: Order): boolean {
   return o.status !== 'cancelled';
 }
 
+// One customer = one phone NUMBER: "(11) 99999-0000" and "11999990000" are
+// the same person, so customers are grouped by the phone's digits (falling
+// back to the name when there is no phone).
+export function customerKey(phone: string, name = ''): string {
+  const digits = (phone || '').replace(/\D/g, '');
+  return digits || `nome:${name.trim().toLowerCase()}`;
+}
+
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -97,13 +105,6 @@ function previousEquivalentRange(range: DateRange): DateRange {
   return { start: prevStart, end: prevEnd };
 }
 
-function lastNDaysRange(n: number, ref = new Date()): DateRange {
-  const today = startOfDay(ref);
-  const start = new Date(today);
-  start.setDate(start.getDate() - (n - 1));
-  return { start, end: endOfDay(ref) };
-}
-
 function ordersBetween(orders: Order[], range: DateRange): Order[] {
   return orders.filter(o => {
     if (!isActiveOrder(o)) return false;
@@ -148,7 +149,10 @@ export function computeTicketMedioForRange(orders: Order[], range: DateRange): P
 function recompraRate(orders: Order[], range: DateRange): number {
   const inRange = ordersBetween(orders, range);
   const countByPhone: Record<string, number> = {};
-  inRange.forEach(o => { countByPhone[o.customerPhone] = (countByPhone[o.customerPhone] || 0) + 1; });
+  inRange.forEach(o => {
+    const key = customerKey(o.customerPhone, o.customerName);
+    countByPhone[key] = (countByPhone[key] || 0) + 1;
+  });
   const totalClientes = Object.keys(countByPhone).length;
   if (totalClientes === 0) return 0;
   const recompradores = Object.values(countByPhone).filter(c => c > 1).length;
@@ -169,13 +173,17 @@ export function computeRecompraForRange(orders: Order[], range: DateRange): Peri
   };
 }
 
+// One bar per calendar month (the current one up to today). A rolling
+// "30 days ending on today's day-of-month" window overflowed on the 29th-31st
+// (e.g. 31/out → "31/set" = 01/out) and repeated a month's label.
 export function recompraHistory(orders: Order[], months = 6): { date: string; rate: number }[] {
   const now = new Date();
   const result: { date: string; rate: number }[] = [];
   for (let i = months - 1; i >= 0; i--) {
-    const ref = new Date(now.getFullYear(), now.getMonth() - i, now.getDate());
-    const rate = recompraRate(orders, lastNDaysRange(30, ref));
-    result.push({ date: ref.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), rate: Math.round(rate * 10) / 10 });
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = i === 0 ? endOfDay(now) : new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+    const rate = recompraRate(orders, { start, end });
+    result.push({ date: start.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), rate: Math.round(rate * 10) / 10 });
   }
   return result;
 }
@@ -195,9 +203,10 @@ export function aggregateCustomers(orders: Order[]): CustomerAggregate[] {
   const map = new Map<string, CustomerAggregate>();
   orders.filter(isActiveOrder).forEach(o => {
     const created = new Date(o.createdAt);
-    const existing = map.get(o.customerPhone);
+    const key = customerKey(o.customerPhone, o.customerName);
+    const existing = map.get(key);
     if (!existing) {
-      map.set(o.customerPhone, { phone: o.customerPhone, name: o.customerName, orderCount: 1, totalSpent: o.total, firstOrderAt: created, lastOrderAt: created });
+      map.set(key, { phone: o.customerPhone, name: o.customerName, orderCount: 1, totalSpent: o.total, firstOrderAt: created, lastOrderAt: created });
       return;
     }
     existing.orderCount += 1;
@@ -206,6 +215,7 @@ export function aggregateCustomers(orders: Order[]): CustomerAggregate[] {
     if (created > existing.lastOrderAt) {
       existing.lastOrderAt = created;
       existing.name = o.customerName;
+      existing.phone = o.customerPhone;
     }
   });
   return Array.from(map.values());
@@ -376,7 +386,7 @@ export function computeVipRanking(orders: Order[], range: DateRange, pointsByPho
   const withMetrics = all.map(c => ({
     ...c,
     frequency: c.orderCount / monthsSpan(c),
-    points: pointsByPhone[c.phone] ?? 0
+    points: pointsByPhone[customerKey(c.phone, c.name)] ?? 0
   }));
 
   const gastoRange = minMax(withMetrics.map(c => c.totalSpent));

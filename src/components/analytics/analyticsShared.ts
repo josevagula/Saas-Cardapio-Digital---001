@@ -28,5 +28,6 @@ export function changeColorClass(value: number | null, invert = false): string {
   if (value === null) return 'text-[#A8A29A]';
   const positive = invert ? value < 0 : value > 0;
   if (value === 0) return 'text-[#A8A29A]';
-  return positive ? 'text-emerald-400' : 'text-red-400';
+  // Literal green: index.css remaps emerald-* to orange.
+  return positive ? 'text-[#4ADE80]' : 'text-red-400';
 }
