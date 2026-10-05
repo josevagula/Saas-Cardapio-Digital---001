@@ -24,8 +24,10 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error in component:', error, errorInfo);
   }
 
+  // A full page reload: just clearing the error state re-renders the same
+  // broken tree (or a stale lazy chunk after a deploy) and errors again.
   public handleReset = () => {
-    this.setState({ hasError: false, error: null });
+    window.location.reload();
   };
 
   public render() {
