@@ -119,8 +119,8 @@ export default function ExpensesManager() {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total de Despesas', value: indicators.totalAll, color: 'text-white' },
-          { label: 'Despesas do Mês', value: indicators.doMes, color: 'text-white' },
+          { label: 'Total no Período', value: indicators.totalAll, color: 'text-white' },
+          { label: 'Vencendo no Mês', value: indicators.doMes, color: 'text-white' },
           { label: 'Pendentes', value: indicators.pendentes, color: 'text-amber-400' },
           { label: 'Vencidas', value: indicators.vencidas, color: 'text-red-400' }
         ].map(card => (
@@ -204,7 +204,7 @@ export default function ExpensesManager() {
                       <div className="flex items-center gap-2">
                         <p className="text-xs font-bold text-[#F5F0EA] truncate">{e.description}</p>
                         {e.status === 'pago' ? (
-                          <span className="text-[9px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 px-1.5 py-0.5 rounded-full shrink-0">Pago</span>
+                          <span className="text-[9px] font-bold text-[#4ADE80] bg-[#0F1F14] border border-[#1F4A2A] px-1.5 py-0.5 rounded-full shrink-0">Pago</span>
                         ) : overdue ? (
                           <span className="flex items-center gap-1 text-[9px] font-bold text-red-400 bg-red-950/40 border border-red-800/50 px-1.5 py-0.5 rounded-full shrink-0">
                             <AlertTriangle className="w-2.5 h-2.5" /> Atrasado
@@ -219,7 +219,7 @@ export default function ExpensesManager() {
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-xs font-mono font-bold text-white">R$ {e.amount.toFixed(2)}</span>
-                      <button onClick={() => togglePaid(e)} title={e.status === 'pago' ? 'Reabrir' : 'Marcar como pago'} className="text-[#A8A29A] hover:text-emerald-400 cursor-pointer">
+                      <button onClick={() => togglePaid(e)} title={e.status === 'pago' ? 'Reabrir' : 'Marcar como pago'} className="text-[#A8A29A] hover:text-[#4ADE80] cursor-pointer">
                         {e.status === 'pago' ? <RotateCcw className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
                       </button>
                       <button onClick={() => startEdit(e)} className="text-[#A8A29A] hover:text-[#FB923C] cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>

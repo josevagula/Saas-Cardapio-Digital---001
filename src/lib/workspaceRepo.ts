@@ -688,10 +688,14 @@ export async function fetchLoyaltyRedemptionsTotal(ownerId: string, range: { sta
     .select('reward_snapshot')
     .eq('user_id', ownerId)
     .eq('type', 'redeem')
-    .gte('created_at', `${range.start}T00:00:00`)
-    .lte('created_at', `${range.end}T23:59:59`);
+    .gte('created_at', new Date(`${range.start}T00:00:00`).toISOString())
+    .lte('created_at', new Date(`${range.end}T23:59:59.999`).toISOString());
   if (error) throw new Error(`Failed to load loyalty redemptions: ${error.message}`);
-  return (data || []).reduce((sum: number, r: any) => sum + Number(r.reward_snapshot?.value ?? 0), 0);
+  // A percentage reward's `value` is a percent, not reais — it has no fixed
+  // R$ amount to deduct, so only fixed/product rewards count.
+  return (data || [])
+    .filter((r: any) => r.reward_snapshot?.type !== 'percentage')
+    .reduce((sum: number, r: any) => sum + Number(r.reward_snapshot?.value ?? 0), 0);
 }
 
 // --- Módulo Financeiro ---
@@ -718,12 +722,29 @@ const rowToRevenue = (r: any): Revenue => ({
   updatedAt: r.updated_at
 });
 
-export async function fetchRevenues(userId: string, range?: DateRange): Promise<Revenue[]> {
+// storedOnly: just manual revenues and order revenues the owner edited —
+// plain automatic order revenues are derived from the orders themselves
+// (see financial/financeData.ts).
+export async function fetchRevenues(userId: string, range?: DateRange, opts: { storedOnly?: boolean } = {}): Promise<Revenue[]> {
   let query = supabase.from('revenues').select('*').eq('user_id', userId);
   if (range) query = query.gte('occurred_at', range.start).lte('occurred_at', range.end);
+  if (opts.storedOnly) query = query.or('origin.eq.manual,is_manual_override.eq.true');
   const { data, error } = await query.order('occurred_at', { ascending: false });
   if (error) throw new Error(`Failed to load revenues: ${error.message}`);
   return (data || []).map(rowToRevenue);
+}
+
+// Orders whose revenue the owner edited by hand — their stored row replaces
+// the one derived from the order, whatever period it was moved to.
+export async function fetchOverriddenRevenueOrderIds(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('revenues')
+    .select('order_id')
+    .eq('user_id', userId)
+    .eq('is_manual_override', true)
+    .not('order_id', 'is', null);
+  if (error) throw new Error(`Failed to load edited order revenues: ${error.message}`);
+  return new Set((data || []).map((r: any) => r.order_id as string));
 }
 
 export async function createRevenue(userId: string, revenue: Omit<Revenue, 'id' | 'origin' | 'isManualOverride' | 'createdAt' | 'updatedAt'>): Promise<Revenue> {
@@ -875,9 +896,10 @@ export async function deleteCashAdjustment(userId: string, id: string): Promise<
   if (error) throw new Error(`Failed to delete cash adjustment: ${error.message}`);
 }
 
-export async function fetchFinancialTransactions(userId: string, range?: DateRange): Promise<FinancialTransaction[]> {
+export async function fetchFinancialTransactions(userId: string, range?: DateRange, sources?: FinancialTransaction['source'][]): Promise<FinancialTransaction[]> {
   let query = supabase.from('financial_transactions').select('*').eq('user_id', userId);
   if (range) query = query.gte('occurred_at', range.start).lte('occurred_at', range.end);
+  if (sources) query = query.in('source', sources);
   const { data, error } = await query.order('occurred_at', { ascending: false }).order('id', { ascending: false });
   if (error) throw new Error(`Failed to load financial timeline: ${error.message}`);
   return (data || []).map((r: any) => ({
@@ -906,9 +928,13 @@ export async function fetchCashFlowDaily(userId: string, range?: DateRange): Pro
   }));
 }
 
+// Never configured: no opening balance and no start date, so the cash
+// balance counts every movement on record.
+const NO_BALANCE_START = '2000-01-01';
+
 const DEFAULT_FINANCE_SETTINGS: FinanceSettings = {
   initialBalance: 0,
-  initialBalanceDate: new Date().toISOString().slice(0, 10),
+  initialBalanceDate: NO_BALANCE_START,
   cogsPercent: 35,
   updatedAt: new Date().toISOString()
 };

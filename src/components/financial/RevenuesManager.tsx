@@ -3,7 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { Revenue, RevenueCategory } from '../../types';
 import { formatCurrency, parseCashAmount } from '../../utils/formatters';
-import { fetchRevenues, createRevenue, updateRevenue, deleteRevenue } from '../../lib/workspaceRepo';
+import { createRevenue, updateRevenue, deleteRevenue, syncOrderRevenueRpc } from '../../lib/workspaceRepo';
+import { loadRevenues, orderToRevenue } from './financeData';
 import { REVENUE_CATEGORY_LABELS, todayISO, startOfMonthISO, formatDateBR, CARD_CLASS } from './financeShared';
 import { Plus, Trash2, Pencil, Download, Search, Link2 } from 'lucide-react';
 
@@ -27,34 +28,23 @@ export default function RevenuesManager() {
   const [form, setForm] = useState({ description: '', category: 'outros' as RevenueCategory, amount: '', occurredAt: todayISO(), paymentMethod: '' });
 
   const load = () => {
-    if (!userId || isDemoMode) return;
+    if (!userId || isDemoMode || !start || !end) return;
     setLoading(true);
     setError(null);
-    fetchRevenues(userId, { start, end })
+    loadRevenues(userId, orders, { start, end })
       .then(setRevenues)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [userId, isDemoMode, start, end]);
+  useEffect(load, [userId, isDemoMode, orders, start, end]);
 
-  // Modo demo: dados simulados a partir dos pedidos demo, só para visualização.
+  // Modo demo: receitas dos pedidos de exemplo entregues, só para visualização.
   const demoRevenues: Revenue[] = useMemo(() => {
     if (!isDemoMode) return [];
-    return orders.filter(o => o.status !== 'cancelled').map(o => ({
-      id: o.id,
-      description: `Pedido #${o.orderNumber ?? o.id}`,
-      category: (o.deliveryMethod === 'delivery' ? 'delivery' : o.deliveryMethod === 'dine_in' ? 'salao' : 'balcao') as RevenueCategory,
-      amount: o.total,
-      occurredAt: o.createdAt.slice(0, 10),
-      paymentMethod: o.paymentMethod,
-      origin: 'pedido_automatico' as const,
-      orderId: o.id,
-      isManualOverride: false,
-      createdAt: o.createdAt,
-      updatedAt: o.createdAt
-    }));
-  }, [isDemoMode, orders]);
+    return orders.filter(o => o.status === 'delivered').map(orderToRevenue)
+      .filter(r => r.occurredAt >= start && r.occurredAt <= end);
+  }, [isDemoMode, orders, start, end]);
 
   const list = isDemoMode ? demoRevenues : revenues;
 
@@ -83,7 +73,12 @@ export default function RevenuesManager() {
       if (editingId) {
         const target = revenues.find(r => r.id === editingId);
         const adopt = !!target && target.origin === 'pedido_automatico';
-        await updateRevenue(userId, editingId, {
+        // A revenue derived from an order has no row of its own yet — create
+        // it first so the edit can be saved over it.
+        const rowId = target && target.origin === 'pedido_automatico' && target.orderId && target.id.startsWith('order:')
+          ? await syncOrderRevenueRpc(userId, target.orderId, target.description, target.category, target.amount, String(target.paymentMethod ?? ''), target.occurredAt)
+          : editingId;
+        await updateRevenue(userId, rowId, {
           description: form.description,
           category: form.category,
           amount,
@@ -119,7 +114,10 @@ export default function RevenuesManager() {
 
   const handleDelete = async (r: Revenue) => {
     if (!userId || isDemoMode) return;
-    if (!confirm(`Excluir a receita "${r.description}"?`)) return;
+    const message = r.origin === 'pedido_automatico'
+      ? `Desfazer a edição de "${r.description}"? A receita volta ao valor e data do pedido.`
+      : `Excluir a receita "${r.description}"?`;
+    if (!confirm(message)) return;
     try {
       await deleteRevenue(userId, r.id);
       load();
@@ -173,7 +171,9 @@ export default function RevenuesManager() {
       </div>
 
       {error && <div className="text-xs text-red-400 bg-red-950/30 border border-red-900/50 rounded-lg p-3">{error}</div>}
-      {isDemoMode && <div className="text-xs text-[#A8A29A] bg-[#1F1209] border border-[#4A2A10] rounded-lg p-3">Modo demonstração: as receitas abaixo são simuladas a partir dos pedidos de exemplo (cadastro/edição desativados).</div>}
+      {isDemoMode
+        ? <div className="text-xs text-[#A8A29A] bg-[#1F1209] border border-[#4A2A10] rounded-lg p-3">Modo demonstração: as receitas abaixo vêm dos pedidos de exemplo (cadastro/edição desativados).</div>
+        : <p className="text-[11px] text-[#A8A29A]">Cada pedido entregue entra automaticamente como receita, na data do pedido. Pedidos cancelados não contam.</p>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {!isDemoMode && (
@@ -222,18 +222,21 @@ export default function RevenuesManager() {
                       <p className="text-xs font-bold text-[#F5F0EA] truncate">{r.description}</p>
                       {r.origin === 'pedido_automatico' && (
                         <span className="flex items-center gap-1 text-[9px] font-bold text-[#FB923C] bg-[#1F1209] border border-[#4A2A10] px-1.5 py-0.5 rounded-full shrink-0">
-                          <Link2 className="w-2.5 h-2.5" /> Pedido
+                          <Link2 className="w-2.5 h-2.5" /> {r.isManualOverride ? 'Pedido (editado)' : 'Pedido'}
                         </span>
                       )}
                     </div>
                     <p className="text-[10px] text-[#A8A29A] mt-0.5">{REVENUE_CATEGORY_LABELS[r.category]} • {formatDateBR(r.occurredAt)}{r.paymentMethod ? ` • ${r.paymentMethod}` : ''}</p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs font-mono font-bold text-white">R$ {r.amount.toFixed(2)}</span>
+                    <span className="text-xs font-mono font-bold text-white">R$ {formatCurrency(r.amount)}</span>
                     {!isDemoMode && (
                       <>
-                        <button onClick={() => startEdit(r)} className="text-[#A8A29A] hover:text-[#FB923C] cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleDelete(r)} className="text-[#A8A29A] hover:text-red-400 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => startEdit(r)} title="Editar" className="text-[#A8A29A] hover:text-[#FB923C] cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+                        {/* An order's own revenue goes away by cancelling the order in Pedidos. */}
+                        {(r.origin === 'manual' || r.isManualOverride) && (
+                          <button onClick={() => handleDelete(r)} title={r.origin === 'manual' ? 'Excluir' : 'Desfazer edição'} className="text-[#A8A29A] hover:text-red-400 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                        )}
                       </>
                     )}
                   </div>

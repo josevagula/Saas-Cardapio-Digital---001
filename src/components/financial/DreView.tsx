@@ -3,14 +3,15 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { DreBreakdown, DrePeriodType, Order } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
-import { fetchRevenues, fetchExpenses, fetchLoyaltyRedemptionsTotal, fetchFinanceSettings, saveFinanceSettings, saveDreSnapshot } from '../../lib/workspaceRepo';
-import { periodRange, shiftPeriod, periodLabel, CARD_CLASS } from './financeShared';
+import { fetchExpenses, fetchLoyaltyRedemptionsTotal, fetchFinanceSettings, saveFinanceSettings, saveDreSnapshot } from '../../lib/workspaceRepo';
+import { periodRange, shiftPeriod, periodLabel, todayISO, CARD_CLASS, GREEN_TEXT } from './financeShared';
+import { loadRevenues } from './financeData';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChevronLeft, ChevronRight, Save, TrendingUp, TrendingDown } from 'lucide-react';
 
-async function computeBreakdown(userId: string, range: { start: string; end: string }, ordersById: Map<string, Order>, cogsPercent: number): Promise<DreBreakdown> {
+async function computeBreakdown(userId: string, range: { start: string; end: string }, orders: Order[], ordersById: Map<string, Order>, cogsPercent: number): Promise<DreBreakdown> {
   const [revenues, expenses, redemptions] = await Promise.all([
-    fetchRevenues(userId, range),
+    loadRevenues(userId, orders, range),
     fetchExpenses(userId, range),
     fetchLoyaltyRedemptionsTotal(userId, range)
   ]);
@@ -31,27 +32,31 @@ async function computeBreakdown(userId: string, range: { start: string; end: str
     receitaBruta += gross;
   });
 
-  const cashback = 0; // recurso não existe no Zushy hoje — ver Contexto do plano.
+  const cashback = 0; // não existe cashback no Zushy — mantido só pelo formato salvo da DRE.
   const beneficiosFidelidade = redemptions;
   const receitaLiquida = receitaBruta - descontos - cupons - cashback - beneficiosFidelidade;
-  const custos = (receitaLiquida * cogsPercent) / 100;
-  const lucroBruto = receitaLiquida - custos;
   const despesasOperacionais = expenses.filter(e => e.category !== 'impostos').reduce((s, e) => s + e.amount, 0);
-  const resultadoOperacional = lucroBruto - despesasOperacionais;
   const impostos = expenses.filter(e => e.category === 'impostos').reduce((s, e) => s + e.amount, 0);
-  const lucroLiquido = resultadoOperacional - impostos;
 
-  return { receitaBruta, descontos, cupons, cashback, beneficiosFidelidade, receitaLiquida, custos, lucroBruto, despesasOperacionais, resultadoOperacional, impostos, lucroLiquido };
+  return applyCogs({ receitaBruta, descontos, cupons, cashback, beneficiosFidelidade, receitaLiquida, custos: 0, lucroBruto: 0, despesasOperacionais, resultadoOperacional: 0, impostos, lucroLiquido: 0 }, cogsPercent);
+}
+
+// Recomputes the lines that depend on the insumos %, so changing it updates
+// the DRE on screen immediately without refetching.
+function applyCogs(b: DreBreakdown, cogsPercent: number): DreBreakdown {
+  const custos = (b.receitaLiquida * cogsPercent) / 100;
+  const lucroBruto = b.receitaLiquida - custos;
+  const resultadoOperacional = lucroBruto - b.despesasOperacionais;
+  return { ...b, custos, lucroBruto, resultadoOperacional, lucroLiquido: resultadoOperacional - b.impostos };
 }
 
 const LINES: { key: keyof DreBreakdown; label: string; sign: '' | '-' | '='; bold?: boolean }[] = [
   { key: 'receitaBruta', label: 'Receita Bruta', sign: '' },
   { key: 'descontos', label: 'Descontos', sign: '-' },
   { key: 'cupons', label: 'Cupons', sign: '-' },
-  { key: 'cashback', label: 'Cashback', sign: '-' },
   { key: 'beneficiosFidelidade', label: 'Benefícios Fidelidade', sign: '-' },
   { key: 'receitaLiquida', label: 'Receita Líquida', sign: '=', bold: true },
-  { key: 'custos', label: 'Custos', sign: '-' },
+  { key: 'custos', label: 'Custos de Insumos (estimativa pelo % configurado)', sign: '-' },
   { key: 'lucroBruto', label: 'Lucro Bruto', sign: '=', bold: true },
   { key: 'despesasOperacionais', label: 'Despesas Operacionais', sign: '-' },
   { key: 'resultadoOperacional', label: 'Resultado Operacional', sign: '=', bold: true },
@@ -65,13 +70,18 @@ export default function DreView() {
   const userId = user?.id ?? null;
 
   const [periodType, setPeriodType] = useState<DrePeriodType>('mensal');
-  const [referenceISO, setReferenceISO] = useState(() => new Date().toISOString().slice(0, 10));
+  const [referenceISO, setReferenceISO] = useState(todayISO);
   const [cogsPercent, setCogsPercent] = useState(35);
-  const [breakdown, setBreakdown] = useState<DreBreakdown | null>(null);
-  const [previous, setPrevious] = useState<DreBreakdown | null>(null);
-  const [trend, setTrend] = useState<{ period: string; lucro: number }[]>([]);
+  const [rawBreakdown, setRawBreakdown] = useState<DreBreakdown | null>(null);
+  const [rawPrevious, setRawPrevious] = useState<DreBreakdown | null>(null);
+  const [rawTrend, setRawTrend] = useState<{ period: string; b: DreBreakdown }[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+
+  const breakdown = useMemo(() => rawBreakdown && applyCogs(rawBreakdown, cogsPercent), [rawBreakdown, cogsPercent]);
+  const previous = useMemo(() => rawPrevious && applyCogs(rawPrevious, cogsPercent), [rawPrevious, cogsPercent]);
+  const trend = useMemo(() => rawTrend.map(t => ({ period: t.period, lucro: Math.round(applyCogs(t.b, cogsPercent).lucroLiquido * 100) / 100 })), [rawTrend, cogsPercent]);
   const [error, setError] = useState<string | null>(null);
 
   const ordersById = useMemo(() => new Map(orders.map(o => [o.id, o])), [orders]);
@@ -92,22 +102,19 @@ export default function DreView() {
         const prevRef = shiftPeriod(periodType, referenceISO, -1);
         const prevRange = periodRange(periodType, prevRef);
         const [current, prev] = await Promise.all([
-          computeBreakdown(userId, range, ordersById, settings.cogsPercent),
-          computeBreakdown(userId, prevRange, ordersById, settings.cogsPercent)
+          computeBreakdown(userId, range, orders, ordersById, settings.cogsPercent),
+          computeBreakdown(userId, prevRange, orders, ordersById, settings.cogsPercent)
         ]);
         if (cancelled) return;
-        setBreakdown(current);
-        setPrevious(prev);
+        setRawBreakdown(current);
+        setRawPrevious(prev);
 
-        const trendPoints: { period: string; lucro: number }[] = [];
-        let ref = referenceISO;
-        for (let i = 0; i < 6; i++) {
-          const r = periodRange(periodType, ref);
-          const b = i === 0 ? current : await computeBreakdown(userId, r, ordersById, settings.cogsPercent);
-          trendPoints.unshift({ period: periodLabel(periodType, ref), lucro: b.lucroLiquido });
-          ref = shiftPeriod(periodType, ref, -1);
-        }
-        if (!cancelled) setTrend(trendPoints);
+        const refs = [referenceISO];
+        for (let i = 1; i < 6; i++) refs.push(shiftPeriod(periodType, refs[i - 1], -1));
+        const trendBreakdowns = await Promise.all(refs.map((ref, i) =>
+          i === 0 ? current : i === 1 ? prev : computeBreakdown(userId, periodRange(periodType, ref), orders, ordersById, settings.cogsPercent)
+        ));
+        if (!cancelled) setRawTrend(refs.map((ref, i) => ({ period: periodLabel(periodType, ref), b: trendBreakdowns[i] })).reverse());
       } catch (err: any) {
         if (!cancelled) setError(err.message);
       } finally {
@@ -116,7 +123,7 @@ export default function DreView() {
     })();
 
     return () => { cancelled = true; };
-  }, [userId, isDemoMode, periodType, referenceISO, ordersById, range]);
+  }, [userId, isDemoMode, periodType, referenceISO, orders, ordersById, range]);
 
   const saveCogs = async (value: number) => {
     if (!userId) return;
@@ -132,8 +139,10 @@ export default function DreView() {
   const handleClosePeriod = async () => {
     if (!userId || !breakdown) return;
     setSaving(true);
+    setSavedMessage(null);
     try {
       await saveDreSnapshot(userId, periodType, range.start, range.end, breakdown);
+      setSavedMessage(`DRE de ${periodLabel(periodType, referenceISO)} salva.`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -152,6 +161,8 @@ export default function DreView() {
   return (
     <div className="space-y-6">
       {error && <div className="text-xs text-red-400 bg-red-950/30 border border-red-900/50 rounded-lg p-3">{error}</div>}
+      {savedMessage && <div className={`text-xs ${GREEN_TEXT} bg-[#0F1F14] border border-[#1F4A2A] rounded-lg p-3`}>{savedMessage}</div>}
+      <p className="text-[11px] text-[#A8A29A]">Receita = pedidos entregues + receitas manuais do período. Despesas pelo vencimento. Custos de insumos são estimados pelo % ao lado — ajuste para o seu negócio.</p>
 
       <div className={`${CARD_CLASS} flex flex-wrap items-center gap-3`}>
         <select value={periodType} onChange={e => setPeriodType(e.target.value as DrePeriodType)} className="px-3 py-2 text-xs input-sushi">
@@ -165,7 +176,7 @@ export default function DreView() {
 
         <div className="flex items-center gap-2 ml-auto">
           <label className="text-[10px] font-semibold text-slate-400">Custo de Insumos (%)</label>
-          <input type="number" value={cogsPercent} onChange={e => saveCogs(parseFloat(e.target.value) || 0)} className="w-16 px-2 py-1.5 text-xs input-sushi font-mono" />
+          <input type="number" value={cogsPercent} min={0} max={100} onChange={e => saveCogs(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} className="w-16 px-2 py-1.5 text-xs input-sushi font-mono" />
         </div>
         <button onClick={handleClosePeriod} disabled={saving || !breakdown} className="flex items-center gap-1.5 px-4 py-2 btn-sushi-primary text-white text-xs font-bold cursor-pointer disabled:opacity-50">
           <Save className="w-3.5 h-3.5" /> {saving ? 'Salvando...' : 'Fechar Período'}
@@ -196,7 +207,7 @@ export default function DreView() {
             <div className={CARD_CLASS}>
               <h4 className="text-xs font-mono text-[#FB923C] uppercase tracking-widest font-bold">Comparativo vs. período anterior</h4>
               {delta !== null ? (
-                <div className={`flex items-center gap-2 mt-3 ${delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <div className={`flex items-center gap-2 mt-3 ${delta >= 0 ? GREEN_TEXT : 'text-red-400'}`}>
                   {delta >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                   <span className="text-lg font-display font-extrabold">{delta >= 0 ? '+' : ''}{delta.toFixed(1)}%</span>
                 </div>

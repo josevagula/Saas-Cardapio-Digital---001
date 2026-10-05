@@ -48,6 +48,7 @@ import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption, comput
 import { formatOrderCode } from '../utils/formatters';
 import { handleOrderReceivedForPrinting, handleOrderConfirmedForPrinting } from '../lib/printing/printBridge';
 import { setWatchedPrinters } from '../lib/printing/printService';
+import { orderLocalDate } from '../components/financial/financeData';
 
 // Maps a raw Stripe subscription_status value (trialing, active, past_due,
 // canceled, unpaid, incomplete, incomplete_expired…) onto the simple
@@ -1257,7 +1258,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         revenueCategoryForOrder(order),
         order.total,
         order.paymentMethod,
-        new Date().toISOString().slice(0, 10)
+        orderLocalDate(order)
       ).then(() => {})
     );
   };
