@@ -152,13 +152,17 @@ export function buildOrderReceipt(
   // this doubleSize+bold order code is the heaviest single burst left once
   // the logo is off, and a printer with a weak power supply has been
   // observed browning out even on a short, logo-free print before.
-  const header = new EscPosBuilder(accentMode, lowPower);
-  // Normal size (not doubleSize) on purpose — same weak-printer power
-  // reasoning as above; bold is enough to read as a title.
+  // Establishment name in large (doubleSize) bold letters, in its own
+  // segment so it gets a cooldown pause before the doubleSize order code —
+  // same as buildTestReceipt does for weak-power printers.
   if (config.printEstablishmentName !== false && establishmentName.trim()) {
-    header.align('center').bold(true).line(establishmentName.trim().toUpperCase()).bold(false);
-    header.newline();
+    const nameBuilder = new EscPosBuilder(accentMode, lowPower);
+    nameBuilder.align('center').bold(true).doubleSize(true).line(establishmentName.trim().toUpperCase());
+    nameBuilder.doubleSize(false).bold(false).newline();
+    segments.push(nameBuilder);
   }
+
+  const header = new EscPosBuilder(accentMode, lowPower);
   header.align('center').bold(true).doubleSize(true).line(orderCode);
   header.doubleSize(false).bold(false);
   header.separator(cols);
