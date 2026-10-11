@@ -67,6 +67,7 @@ const productToRow = (p: Product, userId: string) => ({
   supports_half_and_half: p.supportsHalfAndHalf ?? null,
   half_and_half_flavors: p.halfAndHalfFlavors ?? null,
   extras: p.extras ?? [],
+  is_cart_recommendation: p.isCartRecommendation ?? false,
   category_display_order: p.categoryDisplayOrder ?? {}
 });
 
@@ -88,6 +89,7 @@ const rowToProduct = (r: any): Product => ({
   supportsHalfAndHalf: r.supports_half_and_half ?? undefined,
   halfAndHalfFlavors: r.half_and_half_flavors ?? undefined,
   extras: r.extras ?? [],
+  isCartRecommendation: r.is_cart_recommendation ?? false,
   categoryDisplayOrder: r.category_display_order ?? undefined
 });
 

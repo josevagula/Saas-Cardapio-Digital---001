@@ -165,6 +165,9 @@ export interface Product {
   // Optional paid add-ons a customer can pick on the public menu for this
   // specific product (e.g. extra cream cheese). Absent/empty = no add-ons.
   extras?: ProductExtra[];
+  // Offered as a one-tap suggestion ("Que tal adicionar?") inside the public
+  // menu's cart drawer — a cart recommendation / bump offer.
+  isCartRecommendation?: boolean;
   // Position within each category's product list (lower = earlier), keyed by
   // categoryId. A product in multiple categories gets an independent
   // position in each — reordering it within one never moves it in another.

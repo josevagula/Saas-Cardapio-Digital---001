@@ -404,7 +404,23 @@ export default function PublicMenuPage() {
     setIsCartOpen(true);
   };
 
-  const handleAddHalfAndHalfToCart = (product: Product, halfAndHalf: SelectedHalfAndHalf, notes: string) => {
+  // Cart recommendations / bump offers: products the restaurant flagged as
+  // "Sugerir no Carrinho", available, and not already in the cart.
+  const cartRecommendations = products.filter(p =>
+    p.isCartRecommendation && p.isAvailable && !cart.some(item => item.product.id === p.id)
+  );
+
+  const handleAddRecommendation = (p: Product) => {
+    // Combos/meio-a-meio need their flavor picker — open it like the menu does.
+    if (p.isComboBuilder || p.supportsHalfAndHalf) {
+      setIsCartOpen(false);
+      handleOpenProduct(p);
+      return;
+    }
+    addToCart(p, 1);
+  };
+
+  const handleAddHalfAndHalfToCart =(product: Product, halfAndHalf: SelectedHalfAndHalf, notes: string) => {
     const summaryNotes = `[Meio a Meio 50/50]: 50% ${halfAndHalf.flavor1} + 50% ${halfAndHalf.flavor2}${notes ? ` | Obs: ${notes}` : ''}`;
     addToCart(product, 1, summaryNotes);
     setIsCartOpen(true);
@@ -1238,6 +1254,46 @@ export default function PublicMenuPage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Cart Recommendations / Bump Offer */}
+                  {cartRecommendations.length > 0 && (
+                    <div className={`pt-4 ${t('border-t border-[#262626]', 'border-t border-[#E5E5E5]')}`}>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <Sparkles className="w-4 h-4 text-[#FF6A00]" />
+                        <h4 className={`font-black text-sm ${t('text-white', 'text-[#1A1A1A]')}`}>Que tal adicionar?</h4>
+                      </div>
+                      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+                        {cartRecommendations.map(p => (
+                          <div
+                            key={p.id}
+                            className={`w-36 shrink-0 snap-start rounded-2xl overflow-hidden flex flex-col ${t('bg-[#0F0E0C] border border-[#262626]', 'bg-[#F9FAFB] border border-[#E5E5E5]')}`}
+                          >
+                            <img
+                              src={p.imageUrl}
+                              alt={p.name}
+                              className={`w-full h-20 object-cover ${t('bg-[#161616]', 'bg-[#F3F4F6]')}`}
+                            />
+                            <div className="p-2.5 flex-1 flex flex-col justify-between gap-2">
+                              <p className={`font-bold text-[11px] leading-snug line-clamp-2 ${t('text-white', 'text-[#1A1A1A]')}`}>{p.name}</p>
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-mono font-black text-xs text-[#FF6A00]">
+                                  R$ {formatCurrency(safeNumber(p.promoPrice || p.price)).replace('.', ',')}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddRecommendation(p)}
+                                  className="bg-[#FF6A00] hover:bg-[#E65F00] text-white p-1.5 rounded-lg cursor-pointer transition-transform active:scale-90"
+                                  title={`Adicionar ${p.name}`}
+                                >
+                                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Coupon Form */}
                   <form onSubmit={handleApplyCoupon} className={`pt-4 ${t('border-t border-[#262626]', 'border-t border-[#E5E5E5]')}`}>

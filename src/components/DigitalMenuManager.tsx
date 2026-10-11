@@ -140,6 +140,7 @@ export default function DigitalMenuManager() {
   const [ingredients, setIngredients] = useState('');
   const [tags, setTags] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
+  const [isCartRecommendation, setIsCartRecommendation] = useState(false);
 
   // Extras (paid add-ons) for the product being added/edited
   const [extras, setExtras] = useState<ProductExtra[]>([]);
@@ -166,6 +167,7 @@ export default function DigitalMenuManager() {
     setIngredients('');
     setTags('');
     setIsAvailable(true);
+    setIsCartRecommendation(false);
     setExtras([]);
     setNewExtraName('');
     setNewExtraPrice('');
@@ -195,6 +197,7 @@ export default function DigitalMenuManager() {
     setIngredients(p.ingredients.join(', '));
     setTags(p.tags ? p.tags.join(', ') : '');
     setIsAvailable(p.isAvailable);
+    setIsCartRecommendation(!!p.isCartRecommendation);
     setExtras(p.extras || []);
     setNewExtraName('');
     setNewExtraPrice('');
@@ -270,7 +273,8 @@ export default function DigitalMenuManager() {
         isAvailable,
         ingredients: parsedIngredients,
         tags: parsedTags,
-        extras
+        extras,
+        isCartRecommendation
       });
       setEditingProduct(null);
     } else {
@@ -284,7 +288,8 @@ export default function DigitalMenuManager() {
         isAvailable,
         ingredients: parsedIngredients,
         tags: parsedTags,
-        extras
+        extras,
+        isCartRecommendation
       });
       setIsAddingProduct(false);
     }
@@ -465,6 +470,11 @@ export default function DigitalMenuManager() {
                           {cn}
                         </span>
                       ))}
+                      {prod.isCartRecommendation && (
+                        <span className="bg-[#0C0A08]/80 text-[#FB923C] text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-sm border border-[#4A2A10]">
+                          Sugestão no Carrinho
+                        </span>
+                      )}
                       {prod.promoPrice && (
                         <span className="bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-xs">
                           Promoção
@@ -816,6 +826,19 @@ export default function DigitalMenuManager() {
                     )}
                   </div>
                 </div>
+
+                <label className="flex items-start gap-3 p-3 bg-[#181512] border border-[#2A211A] rounded-xl cursor-pointer hover:border-[#3A2E24] transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={isCartRecommendation}
+                    onChange={(e) => setIsCartRecommendation(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-[#F97316] cursor-pointer shrink-0"
+                  />
+                  <span>
+                    <span className="text-xs font-semibold text-slate-200 block">Sugerir no Carrinho (Oferta Adicional)</span>
+                    <span className="text-[10px] text-[#A8A29A] block mt-0.5">Mostra este produto na seção "Que tal adicionar?" dentro do carrinho do cardápio público, para o cliente incluir com um toque antes de finalizar o pedido. Ideal para bebidas, sobremesas e acompanhamentos.</span>
+                  </span>
+                </label>
 
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1.5">Descrição do Produto</label>
