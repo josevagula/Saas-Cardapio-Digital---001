@@ -153,9 +153,11 @@ interface AppContextType {
 
   // Shopping Cart & Checkout
   cart: OrderItem[];
-  addToCart: (product: Product, quantity?: number, notes?: string, removedIngredients?: string[], extras?: SelectedExtra[]) => void;
-  removeFromCart: (productId: string) => void;
-  updateCartQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: Product, quantity?: number, notes?: string, removedIngredients?: string[], extras?: SelectedExtra[], isCartOffer?: boolean) => void;
+  // Both take the cart line's index: the same product can sit on several
+  // lines (different extras/notes, or a bump-offer line at its own price).
+  removeFromCart: (lineIndex: number) => void;
+  updateCartQuantity: (lineIndex: number, quantity: number) => void;
   clearCart: () => void;
   appliedCoupon: Coupon | null;
   applyCouponCode: (code: string) => { success: boolean; message: string };
@@ -782,13 +784,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Shopping Cart Handlers
-  const addToCart = (product: Product, quantity = 1, notes = "", removedIngredients?: string[], extras?: SelectedExtra[]) => {
+  const addToCart = (product: Product, quantity = 1, notes = "", removedIngredients?: string[], extras?: SelectedExtra[], isCartOffer = false) => {
     setCart(prev => {
       const existingIndex = prev.findIndex(item =>
         item.product.id === product.id &&
         JSON.stringify(item.removedIngredients || []) === JSON.stringify(removedIngredients || []) &&
         JSON.stringify(item.extras || []) === JSON.stringify(extras || []) &&
-        (item.notes || "") === (notes || "")
+        (item.notes || "") === (notes || "") &&
+        !!item.isCartOffer === isCartOffer
       );
       if (existingIndex > -1) {
         return prev.map((item, idx) =>
@@ -797,21 +800,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             : item
         );
       }
-      return [...prev, { product, quantity, notes, removedIngredients, extras }];
+      return [...prev, { product, quantity, notes, removedIngredients, extras, ...(isCartOffer ? { isCartOffer: true } : {}) }];
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.product.id !== productId));
+  const removeFromCart = (lineIndex: number) => {
+    setCart(prev => prev.filter((_, idx) => idx !== lineIndex));
   };
 
-  const updateCartQuantity = (productId: string, quantity: number) => {
+  const updateCartQuantity = (lineIndex: number, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(lineIndex);
       return;
     }
-    setCart(prev => prev.map(item => 
-      item.product.id === productId ? { ...item, quantity } : item
+    setCart(prev => prev.map((item, idx) =>
+      idx === lineIndex ? { ...item, quantity } : item
     ));
   };
 

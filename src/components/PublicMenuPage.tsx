@@ -289,10 +289,11 @@ export default function PublicMenuPage() {
       const removedText = item.removedIngredients && item.removedIngredients.length > 0 ? ` [Sem: ${item.removedIngredients.join(', ')}]` : '';
       const extrasText = item.extras && item.extras.length > 0 ? ` [+ ${item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}]` : '';
       const notesText = item.notes ? ` (Obs: ${item.notes})` : '';
+      const offerText = item.isCartOffer && item.product.cartOfferPrice ? ' [Oferta do Carrinho]' : '';
       const unitPrice = safeNumber(item.product.promoPrice || item.product.price);
       const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
       const lineTotal = unitPrice * safeNumber(item.quantity, 1) + extrasTotal;
-      return `*${item.quantity}x ${item.product.name}*${removedText}${extrasText}${notesText}\n`
+      return `*${item.quantity}x ${item.product.name}*${offerText}${removedText}${extrasText}${notesText}\n`
         + `  └ Preço Unitário: R$ ${unitPrice.toFixed(2).replace('.', ',')}\n`
         + `  └ Total Item: R$ ${lineTotal.toFixed(2).replace('.', ',')}`;
     }).join('\n\n');
@@ -410,6 +411,14 @@ export default function PublicMenuPage() {
     p.isCartRecommendation && p.isAvailable && !cart.some(item => item.product.id === p.id)
   );
 
+  // A bump-offer price only applies to simple products: combos/meio-a-meio
+  // go through their flavor picker, which adds a normally-priced line.
+  const offerPriceFor = (p: Product): number | null => {
+    if (p.isComboBuilder || p.supportsHalfAndHalf) return null;
+    const offer = safeNumber(p.cartOfferPrice);
+    return offer > 0 && offer < safeNumber(p.promoPrice || p.price) ? offer : null;
+  };
+
   const handleAddRecommendation = (p: Product) => {
     // Combos/meio-a-meio need their flavor picker — open it like the menu does.
     if (p.isComboBuilder || p.supportsHalfAndHalf) {
@@ -417,7 +426,10 @@ export default function PublicMenuPage() {
       handleOpenProduct(p);
       return;
     }
-    addToCart(p, 1);
+    const offer = offerPriceFor(p);
+    // The offer line's snapshot carries the offer as promoPrice, so the cart,
+    // checkout, WhatsApp message and saved order all charge it unchanged.
+    addToCart(offer != null ? { ...p, promoPrice: offer } : p, 1, '', undefined, undefined, true);
   };
 
   const handleAddHalfAndHalfToCart =(product: Product, halfAndHalf: SelectedHalfAndHalf, notes: string) => {
@@ -1182,8 +1194,8 @@ export default function PublicMenuPage() {
                 <>
                   {/* Cart Items */}
                   <div className="space-y-3">
-                    {cart.map(item => (
-                      <div key={item.product.id} className={`p-3.5 rounded-2xl flex gap-3.5 items-center ${t('bg-[#0F0E0C] border border-[#262626]', 'bg-[#F9FAFB] border border-[#E5E5E5]')}`}>
+                    {cart.map((item, lineIndex) => (
+                      <div key={`${item.product.id}-${lineIndex}`} className={`p-3.5 rounded-2xl flex gap-3.5 items-center ${t('bg-[#0F0E0C] border border-[#262626]', 'bg-[#F9FAFB] border border-[#E5E5E5]')}`}>
                         <img
                           src={item.product.imageUrl}
                           alt={item.product.name}
@@ -1211,9 +1223,18 @@ export default function PublicMenuPage() {
                           {item.notes && (
                             <p className="text-[10px] text-[#FF6A00] italic line-clamp-2 mt-0.5">{item.notes}</p>
                           )}
+                          {item.isCartOffer && item.product.cartOfferPrice && (
+                            <p className="text-[10px] text-[#FF6A00] font-bold mt-0.5 flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              <span>Oferta do Carrinho</span>
+                            </p>
+                          )}
 
                           <div className="flex items-center justify-between mt-3 pt-1">
                             <div className="flex items-center gap-2">
+                              {/* Offer lines can't be edited: the product modal
+                                  would re-add it at the normal price. */}
+                              {!item.isCartOffer && (
                               <button
                                 onClick={() => {
                                   setIsCartOpen(false);
@@ -1224,9 +1245,10 @@ export default function PublicMenuPage() {
                                 <Edit2 className={`w-3 h-3 ${t('text-[#A09D96]', 'text-[#4B5563]')}`} />
                                 <span>Editar</span>
                               </button>
+                              )}
 
                               <button
-                                onClick={() => removeFromCart(item.product.id)}
+                                onClick={() => removeFromCart(lineIndex)}
                                 className={`cursor-pointer transition-colors p-1 ${t('text-[#8E8B85] hover:text-red-400', 'text-[#6B7280] hover:text-red-500')}`}
                                 title="Remover item"
                               >
@@ -1236,14 +1258,14 @@ export default function PublicMenuPage() {
 
                             <div className={`rounded-lg px-2.5 py-1 flex items-center gap-3 font-bold text-xs ${t('bg-[#181614] border border-[#2A2724] text-white', 'bg-[#F3F4F6] border border-[#E5E5E5] text-[#1A1A1A]')}`}>
                               <button
-                                onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
+                                onClick={() => updateCartQuantity(lineIndex, item.quantity - 1)}
                                 className={`cursor-pointer ${t('text-[#8E8B85] hover:text-white', 'text-[#6B7280] hover:text-[#1A1A1A]')}`}
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
                               <span className={`font-mono text-xs min-w-[14px] text-center ${t('text-white', 'text-[#1A1A1A]')}`}>{item.quantity}</span>
                               <button
-                                onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
+                                onClick={() => updateCartQuantity(lineIndex, item.quantity + 1)}
                                 className={`cursor-pointer ${t('text-[#8E8B85] hover:text-white', 'text-[#6B7280] hover:text-[#1A1A1A]')}`}
                               >
                                 <Plus className="w-3 h-3" />
@@ -1276,9 +1298,20 @@ export default function PublicMenuPage() {
                             <div className="p-2.5 flex-1 flex flex-col justify-between gap-2">
                               <p className={`font-bold text-[11px] leading-snug line-clamp-2 ${t('text-white', 'text-[#1A1A1A]')}`}>{p.name}</p>
                               <div className="flex items-center justify-between gap-1">
-                                <span className="font-mono font-black text-xs text-[#FF6A00]">
-                                  R$ {formatCurrency(safeNumber(p.promoPrice || p.price)).replace('.', ',')}
-                                </span>
+                                {offerPriceFor(p) != null ? (
+                                  <span className="flex flex-col leading-tight">
+                                    <span className="font-mono text-[10px] line-through text-[#6B7280]">
+                                      R$ {formatCurrency(safeNumber(p.promoPrice || p.price)).replace('.', ',')}
+                                    </span>
+                                    <span className="font-mono font-black text-xs text-[#FF6A00]">
+                                      R$ {formatCurrency(offerPriceFor(p)!).replace('.', ',')}
+                                    </span>
+                                  </span>
+                                ) : (
+                                  <span className="font-mono font-black text-xs text-[#FF6A00]">
+                                    R$ {formatCurrency(safeNumber(p.promoPrice || p.price)).replace('.', ',')}
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => handleAddRecommendation(p)}

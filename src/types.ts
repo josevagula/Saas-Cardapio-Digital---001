@@ -168,6 +168,9 @@ export interface Product {
   // Offered as a one-tap suggestion ("Que tal adicionar?") inside the public
   // menu's cart drawer — a cart recommendation / bump offer.
   isCartRecommendation?: boolean;
+  // Special unit price charged only when the product is added through that
+  // cart suggestion. Absent = the normal menu price is used there too.
+  cartOfferPrice?: number;
   // Position within each category's product list (lower = earlier), keyed by
   // categoryId. A product in multiple categories gets an independent
   // position in each — reordering it within one never moves it in another.
@@ -207,6 +210,10 @@ export interface OrderItem {
   halfAndHalf?: SelectedHalfAndHalf;
   extras?: SelectedExtra[];
   hashiCount?: number;
+  // Added via the cart's "Que tal adicionar?" bump offer. When the product
+  // has a cartOfferPrice, this line's product snapshot carries it as
+  // promoPrice, so every existing price calculation charges the offer price.
+  isCartOffer?: boolean;
 }
 
 export interface KitAutoIncluded {

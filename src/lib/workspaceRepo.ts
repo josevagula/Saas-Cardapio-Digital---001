@@ -68,6 +68,7 @@ const productToRow = (p: Product, userId: string) => ({
   half_and_half_flavors: p.halfAndHalfFlavors ?? null,
   extras: p.extras ?? [],
   is_cart_recommendation: p.isCartRecommendation ?? false,
+  cart_offer_price: p.cartOfferPrice ?? null,
   category_display_order: p.categoryDisplayOrder ?? {}
 });
 
@@ -90,6 +91,7 @@ const rowToProduct = (r: any): Product => ({
   halfAndHalfFlavors: r.half_and_half_flavors ?? undefined,
   extras: r.extras ?? [],
   isCartRecommendation: r.is_cart_recommendation ?? false,
+  cartOfferPrice: r.cart_offer_price != null ? Number(r.cart_offer_price) : undefined,
   categoryDisplayOrder: r.category_display_order ?? undefined
 });
 

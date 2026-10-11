@@ -141,6 +141,7 @@ export default function DigitalMenuManager() {
   const [tags, setTags] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [isCartRecommendation, setIsCartRecommendation] = useState(false);
+  const [cartOfferPrice, setCartOfferPrice] = useState('');
 
   // Extras (paid add-ons) for the product being added/edited
   const [extras, setExtras] = useState<ProductExtra[]>([]);
@@ -168,6 +169,7 @@ export default function DigitalMenuManager() {
     setTags('');
     setIsAvailable(true);
     setIsCartRecommendation(false);
+    setCartOfferPrice('');
     setExtras([]);
     setNewExtraName('');
     setNewExtraPrice('');
@@ -198,6 +200,7 @@ export default function DigitalMenuManager() {
     setTags(p.tags ? p.tags.join(', ') : '');
     setIsAvailable(p.isAvailable);
     setIsCartRecommendation(!!p.isCartRecommendation);
+    setCartOfferPrice(p.cartOfferPrice ? p.cartOfferPrice.toString() : '');
     setExtras(p.extras || []);
     setNewExtraName('');
     setNewExtraPrice('');
@@ -260,6 +263,7 @@ export default function DigitalMenuManager() {
     const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
     const numPrice = safeNumber(price);
     const numPromoPrice = promoPrice ? safeNumber(promoPrice) : undefined;
+    const numCartOfferPrice = cartOfferPrice && safeNumber(cartOfferPrice) > 0 ? safeNumber(cartOfferPrice) : undefined;
 
     if (editingProduct) {
       updateProduct({
@@ -274,7 +278,8 @@ export default function DigitalMenuManager() {
         ingredients: parsedIngredients,
         tags: parsedTags,
         extras,
-        isCartRecommendation
+        isCartRecommendation,
+        cartOfferPrice: numCartOfferPrice
       });
       setEditingProduct(null);
     } else {
@@ -289,7 +294,8 @@ export default function DigitalMenuManager() {
         ingredients: parsedIngredients,
         tags: parsedTags,
         extras,
-        isCartRecommendation
+        isCartRecommendation,
+        cartOfferPrice: numCartOfferPrice
       });
       setIsAddingProduct(false);
     }
@@ -839,6 +845,22 @@ export default function DigitalMenuManager() {
                     <span className="text-[10px] text-[#A8A29A] block mt-0.5">Mostra este produto na seção "Que tal adicionar?" dentro do carrinho do cardápio público, para o cliente incluir com um toque antes de finalizar o pedido. Ideal para bebidas, sobremesas e acompanhamentos.</span>
                   </span>
                 </label>
+
+                {isCartRecommendation && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Preço Especial da Oferta no Carrinho (Opcional)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Ex: 5.90"
+                      value={cartOfferPrice}
+                      onChange={(e) => setCartOfferPrice(e.target.value)}
+                      className="w-full px-3.5 py-2 text-sm input-sushi focus:outline-none transition-all"
+                    />
+                    <p className="text-[10px] text-[#A8A29A] mt-1">Cobrado só quando o cliente adiciona pelo "Que tal adicionar?" do carrinho, e só vale se for menor que o preço normal. Deixe vazio para usar o preço normal. Não se aplica a combos montáveis nem a produtos meio a meio.</p>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1.5">Descrição do Produto</label>
