@@ -363,10 +363,17 @@ export const syncProducts = (userId: string, products: Product[]) =>
 // all) and 20260824120000_allow_delete_cancelled_orders.sql, which reopens
 // deletion only for the owner's own already-cancelled orders — the one path
 // the dashboard's "excluir pedido" button uses, via deleteOrderRow below.
+// Callers pass only the orders that changed (see syncedOrdersRef in
+// AppContext). Still sent in small batches: every order's `items` embeds
+// full products (photos included), so a large batch can exceed the
+// request/statement timeout.
 export async function syncOrders(userId: string, orders: Order[]) {
-  if (orders.length === 0) return;
-  const { error } = await supabase.from('orders').upsert(orders.map(o => orderToRow(o, userId)), { onConflict: 'id' });
-  if (error) throw new Error(`Failed to save orders to Supabase: ${error.message}`);
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < orders.length; i += BATCH_SIZE) {
+    const batch = orders.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('orders').upsert(batch.map(o => orderToRow(o, userId)), { onConflict: 'id' });
+    if (error) throw new Error(`Failed to save orders to Supabase: ${error.message}`);
+  }
 }
 
 // Fetches one order fresh via a normal REST select — used by the orders

@@ -406,6 +406,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // fetchWorkspace, and effects run in declaration order within a commit, so
   // every later effect in this same pass already sees the updated ref.
   const syncGateUserIdRef = useRef<string | null | undefined>(undefined);
+  // The exact Order objects last confirmed saved in Supabase, by id. The
+  // orders sync effect upserts only orders whose object differs from this
+  // (i.e. changed locally since) instead of the whole history: each order's
+  // `items` embeds full products with their photos, so one real account's
+  // full upsert reached ~12MB and was timing out (500/502/524) on almost
+  // every save — archiving/status changes looked saved but reverted on reload.
+  const syncedOrdersRef = useRef<Map<string, Order>>(new Map());
   // True only while showing the landing page's "Demonstração" mock dataset.
   // Guards every sync-to-Supabase/localStorage effect below so demo
   // interactions never leak into (or read from) a real signed-in account.
@@ -477,6 +484,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
           setCategories(data.categories);
           setProducts(data.products);
+          syncedOrdersRef.current = new Map(data.orders.map(o => [o.id, o]));
           setOrders(data.orders);
           setCoupons(data.coupons);
           setCustomers(data.customers);
@@ -629,7 +637,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     if (userId) {
-      return retryUntilSuccess(() => syncOrders(userId, orders));
+      const synced = syncedOrdersRef.current;
+      const changed = orders.filter(o => synced.get(o.id) !== o);
+      if (changed.length === 0) return;
+      return retryUntilSuccess(() =>
+        syncOrders(userId, changed).then(() => {
+          changed.forEach(o => synced.set(o.id, o));
+        })
+      );
     }
     safeSetLocalStorage(scopedKey('orders'), orders);
   }, [orders, workspaceReady, userId, isDemoMode, publicMenuSlug]);
@@ -685,6 +700,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const fresh = await fetchOrderById(userId, order.id);
       if (!fresh) return order;
       if (fresh.orderNumber != null || attempt === 10) {
+        syncedOrdersRef.current.set(fresh.id, fresh);
         setOrders(prev => prev.map(o => (o.id === fresh.id ? fresh : o)));
         return fresh;
       }
@@ -702,6 +718,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!incomingId) return;
         fetchOrderById(userId, incomingId).then(async base => {
           if (!base) return null;
+          syncedOrdersRef.current.set(base.id, base);
           setOrders(prev => (prev.some(o => o.id === base.id) ? prev : [base, ...prev]));
           return ensureOrderNumber(base);
         }).then(incoming => {
