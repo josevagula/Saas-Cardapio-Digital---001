@@ -94,6 +94,9 @@ export interface PrintingConfig {
   // true (unchanged behavior); this is the immediate, certain workaround
   // for an establishment whose specific printer can't handle it.
   printLogo: boolean;
+  // Establishment name printed centered right under the logo, at the top of
+  // every order receipt. Missing (configs saved before this existed) = on.
+  printEstablishmentName?: boolean;
   // Cuts the thermal head's heating time/dot count via ESC/POS heating
   // params (ESC 7) instead of just pacing BLE writes — for a printer that
   // physically browns out/shuts off mid-print (a real power-supply limit,

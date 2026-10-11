@@ -574,7 +574,8 @@ export async function printOrderOnPrinter(
   orderCode: string,
   config: PrintingConfig,
   paperWidth: 58 | 80,
-  establishmentLogoUrl: string | undefined
+  establishmentLogoUrl: string | undefined,
+  establishmentName: string = ''
 ) {
   const jobStub = { id: crypto.randomUUID(), kind: 'pedido' as PrintJobKind, orderId: order.id, orderCode, printerId, printerName };
   try {
@@ -583,7 +584,7 @@ export async function printOrderOnPrinter(
     // mean "on" (the intended default), not silently turn the logo off for
     // every establishment that had already configured printing.
     const logo = config.printLogo !== false ? await getLogoRaster(establishmentLogoUrl, paperWidth) : null;
-    const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo, !!config.lowPowerMode);
+    const segments = buildOrderReceipt(order, orderCode, config, config.accentMode, colsForPaperWidth(paperWidth), logo, !!config.lowPowerMode, establishmentName);
     enqueue(jobStub, toJobSegments(segments));
   } catch (e: any) {
     recordBuildFailure(jobStub, e?.message || 'Falha ao preparar o recibo para impressão.');

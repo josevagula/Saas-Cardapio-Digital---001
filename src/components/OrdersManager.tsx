@@ -96,7 +96,7 @@ export default function OrdersManager() {
     // sequential number yet (assigned by a separate RPC) — wait for it
     // instead of printing the raw internal id as a fallback code.
     const withNumber = await ensureOrderNumber(order);
-    config.printers.forEach(p => printOrderOnPrinter(p.id, p.name, withNumber, formatOrderCode(withNumber), config, p.paperWidth, visualConfig.logoUrl));
+    config.printers.forEach(p => printOrderOnPrinter(p.id, p.name, withNumber, formatOrderCode(withNumber), config, p.paperWidth, visualConfig.logoUrl, visualConfig.establishmentName));
     setPrintFeedback({ id: order.id, message: 'Enviado para a fila de impressão.' });
     setTimeout(() => setPrintFeedback(prev => (prev?.id === order.id ? null : prev)), 4000);
   };

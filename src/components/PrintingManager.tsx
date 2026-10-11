@@ -311,6 +311,7 @@ export default function PrintingManager() {
     { key: 'printFormaPagamento', label: 'Imprimir forma de pagamento', help: '' },
     { key: 'autoCutPaper', label: 'Cortar papel automaticamente', help: 'Só funciona em impressoras com guilhotina (corte automático).' },
     { key: 'printLogo', label: 'Imprimir logo do estabelecimento no cupom', help: 'Desative se a impressora desligar sozinha ao imprimir: a imagem da logo é o que mais exige da impressora, e algumas impressoras Bluetooth baratas não aguentam.' },
+    { key: 'printEstablishmentName', label: 'Imprimir nome do estabelecimento no cupom', help: 'Mostra o nome da empresa (definido em Personalização) centralizado logo abaixo da logo, no topo da nota.' },
     { key: 'lowPowerMode', label: 'Modo baixa energia (impressora desliga/trava no meio)', help: 'Reduz a intensidade de aquecimento da cabeça térmica para diminuir o consumo de energia — a nota sai um pouco mais clara. Ative apenas se a impressora desligar ou travar durante a impressão mesmo com a logo desativada; isso indica uma fonte de energia fraca (adaptador/USB/bateria).' }
   ];
 
@@ -388,10 +389,11 @@ export default function PrintingManager() {
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
                 <input
                   type="checkbox"
-                  // printLogo defaults to true, unlike every other toggle here —
-                  // a printing_config saved before this field existed has it
-                  // missing (undefined), which must still render as "on".
-                  checked={t.key === 'printLogo' ? draft.printLogo !== false : !!draft[t.key]}
+                  // printLogo/printEstablishmentName default to true, unlike
+                  // every other toggle here — a printing_config saved before
+                  // the field existed has it missing (undefined), which must
+                  // still render as "on".
+                  checked={t.key === 'printLogo' || t.key === 'printEstablishmentName' ? draft[t.key] !== false : !!draft[t.key]}
                   onChange={(e) => updateDraft(t.key, e.target.checked as any)}
                   className="sr-only peer"
                 />

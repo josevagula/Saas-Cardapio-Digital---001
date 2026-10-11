@@ -723,7 +723,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return ensureOrderNumber(base);
         }).then(incoming => {
           if (!incoming) return;
-          handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig, visualConfigRef.current.logoUrl);
+          handleOrderReceivedForPrinting(incoming, formatOrderCode(incoming), visualConfigRef.current.printingConfig, visualConfigRef.current.logoUrl, visualConfigRef.current.establishmentName);
         }).catch(() => {
           // Couldn't confirm the full row — do nothing rather than risk
           // adding a hollow order to local state (which syncOrders would
@@ -1416,7 +1416,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // whatever stale code is already in local state.
       if (status === 'preparing' && order.status === 'received') {
         ensureOrderNumber(order).then(withNumber => {
-          handleOrderConfirmedForPrinting({ ...withNumber, status }, formatOrderCode(withNumber), visualConfigRef.current.printingConfig, visualConfigRef.current.logoUrl);
+          handleOrderConfirmedForPrinting({ ...withNumber, status }, formatOrderCode(withNumber), visualConfigRef.current.printingConfig, visualConfigRef.current.logoUrl, visualConfigRef.current.establishmentName);
         });
       }
     }

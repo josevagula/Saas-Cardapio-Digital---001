@@ -138,7 +138,8 @@ export function buildOrderReceipt(
   accentMode: AccentMode,
   cols: number,
   logo?: LogoRaster | null,
-  lowPower: boolean = false
+  lowPower: boolean = false,
+  establishmentName: string = ''
 ): EscPosBuilder[] {
   const segments: EscPosBuilder[] = [];
   if (logo) {
@@ -152,6 +153,12 @@ export function buildOrderReceipt(
   // the logo is off, and a printer with a weak power supply has been
   // observed browning out even on a short, logo-free print before.
   const header = new EscPosBuilder(accentMode, lowPower);
+  // Normal size (not doubleSize) on purpose — same weak-printer power
+  // reasoning as above; bold is enough to read as a title.
+  if (config.printEstablishmentName !== false && establishmentName.trim()) {
+    header.align('center').bold(true).line(establishmentName.trim().toUpperCase()).bold(false);
+    header.newline();
+  }
   header.align('center').bold(true).doubleSize(true).line(orderCode);
   header.doubleSize(false).bold(false);
   header.separator(cols);

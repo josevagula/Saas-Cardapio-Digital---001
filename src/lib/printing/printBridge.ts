@@ -15,22 +15,22 @@ import { printOrderOnPrinter, wasAutoPrinted, markAutoPrinted } from './printSer
 // owns deciding connectivity — it waits for an in-flight reconnect, retries
 // with backoff, and if the printer really is offline it leaves a visible,
 // reprintable 'erro' entry instead of silently dropping the order.
-function printOnAllConnectedPrinters(order: Order, orderCode: string, config: PrintingConfig, logoUrl: string | undefined) {
-  config.printers.forEach(p => printOrderOnPrinter(p.id, p.name, order, orderCode, config, p.paperWidth, logoUrl));
+function printOnAllConnectedPrinters(order: Order, orderCode: string, config: PrintingConfig, logoUrl: string | undefined, establishmentName: string) {
+  config.printers.forEach(p => printOrderOnPrinter(p.id, p.name, order, orderCode, config, p.paperWidth, logoUrl, establishmentName));
 }
 
 // "Recebido" — a brand-new order just landed (realtime INSERT).
-export function handleOrderReceivedForPrinting(order: Order, orderCode: string, config: PrintingConfig | undefined, logoUrl: string | undefined) {
+export function handleOrderReceivedForPrinting(order: Order, orderCode: string, config: PrintingConfig | undefined, logoUrl: string | undefined, establishmentName: string = '') {
   if (!config?.autoPrintOnReceived) return;
   if (wasAutoPrinted(order.id, 'received')) return;
   markAutoPrinted(order.id, 'received');
-  printOnAllConnectedPrinters(order, orderCode, config, logoUrl);
+  printOnAllConnectedPrinters(order, orderCode, config, logoUrl, establishmentName);
 }
 
 // "Confirmado" — staff accepted a pending order (received -> preparing).
-export function handleOrderConfirmedForPrinting(order: Order, orderCode: string, config: PrintingConfig | undefined, logoUrl: string | undefined) {
+export function handleOrderConfirmedForPrinting(order: Order, orderCode: string, config: PrintingConfig | undefined, logoUrl: string | undefined, establishmentName: string = '') {
   if (!config?.autoPrintOnConfirmed) return;
   if (wasAutoPrinted(order.id, 'confirmed')) return;
   markAutoPrinted(order.id, 'confirmed');
-  printOnAllConnectedPrinters(order, orderCode, config, logoUrl);
+  printOnAllConnectedPrinters(order, orderCode, config, logoUrl, establishmentName);
 }
