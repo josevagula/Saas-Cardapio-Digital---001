@@ -590,11 +590,10 @@ export default function DigitalMenuManager() {
                           deleteProduct(prod.id);
                         }
                       }}
-                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer border border-transparent hover:border-red-900/40 whitespace-nowrap"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer border border-transparent hover:border-red-900/40"
                       title="Mover para lixeira"
                     >
                       <Trash2 className="w-4 h-4" />
-                      <span>Mover para lixeira</span>
                     </button>
                   </div>
                 </div>
