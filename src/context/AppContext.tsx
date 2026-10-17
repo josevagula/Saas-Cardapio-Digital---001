@@ -30,6 +30,7 @@ import {
   fetchLoyaltyRedeemedByPhone,
   syncCategories,
   syncProducts,
+  purgeTrashedProduct,
   syncOrders,
   deleteOrderRow,
   syncCoupons,
@@ -173,6 +174,10 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id' | 'salesCount'>) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
+  // Lixeira: products deleted from the Cardápio, restorable until purged.
+  trashedProducts: Product[];
+  restoreProduct: (id: string) => void;
+  purgeProduct: (id: string) => void;
   reorderProductInCategory: (productId: string, direction: -1 | 1, categoryId: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   deleteOrder: (orderId: string) => void;
@@ -274,6 +279,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return INITIAL_PRODUCTS;
   });
+  // Kept apart from `products` so every screen that lists or sells products
+  // keeps seeing only active ones. Rows are trashed server-side by the
+  // products sync's DELETE (see purgeTrashedProduct in workspaceRepo).
+  const [trashedProducts, setTrashedProducts] = useState<Product[]>([]);
 
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('sushi_orders');
@@ -491,8 +500,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setRedeemedByPhone(redeemed);
           setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
           setCategories(data.categories);
-          syncedProductsRef.current = new Map(data.products.map(p => [p.id, p]));
-          setProducts(data.products);
+          const activeProducts = data.products.filter(p => !p.deletedAt);
+          syncedProductsRef.current = new Map(activeProducts.map(p => [p.id, p]));
+          setProducts(activeProducts);
+          setTrashedProducts(data.products.filter(p => p.deletedAt));
           syncedOrdersRef.current = new Map(data.orders.map(o => [o.id, o]));
           setOrders(data.orders);
           setCoupons(data.coupons);
@@ -1168,8 +1179,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProducts(prev => prev.map(p => p.id === updatedProd.id ? updatedProd : p));
   };
 
+  // Moves the product to the Lixeira. Leaving `products` is what makes the
+  // products sync send its DELETE, which the database turns into a trash
+  // mark (deleted_at) rather than a real deletion.
   const deleteProduct = (id: string) => {
+    const prod = products.find(p => p.id === id);
+    if (!prod) return;
     setProducts(prev => prev.filter(p => p.id !== id));
+    setTrashedProducts(prev => [{ ...prod, deletedAt: new Date().toISOString() }, ...prev.filter(p => p.id !== id)]);
+  };
+
+  // Back into `products` with deletedAt cleared: the sync sees an id it
+  // hasn't saved as active and upserts it with deleted_at = null.
+  const restoreProduct = (id: string) => {
+    const prod = trashedProducts.find(p => p.id === id);
+    if (!prod) return;
+    const { deletedAt: _deletedAt, ...restored } = prod;
+    setTrashedProducts(prev => prev.filter(p => p.id !== id));
+    setProducts(prev => (prev.some(p => p.id === id) ? prev : [...prev, restored]));
+  };
+
+  // Permanently deletes a trashed product. Queued behind any pending
+  // products save so the trash mark has landed before this real DELETE runs.
+  const purgeProduct = (id: string) => {
+    setTrashedProducts(prev => prev.filter(p => p.id !== id));
+    if (!userId || isDemoMode || publicMenuSlug) return;
+    retryUntilSuccess(() => {
+      const run = productsSyncQueueRef.current.then(() => purgeTrashedProduct(userId, id));
+      productsSyncQueueRef.current = run.catch(() => {});
+      return run;
+    });
   };
 
   // Reorders a product one slot up/down among the other products sharing
@@ -1562,6 +1601,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVisualConfig(INITIAL_VISUAL_CONFIG);
     setCategories(INITIAL_CATEGORIES);
     setProducts(INITIAL_PRODUCTS);
+    setTrashedProducts([]);
     setOrders(rebaseDemoOrders());
     setCoupons(INITIAL_COUPONS);
     setCustomers(INITIAL_CUSTOMERS);
@@ -1625,6 +1665,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateProduct,
       reorderProductInCategory,
       deleteProduct,
+      trashedProducts,
+      restoreProduct,
+      purgeProduct,
       updateOrderStatus,
       deleteOrder,
       archiveOrders,

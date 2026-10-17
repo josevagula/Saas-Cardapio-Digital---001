@@ -180,6 +180,9 @@ export interface Product {
   // Missing entry (or missing map) for a category = sorts after any product
   // with an explicit value there.
   categoryDisplayOrder?: Record<string, number>;
+  // Set while the product sits in the Cardápio's Lixeira (ISO timestamp of
+  // when it was deleted). Absent = active product.
+  deletedAt?: string;
 }
 
 export type OrderStatus = 'received' | 'preparing' | 'dispatched' | 'delivered' | 'cancelled';

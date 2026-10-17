@@ -28,7 +28,8 @@ import {
   Upload,
   Loader2,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  RotateCcw
 } from 'lucide-react';
 
 export default function DigitalMenuManager() {
@@ -39,6 +40,9 @@ export default function DigitalMenuManager() {
     addProduct,
     updateProduct,
     deleteProduct,
+    trashedProducts,
+    restoreProduct,
+    purgeProduct,
     reorderProductInCategory,
     addCategory,
     updateCategory,
@@ -129,6 +133,7 @@ export default function DigitalMenuManager() {
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
 
   // Form Fields
   const [name, setName] = useState('');
@@ -375,6 +380,14 @@ export default function DigitalMenuManager() {
           </button>
 
           <button
+            onClick={() => setIsTrashOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 bg-[#141210] text-slate-200 text-xs font-semibold rounded-xl border border-[#2A211A] hover:bg-[#181512] transition-all shadow-xs cursor-pointer w-full sm:w-auto"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-[#FB923C]" />
+            <span>Lixeira ({trashedProducts.length})</span>
+          </button>
+
+          <button
             onClick={handleOpenAdd}
             className="flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 btn-sushi-primary text-white text-xs sm:text-sm font-bold shadow-md cursor-pointer w-full sm:w-auto"
           >
@@ -573,7 +586,7 @@ export default function DigitalMenuManager() {
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm(`Excluir o produto "${prod.name}" do cardápio?`)) {
+                        if (confirm(`Mover o produto "${prod.name}" para a lixeira? Você pode restaurá-lo depois em "Lixeira".`)) {
                           deleteProduct(prod.id);
                         }
                       }}
@@ -898,6 +911,70 @@ export default function DigitalMenuManager() {
       )}
 
       {/* MODAL: ADD / EDIT CATEGORIES */}
+      {/* MODAL: LIXEIRA (deleted products, restorable) */}
+      {isTrashOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141210] rounded-2xl border border-[#2A211A] w-full max-w-lg shadow-2xl p-6 text-slate-100 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#2A211A] shrink-0">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-[#FB923C]" />
+                <h3 className="text-lg font-display font-extrabold text-[#F5F0EA]">Lixeira</h3>
+              </div>
+              <button
+                onClick={() => setIsTrashOpen(false)}
+                className="p-1.5 rounded-lg text-[#A8A29A] hover:text-white hover:bg-[#181512] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#A8A29A] mb-4 shrink-0">
+              Produtos excluídos ficam aqui e não aparecem no cardápio. Restaure para colocá-los de volta.
+            </p>
+
+            <div className="overflow-y-auto space-y-2 pr-1 flex-1">
+              {trashedProducts.length === 0 ? (
+                <p className="text-sm text-[#A8A29A] text-center py-8">A lixeira está vazia.</p>
+              ) : (
+                trashedProducts.map(prod => (
+                  <div key={prod.id} className="flex items-center gap-3 bg-[#181512] p-3 rounded-xl border border-[#2A211A]">
+                    {prod.imageUrl && (
+                      <img src={prod.imageUrl} alt={prod.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#F5F0EA] truncate">{prod.name}</p>
+                      <p className="text-[10px] font-mono text-[#A8A29A]">
+                        R$ {formatCurrency(prod.price)}
+                        {prod.deletedAt && ` · excluído em ${new Date(prod.deletedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => restoreProduct(prod.id)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#FB923C] border border-[#4A2A10] hover:bg-[#1F1209] transition-colors cursor-pointer shrink-0"
+                      title="Restaurar"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Restaurar</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Excluir "${prod.name}" definitivamente? Essa ação não pode ser desfeita.`)) {
+                          purgeProduct(prod.id);
+                        }
+                      }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer border border-transparent hover:border-red-900/40 shrink-0"
+                      title="Excluir definitivamente"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isAddingCategory && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#141210] rounded-2xl border border-[#2A211A] w-full max-w-lg shadow-2xl p-6 text-slate-100 max-h-[90vh] flex flex-col">

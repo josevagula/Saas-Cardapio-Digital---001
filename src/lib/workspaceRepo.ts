@@ -69,7 +69,8 @@ const productToRow = (p: Product, userId: string) => ({
   extras: p.extras ?? [],
   is_cart_recommendation: p.isCartRecommendation ?? false,
   cart_offer_price: p.cartOfferPrice ?? null,
-  category_display_order: p.categoryDisplayOrder ?? {}
+  category_display_order: p.categoryDisplayOrder ?? {},
+  deleted_at: p.deletedAt ?? null
 });
 
 const rowToProduct = (r: any): Product => ({
@@ -92,7 +93,8 @@ const rowToProduct = (r: any): Product => ({
   extras: r.extras ?? [],
   isCartRecommendation: r.is_cart_recommendation ?? false,
   cartOfferPrice: r.cart_offer_price != null ? Number(r.cart_offer_price) : undefined,
-  categoryDisplayOrder: r.category_display_order ?? undefined
+  categoryDisplayOrder: r.category_display_order ?? undefined,
+  deletedAt: r.deleted_at ?? undefined
 });
 
 const orderToRow = (o: Order, userId: string) => ({
@@ -372,6 +374,16 @@ export async function syncProducts(userId: string, changed: Product[], removedId
   }
 }
 
+// A DELETE of an active product only moves it to the Lixeira (the
+// products_soft_delete trigger sets deleted_at instead — see migration
+// 20261017120000_products_trash.sql), so removedIds above are trashed, not
+// lost. Deleting a product that's already in the trash removes it for good:
+// that's the Lixeira's "Excluir definitivamente".
+export async function purgeTrashedProduct(userId: string, productId: string) {
+  const { error } = await supabase.from('products').delete().eq('user_id', userId).eq('id', productId).not('deleted_at', 'is', null);
+  if (error) throw new Error(`Failed to permanently delete product in Supabase: ${error.message}`);
+}
+
 // Orders are append/update only — deliberately not routed through syncRows
 // above, which deletes any remote row missing from the local list. Order
 // history is a permanent record: it must survive a stale browser cache, a
@@ -452,7 +464,9 @@ export async function fetchPublicMenuBySlug(slug: string): Promise<{
     // client-side wherever products are filtered down to one category — a
     // flat cross-category order-by can't reflect that. This just keeps the
     // base fetch stable/insertion-ordered.
-    supabase.from('products').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
+    // Trashed products never reach the public menu (RLS hides them from
+    // anon too, but the owner previewing their own link reads as owner).
+    supabase.from('products').select('*').eq('user_id', userId).is('deleted_at', null).order('created_at', { ascending: true }),
     supabase.from('coupons').select('*').eq('user_id', userId).eq('active', true)
   ]);
 
