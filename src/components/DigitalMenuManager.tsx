@@ -590,10 +590,11 @@ export default function DigitalMenuManager() {
                           deleteProduct(prod.id);
                         }
                       }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer border border-transparent hover:border-red-900/40"
-                      title="Excluir"
+                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer border border-transparent hover:border-red-900/40 whitespace-nowrap"
+                      title="Mover para lixeira"
                     >
                       <Trash2 className="w-4 h-4" />
+                      <span>Mover para lixeira</span>
                     </button>
                   </div>
                 </div>
@@ -937,36 +938,41 @@ export default function DigitalMenuManager() {
                 <p className="text-sm text-[#A8A29A] text-center py-8">A lixeira está vazia.</p>
               ) : (
                 trashedProducts.map(prod => (
-                  <div key={prod.id} className="flex items-center gap-3 bg-[#181512] p-3 rounded-xl border border-[#2A211A]">
-                    {prod.imageUrl && (
-                      <img src={prod.imageUrl} alt={prod.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#F5F0EA] truncate">{prod.name}</p>
-                      <p className="text-[10px] font-mono text-[#A8A29A]">
-                        R$ {formatCurrency(prod.price)}
-                        {prod.deletedAt && ` · excluído em ${new Date(prod.deletedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`}
-                      </p>
+                  <div key={prod.id} className="bg-[#181512] p-3 rounded-xl border border-[#2A211A]">
+                    <div className="flex items-center gap-3">
+                      {prod.imageUrl && (
+                        <img src={prod.imageUrl} alt={prod.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-[#F5F0EA] truncate">{prod.name}</p>
+                        <p className="text-[10px] font-mono text-[#A8A29A]">
+                          R$ {formatCurrency(prod.price)}
+                          {prod.deletedAt && ` · movido para a lixeira em ${new Date(prod.deletedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`}
+                        </p>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => restoreProduct(prod.id)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#FB923C] border border-[#4A2A10] hover:bg-[#1F1209] transition-colors cursor-pointer shrink-0"
-                      title="Restaurar"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Restaurar</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`Excluir "${prod.name}" definitivamente? Essa ação não pode ser desfeita.`)) {
-                          purgeProduct(prod.id);
-                        }
-                      }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer border border-transparent hover:border-red-900/40 shrink-0"
-                      title="Excluir definitivamente"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex flex-wrap justify-end gap-2 mt-3">
+                      <button
+                        onClick={() => restoreProduct(prod.id)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#FB923C] border border-[#4A2A10] hover:bg-[#1F1209] transition-colors cursor-pointer"
+                        title="Restaurar"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Restaurar</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Excluir "${prod.name}" permanentemente? Essa ação não pode ser desfeita.`)) {
+                            purgeProduct(prod.id);
+                          }
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-400 border border-red-900/40 hover:bg-red-950/30 transition-colors cursor-pointer"
+                        title="Excluir permanentemente"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Excluir permanentemente</span>
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
