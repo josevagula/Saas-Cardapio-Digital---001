@@ -351,8 +351,26 @@ export async function fetchSubscriptionStatus(userId: string): Promise<string> {
 export const syncCategories = (userId: string, categories: Category[]) =>
   syncRows('categories', userId, categories.map(c => categoryToRow(c, userId)), 'id', 'id');
 
-export const syncProducts = (userId: string, products: Product[]) =>
-  syncRows('products', userId, products.map(p => productToRow(p, userId)), 'id', 'id');
+// Callers pass only the products that changed plus the ids explicitly
+// removed since the last confirmed save (see syncedProductsRef in
+// AppContext) — not routed through syncRows' "delete every row missing from
+// this list" prune. Every product embeds its photo (base64), so a full
+// upsert is MBs and slow; while one was still in flight, a newer save (e.g.
+// the one carrying a just-added product) could finish first, and the older
+// save's prune — built from the list *without* that product — then deleted
+// it. Explicit deletes can never remove a product this list didn't know of.
+export async function syncProducts(userId: string, changed: Product[], removedIds: string[]) {
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < changed.length; i += BATCH_SIZE) {
+    const batch = changed.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('products').upsert(batch.map(p => productToRow(p, userId)), { onConflict: 'id' });
+    if (error) throw new Error(`Failed to save products to Supabase: ${error.message}`);
+  }
+  if (removedIds.length > 0) {
+    const { error } = await supabase.from('products').delete().eq('user_id', userId).in('id', removedIds);
+    if (error) throw new Error(`Failed to delete products in Supabase: ${error.message}`);
+  }
+}
 
 // Orders are append/update only — deliberately not routed through syncRows
 // above, which deletes any remote row missing from the local list. Order

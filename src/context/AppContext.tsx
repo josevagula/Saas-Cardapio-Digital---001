@@ -413,6 +413,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // full upsert reached ~12MB and was timing out (500/502/524) on almost
   // every save — archiving/status changes looked saved but reverted on reload.
   const syncedOrdersRef = useRef<Map<string, Order>>(new Map());
+  // Same idea for products: the Product objects last confirmed saved, by id,
+  // so the products sync effect upserts only what changed and deletes only
+  // ids explicitly removed (see syncProducts in workspaceRepo for why the
+  // old full upsert + prune was losing newly added products).
+  // productsSyncQueueRef runs those saves one at a time, in order, so an
+  // older in-flight save can never land after (and overwrite) a newer one.
+  const syncedProductsRef = useRef<Map<string, Product>>(new Map());
+  const productsSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
   // True only while showing the landing page's "Demonstração" mock dataset.
   // Guards every sync-to-Supabase/localStorage effect below so demo
   // interactions never leak into (or read from) a real signed-in account.
@@ -483,6 +491,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setRedeemedByPhone(redeemed);
           setVisualConfig(data.visualConfig ?? BLANK_VISUAL_CONFIG);
           setCategories(data.categories);
+          syncedProductsRef.current = new Map(data.products.map(p => [p.id, p]));
           setProducts(data.products);
           syncedOrdersRef.current = new Map(data.orders.map(o => [o.id, o]));
           setOrders(data.orders);
@@ -629,7 +638,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (syncGateUserIdRef.current !== userId || isDemoMode || publicMenuSlug) return;
     if (userId) {
-      return retryUntilSuccess(() => syncProducts(userId, products));
+      const synced = syncedProductsRef.current;
+      const localIds = new Set(products.map(p => p.id));
+      return retryUntilSuccess(() => {
+        // The diff is taken when this save actually runs (after any earlier
+        // queued one has finished), so e.g. a product added and then deleted
+        // before its first save completed still gets deleted here.
+        const run = productsSyncQueueRef.current.then(() => {
+          const changed = products.filter(p => synced.get(p.id) !== p);
+          const removedIds = [...synced.keys()].filter(id => !localIds.has(id));
+          if (changed.length === 0 && removedIds.length === 0) return;
+          return syncProducts(userId, changed, removedIds).then(() => {
+            changed.forEach(p => synced.set(p.id, p));
+            removedIds.forEach(id => synced.delete(id));
+          });
+        });
+        productsSyncQueueRef.current = run.catch(() => {});
+        return run;
+      });
     }
     safeSetLocalStorage(scopedKey('products'), products);
   }, [products, workspaceReady, userId, isDemoMode, publicMenuSlug]);
@@ -1129,7 +1155,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addProduct = (newProd: Omit<Product, 'id' | 'salesCount'>) => {
     const prod: Product = {
       ...newProd,
-      id: `prod-${Math.floor(1000 + Math.random() * 9000)}`,
+      // Timestamp-based so it can't collide with an existing product's id
+      // (a collision would make the save upsert over that other product).
+      id: `prod-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       salesCount: 0,
       salesSuccessRate: 'medium'
     };
