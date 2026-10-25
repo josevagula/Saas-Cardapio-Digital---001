@@ -18,7 +18,8 @@ import {
   X,
   ShieldAlert,
   MessageCircle,
-  Loader2
+  Loader2,
+  PlayCircle
 } from 'lucide-react';
 import { HashiIcon, SushiRollIcon, SushiLogoEmblem, WasabiTag } from './SushiIcons';
 
@@ -42,6 +43,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
     { id: 'analytics_advanced', label: 'Analytics Avançado', icon: BarChart3 },
     { id: 'printing', label: 'Impressão', icon: Printer },
     { id: 'customizer', label: 'Personalização', icon: Palette },
+    { id: 'tutorials', label: 'Vídeos Tutoriais', icon: PlayCircle },
     { id: 'ai_assistant', label: 'Sushi AI Studio', icon: Sparkles, highlight: true },
   ];
 

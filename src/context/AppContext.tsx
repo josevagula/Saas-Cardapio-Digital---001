@@ -72,6 +72,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   analytics_advanced: '/dashboard/analytics',
   printing: '/dashboard/impressao',
   customizer: '/dashboard/personalizacao',
+  tutorials: '/dashboard/tutoriais',
   ai_assistant: '/dashboard/ai-studio'
 };
 const PATH_TO_VIEW: Record<string, string> = Object.fromEntries(
