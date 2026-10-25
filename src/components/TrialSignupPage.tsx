@@ -101,7 +101,7 @@ export default function TrialSignupPage() {
         <button onClick={() => setPublicView('landing')} className="flex items-center gap-2.5 cursor-pointer">
           <SushiLogoEmblem size={34} />
           <span className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-lg">
-            Ponto<span className="text-[#FB923C]"> japa</span>
+            Zu<span className="text-[#FB923C]">shy</span>
           </span>
         </button>
       </header>

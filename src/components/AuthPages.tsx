@@ -38,7 +38,7 @@ export default function AuthPages() {
         <div className="flex items-center gap-2.5">
           <SushiLogoEmblem size={32} />
           <span className="font-display font-extrabold text-white tracking-tight text-sm">
-            Ponto<span className="text-[#FB923C]">.japa</span>
+            Zu<span className="text-[#FB923C]">shy</span>
           </span>
         </div>
       </div>
@@ -49,7 +49,7 @@ export default function AuthPages() {
           <div className="hidden lg:flex items-center gap-2.5 mb-10">
             <SushiLogoEmblem size={34} />
             <span className="font-display font-extrabold text-white tracking-tight text-lg">
-              Ponto<span className="text-[#FB923C]">.japa</span>
+              Zu<span className="text-[#FB923C]">shy</span>
             </span>
           </div>
 
