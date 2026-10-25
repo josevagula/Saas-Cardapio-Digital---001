@@ -43,8 +43,8 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
     { id: 'analytics_advanced', label: 'Analytics Avançado', icon: BarChart3 },
     { id: 'printing', label: 'Impressão', icon: Printer },
     { id: 'customizer', label: 'Personalização', icon: Palette },
-    { id: 'tutorials', label: 'Vídeos Tutoriais', icon: PlayCircle },
     { id: 'ai_assistant', label: 'Sushi AI Studio', icon: Sparkles, highlight: true },
+    { id: 'tutorials', label: 'Vídeos Tutoriais', icon: PlayCircle },
   ];
 
   const activeSlug = visualConfig.menuSlug || 'delivery-sushi';
