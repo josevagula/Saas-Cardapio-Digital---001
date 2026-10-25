@@ -21,6 +21,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { WasabiTag, SubtleSushiDivider, SushiRollIcon } from './SushiIcons';
+import MessageTemplatesModal from './MessageTemplatesModal';
+import { getMessageTemplates, fillMessageTemplate } from '../utils/messageTemplates';
 
 export default function CustomersLoyalty() {
   const { customers: storedCustomers, loyaltyByPhone, products, categories, visualConfig, setVisualConfig, redeemReward, fetchCustomerLoyaltyHistory } = useApp();
@@ -34,6 +36,8 @@ export default function CustomersLoyalty() {
   const [historyCustomer, setHistoryCustomer] = useState<CustomerInfo | null>(null);
   const [historyEntries, setHistoryEntries] = useState<LoyaltyHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showMessagesEditor, setShowMessagesEditor] = useState(false);
+  const messageTemplates = getMessageTemplates(visualConfig);
 
   // Loyalty Program Config — mirrors visualConfig.loyaltyConfig (the value
   // that actually drives points earned per order, see AppContext.createOrder)
@@ -153,8 +157,18 @@ export default function CustomersLoyalty() {
           <p className="text-xs text-[#A8A29A] mt-1">Estimule a recorrência de pedidos de sushi, crie prêmios por pontos e gerencie a base VIP.</p>
         </div>
 
+        <div className="flex items-center gap-2 flex-wrap self-start">
+        <button
+          onClick={() => setShowMessagesEditor(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-[#2A211A] bg-[#141210] text-slate-200 hover:bg-[#2A211A] hover:text-[#F5F0EA] transition-colors cursor-pointer text-xs font-bold"
+          title="Editar as mensagens enviadas aos clientes pelo WhatsApp"
+        >
+          <MessageSquare className="w-3.5 h-3.5 text-[#FB923C]" />
+          <span>Editar Mensagens</span>
+        </button>
+
         {/* Sub Navigation Tabs */}
-        <div className="flex bg-[#141210] p-1 rounded-xl border border-[#2A211A] shadow-xs self-start">
+        <div className="flex bg-[#141210] p-1 rounded-xl border border-[#2A211A] shadow-xs">
           <button
             onClick={() => setActiveSubTab('list')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -177,6 +191,7 @@ export default function CustomersLoyalty() {
             <Gift className="w-3.5 h-3.5" />
             <span>Configuração de Prêmios</span>
           </button>
+        </div>
         </div>
       </div>
 
@@ -289,7 +304,7 @@ export default function CustomersLoyalty() {
                               </button>
 
                               <a
-                                href={`https://wa.me/55${cust.phone.replace(/\D/g, '')}?text=Ol%C3%A1%20${encodeURIComponent(cust.name)}!%20Temos%20novidades%20deliciosas%20de%20sushi%20no%20${encodeURIComponent(visualConfig.establishmentName)}.`}
+                                href={`https://wa.me/55${cust.phone.replace(/\D/g, '')}?text=${encodeURIComponent(fillMessageTemplate(messageTemplates.customerContact, { nome: cust.name, restaurante: visualConfig.establishmentName }))}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="p-1.5 bg-[#181512] text-[#FB923C] hover:bg-[#1F1209] rounded-lg border border-[#2A211A] transition-colors cursor-pointer"
@@ -433,6 +448,8 @@ export default function CustomersLoyalty() {
           </form>
         </div>
       )}
+
+      {showMessagesEditor && <MessageTemplatesModal onClose={() => setShowMessagesEditor(false)} />}
 
       {/* Histórico de Pontos — every earn/reversal/redeem for one customer,
           fetched on demand from the loyalty ledger rather than kept in

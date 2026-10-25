@@ -7,6 +7,8 @@ import { safeNumber, formatCurrency, parseCashAmount, formatOrderCode } from '..
 import { computeDeliveryEstimate } from '../utils/deliveryEstimate';
 import { printOrderOnPrinter, hasEverPrintedOrder, subscribeQueue, PrintJob } from '../lib/printing/printService';
 import { DEFAULT_PRINTING_CONFIG } from '../data/mockData';
+import MessageTemplatesModal from './MessageTemplatesModal';
+import { getMessageTemplates, fillMessageTemplate } from '../utils/messageTemplates';
 import {
   Check,
   Truck,
@@ -103,6 +105,7 @@ export default function OrdersManager() {
 
   // Simulated WhatsApp State
   const [selectedOrderForWhats, setSelectedOrderForWhats] = useState<Order | null>(null);
+  const [showMessagesEditor, setShowMessagesEditor] = useState(false);
   const [customWhatsText, setCustomWhatsText] = useState('');
 
   const tabs: { id: OrderStatus; label: string; icon: any; color: string; hoverColor: string }[] = [
@@ -195,19 +198,19 @@ export default function OrdersManager() {
 
   // Generate Automated WhatsApp message based on current status
   const triggerWhatsAppSimulator = (order: Order) => {
-    let text = `Olá, *${order.customerName}*! Seu pedido *${formatOrderCode(order)}* na *${visualConfig.establishmentName}* foi atualizado:\n\n`;
-    
-    if (order.status === 'received') {
-      text += `✅ *Pedido Confirmado!* Já recebemos a sua solicitação no sistema e estamos analisando.\n`;
-    } else if (order.status === 'preparing') {
-      text += `👨‍🍳 *Em Preparação!* O chefe já está montando o seu pedido com muito capricho.\n`;
-    } else if (order.status === 'dispatched') {
-      text += `🛵 *Saiu para entrega!* Nosso entregador já está a caminho com seu pedido quentinho.\n`;
-    } else if (order.status === 'delivered') {
-      text += `🎉 *Entregue!* Esperamos que aproveite a refeição. Muito obrigado pela preferência!\n`;
-    } else if (order.status === 'cancelled') {
-      text += `❌ *Pedido Cancelado.* Seu pedido foi cancelado. Qualquer dúvida, fale com a gente.\n`;
-    }
+    // Opening text comes from the editable templates ("Editar Mensagens");
+    // the order summary below is still appended automatically.
+    const templates = getMessageTemplates(visualConfig);
+    const statusTemplate = order.status === 'received' ? templates.orderReceived
+      : order.status === 'preparing' ? templates.orderPreparing
+      : order.status === 'dispatched' ? templates.orderDispatched
+      : order.status === 'delivered' ? templates.orderDelivered
+      : templates.orderCancelled;
+    let text = fillMessageTemplate(statusTemplate, {
+      nome: order.customerName,
+      restaurante: visualConfig.establishmentName,
+      pedido: formatOrderCode(order)
+    }) + '\n';
 
     text += `\n*Resumo do Pedido:*\n`;
     order.items.forEach(item => {
@@ -528,6 +531,15 @@ export default function OrdersManager() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap md:justify-end">
+          <button
+            onClick={() => setShowMessagesEditor(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#2A211A] bg-[#141210] text-slate-200 hover:bg-[#2A211A] hover:text-[#F5F0EA] transition-colors cursor-pointer text-xs font-bold"
+            title="Editar as mensagens enviadas aos clientes pelo WhatsApp"
+          >
+            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-[#FB923C]" />
+            <span>Editar Mensagens</span>
+          </button>
+
           {view === 'board' && (
             <button
               onClick={() => { setSheetDayKey(null); setView('sheet'); }}
@@ -779,6 +791,8 @@ export default function OrdersManager() {
           {filteredOrders.map(renderOrderCard)}
         </div>
       )}
+
+      {showMessagesEditor && <MessageTemplatesModal onClose={() => setShowMessagesEditor(false)} />}
 
       {/* WHATSAPP AUTOMATION SIMULATOR DIALOG */}
       {selectedOrderForWhats && (

@@ -230,6 +230,7 @@ const visualConfigToRow = (v: VisualConfig, userId: string) => ({
   auto_kit_config: v.autoKitConfig ?? null,
   loyalty_config: v.loyaltyConfig ?? null,
   printing_config: v.printingConfig ?? null,
+  message_templates: v.messageTemplates ?? null,
   updated_at: new Date().toISOString()
 });
 
@@ -258,7 +259,8 @@ const rowToVisualConfig = (r: any): VisualConfig => ({
   isStoreOpenManual: r.is_store_open_manual ?? undefined,
   autoKitConfig: r.auto_kit_config ?? undefined,
   loyaltyConfig: r.loyalty_config ?? undefined,
-  printingConfig: r.printing_config ?? undefined
+  printingConfig: r.printing_config ?? undefined,
+  messageTemplates: r.message_templates ?? undefined
 });
 
 // Upserts every current row and deletes any row still owned by this user

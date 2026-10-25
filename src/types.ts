@@ -42,6 +42,21 @@ export interface VisualConfig {
   pixKeyType?: string; // e.g. "CPF", "CNPJ", "Telefone", "E-mail", "Aleatória"
   pixPayeeName?: string;
   pixKey?: string;
+  // WhatsApp texts sent to customers, editable in "Editar Mensagens".
+  // Missing/blank keys fall back to DEFAULT_MESSAGE_TEMPLATES.
+  messageTemplates?: Partial<MessageTemplates>;
+}
+
+export interface MessageTemplates {
+  // Clientes & Fidelidade — WhatsApp button on each customer row.
+  customerContact: string;
+  // Pedidos — opening of the status update message; the order summary
+  // (itens, total, pagamento, endereço) is still appended automatically.
+  orderReceived: string;
+  orderPreparing: string;
+  orderDispatched: string;
+  orderDelivered: string;
+  orderCancelled: string;
 }
 
 // Rules for the Clientes & Fidelidade loyalty program — configured by the
