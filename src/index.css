@@ -71,6 +71,32 @@ body {
   transform: translateY(-1px) !important;
 }
 
+/* Pulso suave do botão "Ver painel" na landing */
+@keyframes softPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0);
+  }
+}
+
+.btn-soft-pulse {
+  animation: softPulse 3s ease-in-out infinite;
+}
+
+.btn-soft-pulse:hover {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-soft-pulse {
+    animation: none;
+  }
+}
+
 /* Radial Glow Background */
 .bg-pedify-hero, .bg-sushi-hero {
   background: radial-gradient(circle at 50% 0%, #1A1108 0%, #0C0A08 75%) !important;

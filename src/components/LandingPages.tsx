@@ -7,7 +7,8 @@ import {
   Check,
   MessageSquare,
   ArrowRight,
-  ChevronRight
+  ChevronRight,
+  LayoutDashboard
 } from 'lucide-react';
 
 export default function LandingPages() {
@@ -106,9 +107,10 @@ export default function LandingPages() {
                 </button>
                 <button
                   onClick={handleEnterDemo}
-                  className="px-6 py-3.5 border border-[#2A211A] text-[#F5F0EA] text-xs font-bold flex items-center justify-center gap-2 rounded-lg hover:border-[#FB923C] transition-colors cursor-pointer"
+                  className="btn-soft-pulse px-6 py-3.5 border-2 border-[#F97316] bg-[#F97316]/15 text-[#FB923C] text-xs font-bold flex items-center justify-center gap-2 rounded-lg shadow-[0_0_8px_rgba(249,115,22,0.15)] hover:bg-[#F97316]/25 hover:scale-105 transition-all cursor-pointer"
                 >
-                  <span>Demonstração</span>
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>Ver painel</span>
                 </button>
               </div>
             </motion.div>
