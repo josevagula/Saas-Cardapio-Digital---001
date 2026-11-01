@@ -6,6 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import { buildBestHours, pickMarketingStrategy, hasFreeDelivery, mentionsFreeDelivery, isWithinOpeningWindow, getOpeningWindow, type PromoStoreSettings } from "./src/lib/promoFallback";
 
 dotenv.config();
 
@@ -376,44 +377,31 @@ const DAY_NAME_FORMS: Record<string, string[]> = {
   sab: ["sábado", "sábados", "sabado", "sabados"]
 };
 
-const BEST_HOUR_TEMPLATES: ((day: string) => string)[] = [
-  (day) => `${day}, das 18:00 às 20:00 (Período de Happy Hour)`,
-  (day) => `${day}, das 15:00 às 17:00 (Lanche da tarde)`,
-  (day) => `${day} à noite`,
-  (day) => `${day}, das 19:00 às 21:00 (dias de menor movimento)`
-];
-
 function validOperatingCodes(operatingDays: any): string[] | null {
   if (!Array.isArray(operatingDays) || operatingDays.length === 0) return null;
   const codes = operatingDays.filter((c: any) => typeof c === "string" && DAY_CODE_NAMES[c]);
   return codes.length > 0 ? codes : null;
 }
 
-// Builds "bestHours" suggestions using only days the restaurant marked as
-// open in Personalização — used for the no-API-key template and as the
-// error-recovery fallback, and never names a day the establishment is closed.
-function buildFallbackBestHours(operatingDays?: any): string[] {
-  const codes = validOperatingCodes(operatingDays) ?? ALL_DAY_CODES;
-  const days = shuffleNames(codes.map((c) => DAY_CODE_NAMES[c]));
-  const templates = shuffleNames(BEST_HOUR_TEMPLATES);
-  const count = Math.min(2, days.length);
-  return Array.from({ length: count }, (_, i) => templates[i % templates.length](days[i]));
-}
-
 // Drops any AI-suggested slot that names a day the restaurant marked as
 // closed, so a model that ignores the prompt instruction still can't talk
 // its way into recommending a promo on a day off.
-function sanitizeBestHours(rawBestHours: any, operatingDays?: any): string[] {
+// Also drops any slot naming a time outside the opening hours (Personalização).
+function sanitizeBestHours(rawBestHours: any, operatingDays?: any, settings: PromoStoreSettings = {}): string[] {
   const codes = validOperatingCodes(operatingDays);
-  const items = Array.isArray(rawBestHours) ? rawBestHours.filter((h) => typeof h === "string") : [];
-  if (!codes) return items.length > 0 ? items : buildFallbackBestHours();
+  const items = (Array.isArray(rawBestHours) ? rawBestHours.filter((h) => typeof h === "string") : [])
+    .filter((h: string) => {
+      const times = [...h.matchAll(/\b(\d{1,2})(?::(\d{2})|h(\d{2})?)/g)].map((m) => Number(m[1]) * 60 + Number(m[2] || m[3] || 0));
+      return times.every((t) => isWithinOpeningWindow(t, settings));
+    });
+  if (!codes) return items.length > 0 ? items : buildBestHours(settings);
 
   const closedForms = ALL_DAY_CODES.filter((c) => !codes.includes(c)).flatMap((c) => DAY_NAME_FORMS[c]);
   const filtered = items.filter((h) => {
     const normalized = h.toLowerCase();
     return !closedForms.some((form) => normalized.includes(form));
   });
-  return filtered.length > 0 ? filtered : buildFallbackBestHours(codes);
+  return filtered.length > 0 ? filtered : buildBestHours({ ...settings, operatingDaysList: codes });
 }
 
 // Reshuffles the caller's own products and randomizes the copy/discount on
@@ -466,6 +454,7 @@ function sanitizeCombos(rawCombos: any[], validNames: string[]) {
 // AI 2: AI Promotion Suggester
 app.post("/api/gemini/suggest-promotions", async (req, res) => {
   const { products, operatingDays } = req.body;
+  const settings: PromoStoreSettings = { ...(req.body.storeSettings || {}), operatingDaysList: operatingDays };
 
   if (!products || !Array.isArray(products) || products.length === 0) {
     return res.status(400).json({ error: "É necessário enviar uma lista de produtos." });
@@ -478,8 +467,8 @@ app.post("/api/gemini/suggest-promotions", async (req, res) => {
   if (!ai) {
     return res.json({
       combos: buildFallbackCombos(productNames),
-      bestHours: buildFallbackBestHours(operatingDays),
-      marketingStrategy: "Ofereça frete grátis exclusivamente nas compras acima de R$ 50 feitas durantes as horas promocionais sugeridas. Divulgue no status do WhatsApp usando gatilhos de escassez (ex: 'Apenas para as próximas 10 pessoas!')."
+      bestHours: buildBestHours(settings),
+      marketingStrategy: pickMarketingStrategy(settings)
     });
   }
 
@@ -487,10 +476,16 @@ app.post("/api/gemini/suggest-promotions", async (req, res) => {
     const operatingDaysRule = operatingCodes
       ? `\nREGRA OBRIGATÓRIA: o restaurante só funciona nestes dias: ${operatingCodes.map((c) => DAY_CODE_NAMES[c]).join(", ")}. NUNCA sugira um dia ou horário fora desta lista.`
       : "";
+    const hoursRule = getOpeningWindow(settings)
+      ? `\nREGRA OBRIGATÓRIA: o restaurante só atende das ${settings.openingTime} às ${settings.closingTime}. Todo horário sugerido deve estar dentro desse intervalo.`
+      : "";
+    const deliveryRule = hasFreeDelivery(settings)
+      ? "\nREGRA OBRIGATÓRIA: o restaurante JÁ oferece entrega grátis. NUNCA sugira oferecer frete grátis."
+      : "";
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: `Com base EXCLUSIVAMENTE na seguinte lista de produtos já cadastrados no cardápio do restaurante, sugira 2 combos promocionais altamente atrativos, os melhores dias/horários para aplicar descontos (para aumentar o fluxo em dias lentos), e uma estratégia de marketing inteligente.
-REGRA OBRIGATÓRIA: use apenas os nomes de produtos exatamente como aparecem na lista abaixo. NUNCA invente, altere ou sugira produtos que não estejam nesta lista.${operatingDaysRule}
+REGRA OBRIGATÓRIA: use apenas os nomes de produtos exatamente como aparecem na lista abaixo. NUNCA invente, altere ou sugira produtos que não estejam nesta lista.${operatingDaysRule}${hoursRule}${deliveryRule}
 Produtos do cardápio: ${JSON.stringify(productNames)}`,
       config: {
         responseMimeType: "application/json",
@@ -538,14 +533,17 @@ Produtos do cardápio: ${JSON.stringify(productNames)}`,
     return res.json({
       ...parsed,
       combos: sanitized.length > 0 ? sanitized : buildFallbackCombos(productNames),
-      bestHours: sanitizeBestHours(parsed.bestHours, operatingDays)
+      bestHours: sanitizeBestHours(parsed.bestHours, operatingDays, settings),
+      marketingStrategy: typeof parsed.marketingStrategy === "string" && !(hasFreeDelivery(settings) && mentionsFreeDelivery(parsed.marketingStrategy))
+        ? parsed.marketingStrategy
+        : pickMarketingStrategy(settings)
     });
   } catch (error: any) {
     console.error("Erro na API de Promoção:", error);
     return res.json({
       combos: buildFallbackCombos(productNames),
-      bestHours: buildFallbackBestHours(operatingDays),
-      marketingStrategy: "Crie campanhas de cupom relâmpago nas redes sociais para engajar o público jovem."
+      bestHours: buildBestHours(settings),
+      marketingStrategy: pickMarketingStrategy(settings)
     });
   }
 });

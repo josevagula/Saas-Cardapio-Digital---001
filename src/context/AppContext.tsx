@@ -1127,10 +1127,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // "Dias de Funcionamento" picker) — sent along so the AI never suggests
     // promo hours/days the establishment doesn't actually work.
     const operatingDaysList = visualConfig.operatingDaysList;
+    // Personalização settings the suggestions must respect: open days/hours
+    // only, and no "offer free delivery" when the delivery fee is already R$ 0.
+    const storeSettings = {
+      operatingDaysList,
+      openingTime: visualConfig.openingTime,
+      closingTime: visualConfig.closingTime,
+      deliveryFee: visualConfig.deliveryFee
+    };
     // The static GitHub Pages build has no backend (no VITE_API_BASE_URL), so
     // the request could only fail — skip it instead of waiting on it.
     if (import.meta.env.PROD && !API_BASE) {
-      return buildFallbackPromoReport(products, operatingDaysList);
+      return buildFallbackPromoReport(products, storeSettings);
     }
     try {
       const response = await fetch(`${API_BASE}/api/gemini/suggest-promotions`, {
@@ -1138,7 +1146,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         // The server only reads product names. Sending whole products meant
         // uploading every base64 photo (~3MB for a 56-product menu) per click.
-        body: JSON.stringify({ products: products.map(p => ({ name: p.name })), operatingDays: operatingDaysList })
+        body: JSON.stringify({ products: products.map(p => ({ name: p.name })), operatingDays: operatingDaysList, storeSettings })
       });
       if (!response.ok) throw new Error("Erro ao sugerir promoções por IA");
       return await response.json();
@@ -1151,7 +1159,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // promotion instead of repeating the same fixed combo — while only
       // ever referencing products that actually exist in the cardápio, and
       // only ever suggesting days the restaurant is actually open.
-      return buildFallbackPromoReport(products, operatingDaysList);
+      return buildFallbackPromoReport(products, storeSettings);
     }
   };
 

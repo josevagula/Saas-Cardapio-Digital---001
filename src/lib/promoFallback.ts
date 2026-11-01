@@ -45,14 +45,68 @@ const DAY_CODE_NAMES: Record<string, string> = {
 };
 const ALL_DAY_CODES = Object.keys(DAY_CODE_NAMES);
 
-const BEST_HOUR_TEMPLATES: ((day: string) => string)[] = [
-  (day) => `${day}, das 18:00 às 20:00 (Período de Happy Hour)`,
-  (day) => `${day}, das 15:00 às 17:00 (Lanche da tarde)`,
-  (day) => `${day} à noite`,
-  (day) => `${day}, das 19:00 às 21:00 (dias de menor movimento)`
-];
+// What the promo generator needs from Personalização (VisualConfig).
+export interface PromoStoreSettings {
+  operatingDaysList?: string[];
+  openingTime?: string; // "HH:MM"
+  closingTime?: string; // "HH:MM"
+  deliveryFee?: number;
+}
 
-function buildBestHours(operatingDaysList?: string[]): string[] {
+const DAY_MINUTES = 24 * 60;
+
+function parseTime(t?: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})/.exec((t || '').trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
+function formatTime(minutes: number): string {
+  const m = ((minutes % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+// The restaurant's opening window as [start, end) minutes, where end may run
+// past midnight (e.g. 18:00–02:00 → [1080, 1560]). Same open==close rule as
+// checkIsStoreOpen: open 24h. null = hours not configured.
+export function getOpeningWindow(settings: PromoStoreSettings): { start: number; end: number } | null {
+  const open = parseTime(settings.openingTime);
+  const close = parseTime(settings.closingTime);
+  if (open === null || close === null) return null;
+  const end = close > open ? close : close + DAY_MINUTES;
+  return { start: open, end };
+}
+
+// True when a time of day (minutes) falls inside the opening window.
+export function isWithinOpeningWindow(minutes: number, settings: PromoStoreSettings): boolean {
+  const w = getOpeningWindow(settings);
+  if (!w) return true;
+  return (minutes >= w.start && minutes <= w.end) || (minutes + DAY_MINUTES >= w.start && minutes + DAY_MINUTES <= w.end);
+}
+
+// Promo slots that only ever fall inside the hours set in Personalização.
+function buildTimeSlots(settings: PromoStoreSettings): string[] {
+  const w = getOpeningWindow(settings);
+  if (!w) return ['durante o seu horário de atendimento'];
+  const span = w.end - w.start;
+  const len = Math.min(120, span);
+  const slot = (from: number, label: string) => `das ${formatTime(from)} às ${formatTime(from + len)} (${label})`;
+  const slots = [
+    slot(w.start, 'logo na abertura, para puxar os primeiros pedidos'),
+    slot(w.end - len, 'reta final antes de fechar')
+  ];
+  if (span >= 300) {
+    const mid = w.start + Math.round((span - len) / 2 / 30) * 30;
+    slots.push(slot(mid, 'Happy Hour no meio do expediente'));
+  }
+  return slots;
+}
+
+export function buildBestHours(settings: PromoStoreSettings): string[] {
+  const { operatingDaysList } = settings;
   const codes = operatingDaysList && operatingDaysList.length > 0
     ? operatingDaysList.filter(c => DAY_CODE_NAMES[c])
     : ALL_DAY_CODES;
@@ -62,17 +116,34 @@ function buildBestHours(operatingDaysList?: string[]): string[] {
   }
 
   const days = shuffle(codes.map(c => DAY_CODE_NAMES[c]));
-  const templates = shuffle(BEST_HOUR_TEMPLATES);
+  const slots = shuffle(buildTimeSlots(settings));
   const count = Math.min(2, days.length);
-  return Array.from({ length: count }, (_, i) => templates[i % templates.length](days[i]));
+  return Array.from({ length: count }, (_, i) => `${days[i]}, ${slots[i % slots.length]}`);
+}
+
+// Restaurants that already deliver for R$ 0 (Personalização) shouldn't be
+// told to "offer free delivery" — they already do.
+export function hasFreeDelivery(settings: PromoStoreSettings): boolean {
+  return Number(settings.deliveryFee || 0) <= 0;
+}
+
+export function mentionsFreeDelivery(text: string): boolean {
+  return /frete\s+gr[aá]tis|entrega\s+gr[aá]tis|isen[cç][aã]o\s+(de|do)\s+frete|frete\s+zero/i.test(text);
 }
 
 const MARKETING_STRATEGY_OPTIONS = [
-  'Disparar mensagem em lote para clientes inativos com cupom relâmpago de 10% durante as 19h.',
+  'Dispare uma mensagem em lote para clientes inativos com um cupom relâmpago de 10% válido só nos horários sugeridos.',
   'Ofereça frete grátis exclusivamente nas compras acima de R$ 50 feitas durante as horas promocionais sugeridas. Divulgue no status do WhatsApp usando gatilhos de escassez.',
   'Crie campanhas de cupom relâmpago nas redes sociais para engajar o público jovem.',
   'Poste o combo no status do WhatsApp com contagem regressiva para criar senso de urgência.'
 ];
+
+export function pickMarketingStrategy(settings: PromoStoreSettings): string {
+  const options = hasFreeDelivery(settings)
+    ? MARKETING_STRATEGY_OPTIONS.filter(o => !mentionsFreeDelivery(o))
+    : MARKETING_STRATEGY_OPTIONS;
+  return pickRandom(options);
+}
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -87,7 +158,7 @@ function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-export function buildFallbackPromoReport(products: Product[], operatingDaysList?: string[]) {
+export function buildFallbackPromoReport(products: Pick<Product, 'name'>[], settings: PromoStoreSettings) {
   const realNames = shuffle(products.map(p => p.name).filter(Boolean));
 
   const combos: { name: string; products: string[]; discountPercent: number; description: string }[] = [];
@@ -118,7 +189,7 @@ export function buildFallbackPromoReport(products: Product[], operatingDaysList?
 
   return {
     combos,
-    bestHours: buildBestHours(operatingDaysList),
-    marketingStrategy: pickRandom(MARKETING_STRATEGY_OPTIONS)
+    bestHours: buildBestHours(settings),
+    marketingStrategy: pickMarketingStrategy(settings)
   };
 }
