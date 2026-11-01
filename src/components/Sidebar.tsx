@@ -23,6 +23,7 @@ import {
   PlayCircle
 } from 'lucide-react';
 import { HashiIcon, SushiRollIcon, SushiLogoEmblem, WasabiTag } from './SushiIcons';
+import { useLogoHome } from '../hooks/useLogoHome';
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -32,6 +33,7 @@ interface SidebarProps {
 export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) {
   const { currentView, setCurrentView, visualConfig, currentPlan, planStatus, cancelPlan, setIsAdmin, setLoggedIn, isDemoMode } = useApp();
   const { logout } = useAuth();
+  const goLogoHome = useLogoHome();
   const [copied, setCopied] = useState(false);
   const syncPending = useSyncPending();
 
@@ -67,14 +69,22 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
     >
       {/* Brand Header */}
       <div className="p-5 border-b border-[#2A211A] flex items-center justify-between bg-sushi-texture">
-        <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            if (onCloseMobile) onCloseMobile();
+            goLogoHome();
+          }}
+          title={isDemoMode ? 'Voltar para a página inicial' : 'Ir para o Dashboard'}
+          className="flex items-center gap-3 text-left cursor-pointer min-w-0"
+        >
           <SushiLogoEmblem size={34} />
           <div>
             <h1 className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-base sm:text-lg leading-tight">
               {visualConfig.establishmentName || 'Zushy'}
             </h1>
           </div>
-        </div>
+        </button>
 
         {isMobile && onCloseMobile && (
           <button

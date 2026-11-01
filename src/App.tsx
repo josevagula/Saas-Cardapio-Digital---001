@@ -5,6 +5,7 @@ import PlanRenewalOverlay from './components/PlanRenewalOverlay';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Menu, Loader2 } from 'lucide-react';
 import { SushiLogoEmblem } from './components/SushiIcons';
+import { useLogoHome } from './hooks/useLogoHome';
 
 // Every one of these used to be a plain import, so visiting any single
 // screen (even the public cardápio a customer opens on their phone) pulled
@@ -40,6 +41,7 @@ function LoadingScreen() {
 export default function App() {
   const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, workspaceReady, authLoading, publicMenuNotFound } = useApp();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const goLogoHome = useLogoHome();
 
   // Dashboard/PublicMenuPage are lazy chunks that would otherwise only start
   // downloading once workspaceReady flips true (they're not referenced by
@@ -145,12 +147,16 @@ export default function App() {
               <Menu className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={goLogoHome}
+              className="flex items-center gap-2.5 min-w-0 cursor-pointer"
+            >
               <SushiLogoEmblem size={28} />
               <span className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-sm truncate">
                 {visualConfig.establishmentName || 'Zushy'}
               </span>
-            </div>
+            </button>
           </div>
 
           {/* Mobile Drawer Overlay */}
