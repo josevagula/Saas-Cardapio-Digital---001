@@ -356,7 +356,7 @@ export default function LandingPages() {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-[#F5F0EA] tracking-tight">FAQ</h2>
+          <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-[#F5F0EA] tracking-tight">Perguntas Frequentes</h2>
         </motion.div>
 
         <div className="space-y-3">
