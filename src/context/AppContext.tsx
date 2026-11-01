@@ -164,7 +164,7 @@ interface AppContextType {
   appliedCoupon: Coupon | null;
   applyCouponCode: (code: string) => { success: boolean; message: string };
   removeCoupon: () => void;
-  createOrder: (customer: { name: string; phone: string; address?: string; email?: string }, deliveryMethod: DeliveryMethod, paymentMethod: PaymentMethod, cashChangeInfo?: { needsChange?: boolean; changeAmount?: string }) => Order;
+  createOrder: (customer: { name: string; phone: string; address?: string; email?: string }, deliveryMethod: DeliveryMethod, paymentMethod: PaymentMethod, cashChangeInfo?: { needsChange?: boolean; changeAmount?: string }) => Promise<Order>;
 
   // AI Actions
   generateAIDescription: (productName: string, category: string, ingredients: string[]) => Promise<{ description: string; copy: string; keywords: string[] }>;
@@ -905,13 +905,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAppliedCoupon(null);
   };
 
+  // Id reused across retries of the same checkout (until it succeeds or the
+  // cart changes), so re-pressing "Confirmar Pedido" after a failed attempt
+  // whose insert actually landed can't create a duplicate order.
+  const pendingOrderIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    pendingOrderIdRef.current = null;
+  }, [cart]);
+
   // Create real orders & update metrics dynamically!
-  const createOrder = (
+  // Resolves only once the order row is actually saved in the restaurant's
+  // account (public menu) — the caller must not show the "send via WhatsApp"
+  // screen before that, or a customer can message the store an order that
+  // never reaches the dashboard/printer (2026-11-01 bug: the old fire-and-
+  // forget insert was lost whenever the phone suspended the tab on switching
+  // to WhatsApp, and the 4-digit random id collided with other orders).
+  const createOrder = async (
     customer: { name: string; phone: string; address?: string; email?: string },
     deliveryMethod: DeliveryMethod,
     paymentMethod: PaymentMethod,
     cashChangeInfo?: { needsChange?: boolean; changeAmount?: string }
-  ): Order => {
+  ): Promise<Order> => {
     const subtotal = cart.reduce((acc, item) => {
       const price = item.product.promoPrice || item.product.price;
       const extrasTotal = (item.extras || []).reduce((s, ex) => s + ex.price * ex.quantity, 0);
@@ -932,7 +946,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const total = Math.max(0, subtotal + deliveryFee - discountAmount);
-    const orderId = `LUV-${Math.floor(1000 + Math.random() * 9000)}`;
+    // orders.id is a GLOBAL primary key (every restaurant shares it), so the
+    // old `LUV-<4 random digits>` (9000 values) collided more and more often
+    // as orders accumulated — the insert then failed forever.
+    const orderId = pendingOrderIdRef.current
+      ?? `LUV-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    pendingOrderIdRef.current = orderId;
     // Driven by the restaurant's own Configuração de Prêmios (points per
     // R$10 spent) — no points at all if the loyalty program is switched off.
     // This is only a checkout-time snapshot for the order's own record —
@@ -961,6 +980,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       changeAmount: cashChangeInfo?.changeAmount
     };
 
+    if (publicMenuOwnerId) {
+      // Embedded base64 product photos made each item ~80KB — a big upload
+      // on a weak mobile connection. Order screens/receipts never show them.
+      const rowOrder: Order = {
+        ...newOrder,
+        items: newOrder.items.map(item =>
+          item.product.imageUrl?.startsWith('data:') ? { ...item, product: { ...item.product, imageUrl: '' } } : item
+        )
+      };
+      let lastError: unknown = null;
+      let saved = false;
+      for (let attempt = 0; attempt < 4 && !saved; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 1500 * attempt));
+        try {
+          await insertPublicOrder(publicMenuOwnerId, rowOrder);
+          saved = true;
+        } catch (err) {
+          lastError = err;
+          console.error(`Order insert attempt ${attempt + 1} failed:`, err);
+        }
+      }
+      if (!saved) throw lastError ?? new Error('Failed to save order');
+    }
+    pendingOrderIdRef.current = null;
+
     // Update products sales counts
     setProducts(prev => {
       return prev.map(p => {
@@ -981,7 +1025,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // customer's local state only ever holds their own order, never the
     // restaurant's full history.
     if (publicMenuOwnerId) {
-      retryUntilSuccess(() => insertPublicOrder(publicMenuOwnerId, newOrder));
       cart.forEach(item => {
         retryUntilSuccess(() => incrementProductSales(publicMenuOwnerId, item.product.id, item.quantity));
       });

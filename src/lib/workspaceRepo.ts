@@ -493,9 +493,20 @@ export async function fetchPublicMenuBySlug(slug: string): Promise<{
 // past customer's name/phone/address to anyone with the menu link).
 // Reconciling against that partial local list would delete the rest of the
 // restaurant's real orders.
-export async function insertPublicOrder(ownerId: string, order: Order) {
-  const { error } = await supabase.from('orders').insert(orderToRow(order, ownerId));
-  if (error) throw new Error(`Failed to save order to Supabase: ${error.message}`);
+// Each attempt is capped (timeoutMs) so a stalled mobile connection fails
+// fast and gets retried instead of hanging the checkout. A duplicate-key
+// error means an earlier attempt of this SAME order (same collision-proof
+// id, see generateOrderId in AppContext) already landed and only its
+// response was lost — that's success, not a failure to retry forever.
+export async function insertPublicOrder(ownerId: string, order: Order, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { error } = await supabase.from('orders').insert(orderToRow(order, ownerId)).abortSignal(controller.signal);
+    if (error && error.code !== '23505') throw new Error(`Failed to save order to Supabase: ${error.message}`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // Both call narrowly-scoped SECURITY DEFINER functions (see the

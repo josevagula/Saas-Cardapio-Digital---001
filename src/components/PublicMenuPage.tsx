@@ -164,6 +164,7 @@ export default function PublicMenuPage() {
   };
 
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // Step 1 validation: contact info + delivery address (when applicable)
   const validateCheckoutStep1 = (): boolean => {
@@ -222,8 +223,9 @@ export default function PublicMenuPage() {
     setIsCartOpen(false);
   };
 
-  const handleCheckoutSubmit = (e: React.FormEvent) => {
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingOrder) return;
     setCheckoutError(null);
     if (!isStoreOpen) {
       setCheckoutError("O restaurante está fechado no momento. Não é possível receber novos pedidos.");
@@ -240,12 +242,24 @@ export default function PublicMenuPage() {
       return;
     }
 
-    const newOrder = createOrder(
-      { name, phone, email, address },
-      deliveryMethod,
-      paymentMethod,
-      paymentMethod === 'cash' ? { needsChange: !!needsChange, changeAmount: needsChange ? changeAmount.trim() : '' } : undefined
-    );
+    // The WhatsApp step is only shown once the order is confirmed saved in
+    // the restaurant's dashboard — never before, or the store could get the
+    // WhatsApp message for an order that never reached the site/printer.
+    setIsSubmittingOrder(true);
+    let newOrder;
+    try {
+      newOrder = await createOrder(
+        { name, phone, email, address },
+        deliveryMethod,
+        paymentMethod,
+        paymentMethod === 'cash' ? { needsChange: !!needsChange, changeAmount: needsChange ? changeAmount.trim() : '' } : undefined
+      );
+    } catch {
+      setCheckoutError("Não conseguimos enviar seu pedido. Verifique sua conexão com a internet e toque em \"Confirmar Pedido\" novamente.");
+      return;
+    } finally {
+      setIsSubmittingOrder(false);
+    }
 
     setPlacedOrder(newOrder);
     setIsCheckoutOpen(false);
@@ -1877,10 +1891,15 @@ export default function PublicMenuPage() {
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2.5 rounded-full text-xs font-black text-white cursor-pointer bg-[#FF6A00] hover:bg-[#E65F00] transition-transform active:scale-95 flex items-center gap-1.5 shadow-lg shadow-orange-600/20"
+                      disabled={isSubmittingOrder}
+                      className="px-6 py-2.5 rounded-full text-xs font-black text-white cursor-pointer bg-[#FF6A00] hover:bg-[#E65F00] transition-transform active:scale-95 flex items-center gap-1.5 shadow-lg shadow-orange-600/20 disabled:opacity-70 disabled:cursor-wait"
                     >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Confirmar Pedido</span>
+                      {isSubmittingOrder ? (
+                        <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      )}
+                      <span>{isSubmittingOrder ? 'Enviando pedido...' : 'Confirmar Pedido'}</span>
                     </button>
                   </div>
                 )}
