@@ -47,13 +47,15 @@ export const INITIAL_VISUAL_CONFIG: VisualConfig = {
   loyaltyConfig: DEFAULT_LOYALTY_CONFIG
 };
 
+// Icons must be an emoji from the category icon picker (or one of the legacy
+// Lucide names the menus still map) — anything else, like a component name,
+// is printed as raw text over the category pill on the public menu.
 export const INITIAL_CATEGORIES: Category[] = [
-  { id: "cat-1", name: "Combinados Special", icon: "SushiRollIcon" },
-  { id: "cat-2", name: "Temakis", icon: "Flame" },
-  { id: "cat-3", name: "Sashimi & Uramaki", icon: "HashiIcon" },
-  { id: "cat-4", name: "Hot Rolls & Entradas", icon: "UtensilsCrossed" },
-  { id: "cat-5", name: "Bebidas & Sakes", icon: "Coffee" },
-  { id: "cat-6", name: "Combos IA", icon: "Sparkles" }
+  { id: "cat-1", name: "Combinados Special", icon: "🍱" },
+  { id: "cat-2", name: "Temakis", icon: "🍣" },
+  { id: "cat-3", name: "Sashimi & Uramaki", icon: "🐟" },
+  { id: "cat-4", name: "Hot Rolls & Entradas", icon: "🔥" },
+  { id: "cat-5", name: "Bebidas & Sakes", icon: "🥤" }
 ];
 
 export const INITIAL_PRODUCTS: Product[] = [
