@@ -1,6 +1,6 @@
 import { Order } from '../types';
 import { FilterPreset, rangeForPreset } from './analyticsStats';
-import { safeNumber } from './formatters';
+import { safeNumber, getUnitPrice } from './formatters';
 
 // Shared by Pedidos and the Dashboard so "filter by date / product / person"
 // means exactly the same thing on both screens.
@@ -88,7 +88,7 @@ export function productSalesInOrders(orders: Order[], productId: string): { unit
     o.items.forEach(item => {
       if (item.product.id !== productId) return;
       units += item.quantity;
-      revenue += safeNumber(item.product.promoPrice || item.product.price) * item.quantity
+      revenue += getUnitPrice(item.product) * item.quantity
         + (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
     });
   });

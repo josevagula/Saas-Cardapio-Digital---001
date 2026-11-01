@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product, Category, PaymentMethod, DeliveryMethod, SelectedComboPiece, SelectedHalfAndHalf, SelectedExtra, OrderItem } from '../types';
-import { safeNumber, formatCurrency, parseCashAmount } from '../utils/formatters';
+import { safeNumber, formatCurrency, parseCashAmount, getUnitPrice, getStrikePrice } from '../utils/formatters';
 import { computeDeliveryEstimate } from '../utils/deliveryEstimate';
 import { 
   ShoppingBag, 
@@ -304,7 +304,7 @@ export default function PublicMenuPage() {
       const extrasText = item.extras && item.extras.length > 0 ? ` [+ ${item.extras.map(ex => `${ex.quantity}x ${ex.name}`).join(', ')}]` : '';
       const notesText = item.notes ? ` (Obs: ${item.notes})` : '';
       const offerText = item.isCartOffer && item.product.cartOfferPrice ? ' [Oferta do Carrinho]' : '';
-      const unitPrice = safeNumber(item.product.promoPrice || item.product.price);
+      const unitPrice = getUnitPrice(item.product);
       const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
       const lineTotal = unitPrice * safeNumber(item.quantity, 1) + extrasTotal;
       return `*${item.quantity}x ${item.product.name}*${offerText}${removedText}${extrasText}${notesText}\n`
@@ -430,7 +430,7 @@ export default function PublicMenuPage() {
   const offerPriceFor = (p: Product): number | null => {
     if (p.isComboBuilder || p.supportsHalfAndHalf) return null;
     const offer = safeNumber(p.cartOfferPrice);
-    return offer > 0 && offer < safeNumber(p.promoPrice || p.price) ? offer : null;
+    return offer > 0 && offer < getUnitPrice(p) ? offer : null;
   };
 
   const handleAddRecommendation = (p: Product) => {
@@ -454,7 +454,7 @@ export default function PublicMenuPage() {
 
   // Calculations
   const subtotal = cart.reduce((acc, item) => {
-    const price = safeNumber(item.product.promoPrice || item.product.price);
+    const price = getUnitPrice(item.product);
     const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
     return acc + (price * safeNumber(item.quantity, 1)) + extrasTotal;
   }, 0);
@@ -637,7 +637,7 @@ export default function PublicMenuPage() {
 
               <div className="space-y-1.5">
                 {(placedOrder.items as OrderItem[]).map((item, idx) => {
-                  const price = safeNumber(item.product.promoPrice || item.product.price);
+                  const price = getUnitPrice(item.product);
                   const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
                   const lineTotal = price * safeNumber(item.quantity, 1) + extrasTotal;
                   return (
@@ -900,13 +900,9 @@ export default function PublicMenuPage() {
 
                     <div className={`mt-4 pt-3 flex items-center justify-between gap-3 ${t('border-t border-[#262626]/60', 'border-t border-[#E5E5E5]')}`}>
                       <div className="flex items-baseline gap-2">
-                        {p.promoPrice && safeNumber(p.promoPrice) > 0 ? (
-                          <>
-                            <span className="text-lg font-black font-mono text-[#FF6A00]">R$ {formatCurrency(p.price)}</span>
-                            <span className="text-xs font-mono line-through text-[#6B7280]">R$ {formatCurrency(p.promoPrice)}</span>
-                          </>
-                        ) : (
-                          <span className="text-lg font-black font-mono text-[#FF6A00]">R$ {formatCurrency(p.price)}</span>
+                        <span className="text-lg font-black font-mono text-[#FF6A00]">R$ {formatCurrency(getUnitPrice(p))}</span>
+                        {getStrikePrice(p) != null && (
+                          <span className="text-xs font-mono line-through text-[#6B7280]">R$ {formatCurrency(getStrikePrice(p))}</span>
                         )}
                       </div>
 
@@ -1117,7 +1113,7 @@ export default function PublicMenuPage() {
                   <div>
                     <span className={`text-xs font-medium block ${t('text-[#8E8B85]', 'text-black')}`}>Valor Unitário</span>
                     <span className={`text-xl font-mono font-black ${t('text-white', 'text-black')}`}>
-                      R$ {formatCurrency(selectedProduct.promoPrice || selectedProduct.price).replace('.', ',')}
+                      R$ {formatCurrency(getUnitPrice(selectedProduct)).replace('.', ',')}
                     </span>
                   </div>
 
@@ -1157,7 +1153,7 @@ export default function PublicMenuPage() {
                   <div className="flex items-center gap-2 font-mono font-black text-sm text-black">
                     <span className="opacity-40">|</span>
                     <span>
-                      R$ {formatCurrency(safeNumber(selectedProduct.promoPrice || selectedProduct.price) * productQuantity + extrasTotalForSelection(selectedExtras)).replace('.', ',')}
+                      R$ {formatCurrency(getUnitPrice(selectedProduct) * productQuantity + extrasTotalForSelection(selectedExtras)).replace('.', ',')}
                     </span>
                   </div>
                 </button>
@@ -1219,7 +1215,7 @@ export default function PublicMenuPage() {
                           <div className="flex items-start justify-between gap-2">
                             <h4 className={`font-bold text-xs sm:text-sm line-clamp-2 leading-snug ${t('text-white', 'text-[#1A1A1A]')}`}>{item.product.name}</h4>
                             <span className={`font-mono font-bold text-xs sm:text-sm whitespace-nowrap ${t('text-white', 'text-[#1A1A1A]')}`}>
-                              R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity + extrasTotalForSelection(item.extras || [])).replace('.', ',')}
+                              R$ {formatCurrency(getUnitPrice(item.product) * item.quantity + extrasTotalForSelection(item.extras || [])).replace('.', ',')}
                             </span>
                           </div>
 
@@ -1315,7 +1311,7 @@ export default function PublicMenuPage() {
                                 {offerPriceFor(p) != null ? (
                                   <span className="flex flex-col leading-tight">
                                     <span className="font-mono text-[10px] line-through text-[#6B7280]">
-                                      R$ {formatCurrency(safeNumber(p.promoPrice || p.price)).replace('.', ',')}
+                                      R$ {formatCurrency(getUnitPrice(p)).replace('.', ',')}
                                     </span>
                                     <span className="font-mono font-black text-xs text-[#FF6A00]">
                                       R$ {formatCurrency(offerPriceFor(p)!).replace('.', ',')}
@@ -1323,7 +1319,7 @@ export default function PublicMenuPage() {
                                   </span>
                                 ) : (
                                   <span className="font-mono font-black text-xs text-[#FF6A00]">
-                                    R$ {formatCurrency(safeNumber(p.promoPrice || p.price)).replace('.', ',')}
+                                    R$ {formatCurrency(getUnitPrice(p)).replace('.', ',')}
                                   </span>
                                 )}
                                 <button
@@ -1824,7 +1820,7 @@ export default function PublicMenuPage() {
                     <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${t('text-[#93A5C4]', 'text-[#4B5563]')}`}>Resumo dos Itens ({cart.length}x)</p>
                     <div className="space-y-1.5">
                       {cart.map((item, idx) => {
-                        const price = safeNumber(item.product.promoPrice || item.product.price);
+                        const price = getUnitPrice(item.product);
                         const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
                         const lineTotal = price * safeNumber(item.quantity, 1) + extrasTotal;
                         return (

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product, Category, ProductExtra } from '../types';
-import { safeNumber, formatCurrency } from '../utils/formatters';
+import { safeNumber, formatCurrency, getUnitPrice, getStrikePrice } from '../utils/formatters';
 import { compressImage } from '../utils/imageUtils';
 import { 
   Plus, 
@@ -526,13 +526,13 @@ export default function DigitalMenuManager() {
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="font-display font-bold text-[#F5F0EA] text-base leading-snug">{prod.name}</h4>
                       <div className="text-right">
-                        {prod.promoPrice && safeNumber(prod.promoPrice) > 0 ? (
+                        {getStrikePrice(prod) != null ? (
                           <>
-                            <span className="text-[10px] line-through text-[#A8A29A]/70 font-mono">R$ {formatCurrency(prod.promoPrice)}</span>
-                            <p className="text-sm font-bold text-[#FB923C] font-mono">R$ {formatCurrency(prod.price)}</p>
+                            <span className="text-[10px] line-through text-[#A8A29A]/70 font-mono">R$ {formatCurrency(getStrikePrice(prod))}</span>
+                            <p className="text-sm font-bold text-[#FB923C] font-mono">R$ {formatCurrency(getUnitPrice(prod))}</p>
                           </>
                         ) : (
-                          <p className="text-sm font-bold text-[#F5F0EA] font-mono">R$ {formatCurrency(prod.price)}</p>
+                          <p className="text-sm font-bold text-[#F5F0EA] font-mono">R$ {formatCurrency(getUnitPrice(prod))}</p>
                         )}
                       </div>
                     </div>

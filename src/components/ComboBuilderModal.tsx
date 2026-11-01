@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product, SelectedComboPiece } from '../types';
-import { safeNumber, formatCurrency } from '../utils/formatters';
+import { safeNumber, formatCurrency, getUnitPrice, getStrikePrice } from '../utils/formatters';
 import { X, Plus, Minus, Check, Sparkles } from 'lucide-react';
 
 interface ComboBuilderModalProps {
@@ -188,7 +188,7 @@ export default function ComboBuilderModal({ product, onClose, onAddToCart }: Com
           <div>
             <span className="text-[10px] text-[#A8A29A] font-mono uppercase block">Valor Total do Combo</span>
             <span className="text-lg font-black text-[#F97316] font-mono">
-              R$ {formatCurrency(product.promoPrice || product.price)}
+              R$ {formatCurrency(getUnitPrice(product))}
             </span>
           </div>
 

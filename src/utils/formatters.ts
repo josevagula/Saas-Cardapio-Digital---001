@@ -14,6 +14,27 @@ export function safeNumber(val: any, fallback = 0): number {
   return isNaN(num) ? fallback : num;
 }
 
+// What a product actually costs: the LOWER of its two prices. The menu card
+// always showed `price` as the big number and `promoPrice` struck through,
+// while the cart charged `promoPrice` — so a product saved as
+// "Preço Original R$78 / Promocional R$100" (how AI Studio combos are
+// created) displayed R$78 but charged R$100. Charging/showing the lower one
+// everywhere keeps display and charge in agreement under either convention.
+export function getUnitPrice(p: { price: any; promoPrice?: any }): number {
+  const price = safeNumber(p.price);
+  const promo = safeNumber(p.promoPrice);
+  return promo > 0 ? Math.min(price > 0 ? price : promo, promo) : price;
+}
+
+// The higher price, shown struck through next to getUnitPrice — null when
+// there's no real discount to show.
+export function getStrikePrice(p: { price: any; promoPrice?: any }): number | null {
+  const price = safeNumber(p.price);
+  const promo = safeNumber(p.promoPrice);
+  if (promo <= 0 || price <= 0 || promo === price) return null;
+  return Math.max(price, promo);
+}
+
 export function formatCurrency(val: any): string {
   return safeNumber(val).toFixed(2);
 }

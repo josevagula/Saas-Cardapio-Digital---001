@@ -3,7 +3,7 @@ import OrderFiltersBar from './OrderFiltersBar';
 import { applyOrderFilters, customerOptionsFromOrders, defaultOrderFilters, OrderFilterState, productOptionsFromOrders } from '../utils/orderFilters';
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus } from '../types';
-import { safeNumber, formatCurrency, parseCashAmount, formatOrderCode } from '../utils/formatters';
+import { safeNumber, formatCurrency, parseCashAmount, formatOrderCode, getUnitPrice } from '../utils/formatters';
 import { computeDeliveryEstimate } from '../utils/deliveryEstimate';
 import { printOrderOnPrinter, hasEverPrintedOrder, subscribeQueue, PrintJob } from '../lib/printing/printService';
 import { DEFAULT_PRINTING_CONFIG } from '../data/mockData';
@@ -341,7 +341,7 @@ export default function OrdersManager() {
                     )}
                   </div>
                   <span className="font-mono text-[#A8A29A]">
-                    R$ {formatCurrency(safeNumber(item.product.promoPrice || item.product.price) * item.quantity + (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0))}
+                    R$ {formatCurrency(getUnitPrice(item.product) * item.quantity + (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0))}
                   </span>
                 </div>
               ))}

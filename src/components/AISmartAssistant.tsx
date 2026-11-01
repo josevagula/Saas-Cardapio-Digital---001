@@ -11,20 +11,74 @@ import {
   ShieldAlert,
   HelpCircle,
   Copy,
-  Plus
+  Plus,
+  Check
 } from 'lucide-react';
+import { safeNumber, formatCurrency, getUnitPrice } from '../utils/formatters';
+import { buildComboImage } from '../utils/comboImage';
+
+const normalizeName = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 
 export default function AISmartAssistant() {
-  const { suggestAICombos, products } = useApp();
+  const { suggestAICombos, products, categories, addCategory, addProduct } = useApp();
 
   // AI Promotions States
   const [loadingPromos, setLoadingPromos] = useState(false);
   const [aiPromos, setAiPromos] = useState<any>(null);
+  // Per-combo activation state (index in aiPromos.combos).
+  const [activating, setActivating] = useState<number | null>(null);
+  const [activated, setActivated] = useState<Record<number, { name: string; price: number; original: number } | string>>({});
+
+  // Adds the combo to the cardápio as a real product: only in "Destaques"
+  // (created if the account doesn't have it yet), photo = the products side
+  // by side, price = sum of the products minus the suggested discount, with
+  // the undiscounted sum in Preço Promocional (shown struck through).
+  const handleActivateCombo = async (combo: any, idx: number) => {
+    if (activating !== null || activated[idx]) return;
+    const comboProducts = (combo.products as string[])
+      .map(name => products.find(p => normalizeName(p.name) === normalizeName(name)))
+      .filter((p): p is NonNullable<typeof p> => !!p);
+    if (comboProducts.length === 0) {
+      setActivated(prev => ({ ...prev, [idx]: 'Os produtos deste combo não foram encontrados no cardápio.' }));
+      return;
+    }
+
+    setActivating(idx);
+    try {
+      const original = Math.round(comboProducts.reduce((s, p) => s + getUnitPrice(p), 0) * 100) / 100;
+      const discount = Math.min(100, Math.max(0, safeNumber(combo.discountPercent)));
+      const price = Math.round(original * (1 - discount / 100) * 100) / 100;
+
+      const destaques = categories.find(c => ['destaques', 'destaque'].includes(normalizeName(c.name)))
+        ?? addCategory({ name: 'Destaques', icon: '✨' });
+
+      const imageUrl = await buildComboImage(comboProducts.map(p => p.imageUrl));
+
+      addProduct({
+        name: combo.name,
+        description: `${combo.description} Inclui: ${comboProducts.map(p => p.name).join(' + ')}.`,
+        price,
+        promoPrice: price < original ? original : undefined,
+        categoryIds: [destaques.id],
+        imageUrl,
+        isAvailable: true,
+        ingredients: comboProducts.map(p => p.name),
+        tags: ['Combo', `${discount}% OFF`]
+      });
+      setActivated(prev => ({ ...prev, [idx]: { name: combo.name, price, original } }));
+    } catch (err) {
+      console.error(err);
+      setActivated(prev => ({ ...prev, [idx]: 'Não foi possível ativar o combo. Tente novamente.' }));
+    } finally {
+      setActivating(null);
+    }
+  };
 
   const handleFetchPromos = async () => {
     setLoadingPromos(true);
     try {
       const data = await suggestAICombos();
+      setActivated({});
       setAiPromos(data);
     } catch (err) {
       console.error(err);
@@ -143,13 +197,37 @@ export default function AISmartAssistant() {
                         <p className="text-xs text-[#A8A29A] mt-3 leading-relaxed">{combo.description}</p>
                       </div>
 
-                      <button
-                        onClick={() => alert(`Combo "${combo.name}" adicionado com sucesso ao cardápio de combos!`)}
-                        className="mt-4 w-full bg-[#141210] border border-[#2A211A] text-slate-200 hover:bg-[#2A211A] hover:text-white py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-[#FB923C]" />
-                        <span>Ativar Combo no Cardápio</span>
-                      </button>
+                      {(() => {
+                        const result = activated[idx];
+                        const done = result && typeof result !== 'string';
+                        return (
+                          <div className="mt-4">
+                            <button
+                              onClick={() => handleActivateCombo(combo, idx)}
+                              disabled={!!done || activating !== null}
+                              className="w-full bg-[#141210] border border-[#2A211A] text-slate-200 hover:bg-[#2A211A] hover:text-white py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs disabled:cursor-default disabled:hover:bg-[#141210]"
+                            >
+                              {activating === idx ? (
+                                <span className="w-3.5 h-3.5 border-2 border-[#FB923C]/40 border-t-[#FB923C] rounded-full animate-spin" />
+                              ) : done ? (
+                                <Check className="w-3.5 h-3.5 text-[#22C55E]" />
+                              ) : (
+                                <Plus className="w-3.5 h-3.5 text-[#FB923C]" />
+                              )}
+                              <span>{activating === idx ? 'Ativando combo...' : done ? 'Combo ativado em Destaques' : 'Ativar Combo no Cardápio'}</span>
+                            </button>
+                            {done && (
+                              <p className="text-[11px] text-[#A8A29A] mt-2 text-center">
+                                De <span className="line-through">R$ {formatCurrency(result.original).replace('.', ',')}</span> por{' '}
+                                <span className="text-[#FB923C] font-bold">R$ {formatCurrency(result.price).replace('.', ',')}</span>
+                              </p>
+                            )}
+                            {typeof result === 'string' && (
+                              <p className="text-[11px] text-[#EF4444] mt-2 text-center">{result}</p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>

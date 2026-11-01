@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { compressImage } from '../utils/imageUtils';
-import { safeNumber, formatCurrency } from '../utils/formatters';
+import { safeNumber, formatCurrency, getUnitPrice, getStrikePrice } from '../utils/formatters';
 import {
   Palette,
   Smartphone,
@@ -891,7 +891,7 @@ export default function VisualCustomizer() {
                         </div>
                         <div className={`flex items-center justify-between gap-2 pt-1 border-t ${tPrev('border-[#262626]/60', 'border-[#E5E5E5]')}`}>
                           <span className="text-[10px] font-black font-mono text-[#FF6A00]">
-                            {p ? `R$ ${formatCurrency(p.promoPrice && safeNumber(p.promoPrice) > 0 ? p.promoPrice : p.price)}` : '—'}
+                            {p ? `R$ ${formatCurrency(getUnitPrice(p))}` : '—'}
                           </span>
                           <span className="bg-[#FF6A00] text-white text-[7px] font-bold px-2 py-1 rounded-lg flex items-center gap-0.5 shrink-0">
                             <span>Adicionar</span>

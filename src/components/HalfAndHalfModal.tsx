@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product, SelectedHalfAndHalf } from '../types';
-import { safeNumber, formatCurrency } from '../utils/formatters';
+import { safeNumber, formatCurrency, getUnitPrice, getStrikePrice } from '../utils/formatters';
 import { X, Check, Utensils, Sparkles, AlertCircle } from 'lucide-react';
 
 interface HalfAndHalfModalProps {
@@ -28,7 +28,7 @@ export default function HalfAndHalfModal({ product, onClose, onAddToCart }: Half
   let extraFee = 0;
   if (flavor1.includes('Camarão') || flavor2.includes('Camarão')) extraFee += 3.00;
 
-  const basePrice = product.promoPrice || product.price;
+  const basePrice = getUnitPrice(product);
   const finalPrice = basePrice + extraFee;
 
   const handleConfirm = () => {

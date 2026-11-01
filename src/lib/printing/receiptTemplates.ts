@@ -1,5 +1,5 @@
 import { Order, OrderItem, PrintingConfig } from '../../types';
-import { formatCurrency, parseCashAmount } from '../../utils/formatters';
+import { formatCurrency, parseCashAmount, getUnitPrice } from '../../utils/formatters';
 import { EscPosBuilder, AccentMode } from './escpos';
 import { LogoRaster } from './logoRaster';
 
@@ -66,7 +66,7 @@ const DELIVERY_METHOD_LABELS: Record<Order['deliveryMethod'], string> = {
 // chosen flavors and Meio a Meio's two halves are otherwise invisible on a
 // generic "2x Combo" line, and a wrong assembly means a redone order).
 function printItemSpec(b: EscPosBuilder, item: OrderItem, config: PrintingConfig) {
-  const unitPrice = item.product.promoPrice ?? item.product.price;
+  const unitPrice = getUnitPrice(item.product);
   const productTotal = unitPrice * item.quantity;
   b.bold(true).line(`${item.quantity}x ${item.product.name}`).bold(false);
   if (item.quantity > 1) {

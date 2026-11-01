@@ -46,7 +46,7 @@ import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { API_BASE } from '../lib/apiBase';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
 import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption, computeLoyaltyByPhone, buildLoyaltyHistory, type CustomerLoyaltyStats, type LoyaltyHistoryItem } from '../utils/loyalty';
-import { formatOrderCode } from '../utils/formatters';
+import { formatOrderCode, getUnitPrice } from '../utils/formatters';
 import { handleOrderReceivedForPrinting, handleOrderConfirmedForPrinting } from '../lib/printing/printBridge';
 import { setWatchedPrinters } from '../lib/printing/printService';
 import { orderLocalDate } from '../components/financial/financeData';
@@ -200,7 +200,7 @@ interface AppContextType {
   redeemReward: (customerPhone: string) => Promise<{ success: boolean; message: string }>;
   fetchCustomerLoyaltyHistory: (customerPhone: string) => Promise<LoyaltyHistoryItem[]>;
   addCoupon: (coupon: Coupon) => void;
-  addCategory: (category: Omit<Category, 'id'>) => void;
+  addCategory: (category: Omit<Category, 'id'>) => Category;
   updateCategory: (category: Category) => void;
   deleteCategory: (id: string) => void;
 }
@@ -886,7 +886,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     // Calculate current cart total
     const subtotal = cart.reduce((acc, item) => {
-      const price = item.product.promoPrice || item.product.price;
+      const price = getUnitPrice(item.product);
       const extrasTotal = (item.extras || []).reduce((s, ex) => s + ex.price * ex.quantity, 0);
       return acc + ((typeof price === 'number' && !isNaN(price) ? price : parseFloat(price as any) || 0) * item.quantity) + extrasTotal;
     }, 0);
@@ -927,7 +927,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     cashChangeInfo?: { needsChange?: boolean; changeAmount?: string }
   ): Promise<Order> => {
     const subtotal = cart.reduce((acc, item) => {
-      const price = item.product.promoPrice || item.product.price;
+      const price = getUnitPrice(item.product);
       const extrasTotal = (item.extras || []).reduce((s, ex) => s + ex.price * ex.quantity, 0);
       return acc + (price * item.quantity) + extrasTotal;
     }, 0);
@@ -1587,12 +1587,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCoupons(prev => [newCoupon, ...prev]);
   };
 
-  const addCategory = (newCat: Omit<Category, 'id'>) => {
+  const addCategory = (newCat: Omit<Category, 'id'>): Category => {
     const cat: Category = {
       ...newCat,
-      id: `cat-${Math.floor(1000 + Math.random() * 9000)}`
+      id: `cat-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`
     };
     setCategories(prev => [...prev, cat]);
+    return cat;
   };
 
   const updateCategory = (updatedCat: Category) => {
