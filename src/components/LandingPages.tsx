@@ -42,7 +42,7 @@ export default function LandingPages() {
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0C0A08] font-sans text-slate-100 overflow-x-hidden" id="sushi-landing-page">
+    <div className="flex-1 bg-[#0C0A08] font-sans text-slate-100 overflow-x-clip" id="sushi-landing-page">
       {/* Header / Navbar Marketing */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
