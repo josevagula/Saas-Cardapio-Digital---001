@@ -1127,11 +1127,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // "Dias de Funcionamento" picker) — sent along so the AI never suggests
     // promo hours/days the establishment doesn't actually work.
     const operatingDaysList = visualConfig.operatingDaysList;
+    // The static GitHub Pages build has no backend (no VITE_API_BASE_URL), so
+    // the request could only fail — skip it instead of waiting on it.
+    if (import.meta.env.PROD && !API_BASE) {
+      return buildFallbackPromoReport(products, operatingDaysList);
+    }
     try {
       const response = await fetch(`${API_BASE}/api/gemini/suggest-promotions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products, operatingDays: operatingDaysList })
+        // The server only reads product names. Sending whole products meant
+        // uploading every base64 photo (~3MB for a 56-product menu) per click.
+        body: JSON.stringify({ products: products.map(p => ({ name: p.name })), operatingDays: operatingDaysList })
       });
       if (!response.ok) throw new Error("Erro ao sugerir promoções por IA");
       return await response.json();
