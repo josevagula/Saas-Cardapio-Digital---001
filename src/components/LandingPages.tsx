@@ -50,7 +50,7 @@ export default function LandingPages() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="bg-[#0C0A08]/90 border-b border-[#2A211A] sticky top-0 z-50 backdrop-blur-md"
       >
-        <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-3">
           {/* Logo Left */}
           <div className="flex items-center gap-2.5">
             <SushiLogoEmblem size={34} />
@@ -60,7 +60,7 @@ export default function LandingPages() {
           </div>
 
           {/* Central Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-white">
+          <nav className="flex items-center gap-4 sm:gap-10 text-sm md:text-base font-bold text-white mx-auto sm:mx-0">
             <a href="#recursos" className="hover:text-[#FB923C] transition-colors">Recursos</a>
             <a href="#precos" className="hover:text-[#FB923C] transition-colors">Preços</a>
           </nav>
@@ -69,10 +69,10 @@ export default function LandingPages() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleGoToLogin}
-              className="px-5 py-2.5 btn-sushi-primary text-white text-xs font-bold flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
+              className="px-4 sm:px-5 py-2.5 btn-sushi-primary text-white text-xs font-bold flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
             >
               <span>Login</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 hidden sm:block" />
             </button>
           </div>
         </div>
