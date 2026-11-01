@@ -12,6 +12,7 @@ import {
   Sparkles,
   Palette,
   LogOut,
+  ArrowLeft,
   Globe,
   Copy,
   ExternalLink,
@@ -242,8 +243,14 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           }}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs text-[#A8A29A] hover:bg-[#181512] hover:text-[#F5F0EA] transition-all font-semibold border border-[#2A211A] bg-[#141210] shadow-xs cursor-pointer"
         >
-          <LogOut className="w-3.5 h-3.5 text-[#A8A29A]" />
-          <span>Sair da Sessão</span>
+          {/* The demo panel has no real session to end — it just goes back
+              to the landing page, so it says "Voltar" there. */}
+          {isDemoMode ? (
+            <ArrowLeft className="w-3.5 h-3.5 text-[#A8A29A]" />
+          ) : (
+            <LogOut className="w-3.5 h-3.5 text-[#A8A29A]" />
+          )}
+          <span>{isDemoMode ? 'Voltar' : 'Sair da Sessão'}</span>
         </button>
 
         {!isDemoMode && (
