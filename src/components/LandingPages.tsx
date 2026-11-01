@@ -90,11 +90,11 @@ export default function LandingPages() {
               className="lg:col-span-6 space-y-6 text-left"
             >
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold text-[#F5F0EA] tracking-tight leading-[1.1]">
-                Seu sushi merece um cardápio à altura e dados reais de <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F97316] to-[#FB923C]">vendas</span>.
+                Seu cardápio à altura das suas <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F97316] to-[#FB923C]">vendas</span>.
               </h1>
 
               <p className="text-base text-[#A8A29A] leading-relaxed font-normal max-w-xl">
-                O Zushy transforma seu cardápio em uma experiência digital completa e te entrega um dashboard de vendas em tempo real — pra você parar de adivinhar o que funciona no seu restaurante e começar a comprovar.
+                O Zushy transforma seu cardápio em uma experiência digital completa e te entrega um dashboard de vendas em tempo real.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
