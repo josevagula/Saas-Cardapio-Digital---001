@@ -50,8 +50,7 @@ export const TUTORIAL_MODULES: TutorialModule[] = [
     lessons: [
       { id: 'ca-1', title: 'Criando categorias', description: 'Organize seu cardápio em categorias e defina a ordem de exibição.', duration: '0:15', videoUrl: `${SAMPLE}/ForBiggerEscapes.mp4`, thumbnail: `${SAMPLE}/images/ForBiggerEscapes.jpg` },
       { id: 'ca-2', title: 'Cadastrando produtos com foto', description: 'Nome, descrição, preço, promoção e imagem dos seus pratos.', duration: '0:15', videoUrl: `${SAMPLE}/ForBiggerFun.mp4`, thumbnail: `${SAMPLE}/images/ForBiggerFun.jpg` },
-      { id: 'ca-3', title: 'Oferta no carrinho', description: 'Aumente o ticket médio com a oferta especial no carrinho.', duration: '0:15', videoUrl: `${SAMPLE}/ForBiggerJoyrides.mp4`, thumbnail: `${SAMPLE}/images/ForBiggerJoyrides.jpg` },
-      { id: 'ca-4', title: 'Lixeira de produtos', description: 'Como recuperar ou excluir de vez um produto removido.', duration: '0:15', videoUrl: `${SAMPLE}/ForBiggerMeltdowns.mp4`, thumbnail: `${SAMPLE}/images/ForBiggerMeltdowns.jpg` }
+      { id: 'ca-3', title: 'Oferta no carrinho', description: 'Aumente o ticket médio com a oferta especial no carrinho.', duration: '0:15', videoUrl: `${SAMPLE}/ForBiggerJoyrides.mp4`, thumbnail: `${SAMPLE}/images/ForBiggerJoyrides.jpg` }
     ]
   },
   {
