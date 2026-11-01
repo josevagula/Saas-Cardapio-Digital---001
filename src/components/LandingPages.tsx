@@ -60,7 +60,7 @@ export default function LandingPages() {
           </div>
 
           {/* Central Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-[#A8A29A]">
+          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-white">
             <a href="#recursos" className="hover:text-[#FB923C] transition-colors">Recursos</a>
             <a href="#precos" className="hover:text-[#FB923C] transition-colors">Preços</a>
           </nav>
