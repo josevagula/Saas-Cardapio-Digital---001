@@ -29,8 +29,10 @@ import {
   Loader2,
   ArrowUp,
   ArrowDown,
-  RotateCcw
+  RotateCcw,
+  Layers
 } from 'lucide-react';
+import ComboPromoModal from './ComboPromoModal';
 
 export default function DigitalMenuManager() {
   const { 
@@ -134,6 +136,7 @@ export default function DigitalMenuManager() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [isComboOpen, setIsComboOpen] = useState(false);
 
   // Form Fields
   const [name, setName] = useState('');
@@ -385,6 +388,14 @@ export default function DigitalMenuManager() {
           >
             <Trash2 className="w-3.5 h-3.5 text-[#FB923C]" />
             <span>Lixeira ({trashedProducts.length})</span>
+          </button>
+
+          <button
+            onClick={() => setIsComboOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 bg-[#1F1209] text-[#FB923C] text-xs font-bold rounded-xl border border-[#4A2A10] hover:bg-[#2A1A0C] transition-all shadow-xs cursor-pointer w-full sm:w-auto"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Combo Promocional</span>
           </button>
 
           <button
@@ -909,6 +920,9 @@ export default function DigitalMenuManager() {
           </div>
         </div>
       )}
+
+      {/* MODAL: COMBO PROMOCIONAL (items combined into one product) */}
+      {isComboOpen && <ComboPromoModal onClose={() => setIsComboOpen(false)} />}
 
       {/* MODAL: ADD / EDIT CATEGORIES */}
       {/* MODAL: LIXEIRA (deleted products, restorable) */}
