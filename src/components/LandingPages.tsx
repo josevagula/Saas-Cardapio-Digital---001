@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, useScroll, useTransform } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { SushiLogoEmblem } from './SushiIcons';
 import {
@@ -11,8 +11,17 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 
+const HEADER_HEIGHT_TOP = 96;
+const HEADER_HEIGHT_SCROLLED = 64;
+
 export default function LandingPages() {
   const { setCurrentView, setPublicView, enterDemoMode } = useApp();
+
+  // A barra do topo começa mais alta e encolhe nos primeiros pixels de rolagem.
+  // A margem compensa a altura perdida para o conteúdo não pular durante o scroll.
+  const { scrollY } = useScroll();
+  const headerHeight = useTransform(scrollY, [0, 120], [HEADER_HEIGHT_TOP, HEADER_HEIGHT_SCROLLED]);
+  const headerOffset = useTransform(headerHeight, (height) => HEADER_HEIGHT_TOP - height);
 
   const handleEnterDemo = () => {
     sessionStorage.setItem('just_entered_from_plans', 'true');
@@ -41,6 +50,25 @@ export default function LandingPages() {
     }
   ];
 
+  const faqs = [
+    {
+      question: 'Posso testar o Zushy antes de pagar alguma coisa?',
+      answer: 'Pode. Você tem 7 dias para montar o seu cardápio e ver o painel funcionando com o seu restaurante. Para começar, você informa o cartão, mas nada é cobrado durante o teste. Se não cancelar até o fim dos 7 dias, a assinatura de R$ 129/mês é cobrada automaticamente.'
+    },
+    {
+      question: 'Vou conseguir saber de verdade quanto o meu sushi está vendendo?',
+      answer: 'Sim. O painel mostra o faturamento do dia, o ticket médio e os pedidos em andamento, tudo em tempo real. Os relatórios mostram a evolução da semana, então você enxerga o que funciona e deixa de decidir no achismo.'
+    },
+    {
+      question: 'Sou do ramo da comida, não de tecnologia. Vou me perder?',
+      answer: 'Não. Você cadastra os seus pratos, coloca a sua marca no cardápio e acompanha os pedidos num painel simples. O Estúdio IA escreve as descrições dos pratos e combos por você, e o suporte atende pelo WhatsApp se surgir qualquer dúvida.'
+    },
+    {
+      question: 'E se eu quiser parar de usar?',
+      answer: 'Você cancela quando quiser, direto pelo painel, sem multa e sem fidelidade. Se cancelar durante os 7 dias de teste, nada é cobrado.'
+    }
+  ];
+
   return (
     <div className="flex-1 bg-[#0C0A08] font-sans text-slate-100 overflow-x-clip" id="sushi-landing-page">
       {/* Header / Navbar Marketing */}
@@ -48,9 +76,10 @@ export default function LandingPages() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
+        style={{ marginBottom: headerOffset }}
         className="bg-[#0C0A08]/90 border-b border-[#2A211A] sticky top-0 z-50 backdrop-blur-md"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-3">
+        <motion.div style={{ height: headerHeight }} className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
           {/* Logo Left */}
           <div className="flex items-center gap-2.5">
             <SushiLogoEmblem size={34} />
@@ -75,7 +104,7 @@ export default function LandingPages() {
               <ArrowRight className="w-3.5 h-3.5 hidden sm:block" />
             </button>
           </div>
-        </div>
+        </motion.div>
       </motion.header>
 
       {/* Hero Section */}
@@ -317,6 +346,86 @@ export default function LandingPages() {
           </div>
         </div>
       </section>
+
+      {/* FAQ */}
+      <section className="max-w-3xl mx-auto px-6 py-24" id="faq">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-[#F5F0EA] tracking-tight">FAQ</h2>
+        </motion.div>
+
+        <div className="space-y-3">
+          {faqs.map((faq) => (
+            <details
+              key={faq.question}
+              name="landing-faq"
+              className="group bg-[#141210] rounded-2xl border border-[#2A211A] open:border-[#C2410C]/50 transition-colors"
+            >
+              <summary className="flex items-center justify-between gap-4 p-5 sm:p-6 cursor-pointer list-none [&::-webkit-details-marker]:hidden rounded-2xl focus-visible:outline-2 focus-visible:outline-[#F97316]">
+                <span className="text-sm sm:text-base font-bold text-[#F5F0EA]">{faq.question}</span>
+                <ChevronRight className="w-4 h-4 shrink-0 text-[#FB923C] transition-transform group-open:rotate-90" />
+              </summary>
+              <p className="px-5 sm:px-6 pb-5 sm:pb-6 text-xs sm:text-sm text-[#A8A29A] leading-relaxed">{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      {/* Rodapé */}
+      <footer className="border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {/* Marca */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <SushiLogoEmblem size={34} />
+                <span className="font-display font-extrabold text-[#F5F0EA] tracking-tight text-lg">
+                  Zu<span className="text-[#FB923C]">shy</span>
+                </span>
+              </div>
+              <p className="text-sm text-[#A8A29A] leading-relaxed max-w-xs">
+                Cardápio digital e controle de vendas para restaurantes de sushi.
+              </p>
+            </div>
+
+            {/* Navegação */}
+            <nav aria-label="Navegação do rodapé" className="space-y-4">
+              <h2 className="font-display font-bold text-sm text-[#F5F0EA]">Navegação</h2>
+              <ul className="space-y-3 text-sm text-[#A8A29A]">
+                <li><a href="#recursos" className="hover:text-[#FB923C] transition-colors">Recursos</a></li>
+                <li><a href="#precos" className="hover:text-[#FB923C] transition-colors">Preços</a></li>
+                <li><a href="#faq" className="hover:text-[#FB923C] transition-colors">Perguntas frequentes</a></li>
+              </ul>
+            </nav>
+
+            {/* Contato */}
+            <div className="space-y-4">
+              <h2 className="font-display font-bold text-sm text-[#F5F0EA]">Contato</h2>
+              <ul className="space-y-3 text-sm text-[#A8A29A]">
+                {/* TROCAR: DDD e número reais do WhatsApp */}
+                <li><a href="https://wa.me/55DDDNUMERO" target="_blank" rel="noopener noreferrer" className="hover:text-[#FB923C] transition-colors">WhatsApp</a></li>
+                {/* TROCAR: confirmar se este e-mail existe */}
+                <li><a href="mailto:contato@zushy.com.br" className="hover:text-[#FB923C] transition-colors">contato@zushy.com.br</a></li>
+                {/* TROCAR: perfil real do Instagram */}
+                <li><a href="https://instagram.com/SEU-PERFIL" target="_blank" rel="noopener noreferrer" className="hover:text-[#FB923C] transition-colors">Instagram</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-xs text-[#A8A29A]">
+            <p>© 2026 Zushy. Todos os direitos reservados.</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <a href="/termos" className="hover:text-[#FB923C] transition-colors">Termos de Uso</a>
+              <a href="/privacidade" className="hover:text-[#FB923C] transition-colors">Política de Privacidade</a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
