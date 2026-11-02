@@ -108,6 +108,10 @@ export default function LandingPages() {
     {
       question: 'E se eu quiser parar de usar?',
       answer: 'Você cancela quando quiser, direto pelo painel, sem multa e sem fidelidade. Se cancelar durante os 7 dias de teste, nada é cobrado.'
+    },
+    {
+      question: 'Tem vídeo tutorial para aprender a usar?',
+      answer: 'Tem. Dentro do painel há uma aba de vídeos tutoriais que mostra, passo a passo, como usar cada parte do Zushy. Ela fica disponível assim que você ativa a sua conta. E se ficar com qualquer dúvida, é só chamar a gente no WhatsApp.'
     }
   ];
 
