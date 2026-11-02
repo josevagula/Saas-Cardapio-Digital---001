@@ -408,7 +408,7 @@ export default function LandingPages() {
               <h2 className="font-display font-bold text-sm text-[#F5F0EA]">Contato</h2>
               <ul className="space-y-3 text-sm text-[#A8A29A]">
                 {/* TROCAR: DDD e número reais do WhatsApp */}
-                <li><a href="https://wa.me/55DDDNUMERO" target="_blank" rel="noopener noreferrer" className="hover:text-[#FB923C] transition-colors">WhatsApp</a></li>
+                <li><a href="https://wa.me/5543996787495?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20Zushy." target="_blank" rel="noopener noreferrer" className="hover:text-[#FB923C] transition-colors">WhatsApp</a></li>
                 {/* TROCAR: confirmar se este e-mail existe */}
                 <li><a href="mailto:contato@zushy.com.br" className="hover:text-[#FB923C] transition-colors">contato@zushy.com.br</a></li>
                 {/* TROCAR: perfil real do Instagram */}
