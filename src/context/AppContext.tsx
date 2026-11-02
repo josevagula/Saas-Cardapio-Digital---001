@@ -83,8 +83,14 @@ const PATH_TO_VIEW: Record<string, string> = Object.fromEntries(
 // path (root '/' is landing's implicit path).
 const PUBLIC_VIEW_TO_PATH: Record<string, string> = {
   login: '/login',
-  trial: '/cadastro'
+  trial: '/cadastro',
+  terms: '/termos',
+  privacy: '/privacidade'
 };
+export type PublicView = 'landing' | 'login' | 'trial' | 'terms' | 'privacy';
+// Termos de Uso e Política de Privacidade abrem para qualquer visitante,
+// logado ou não (App.tsx os mostra antes da checagem de login).
+export const isLegalView = (view: string) => view === 'terms' || view === 'privacy';
 const PATH_TO_PUBLIC_VIEW: Record<string, string> = Object.fromEntries(
   Object.entries(PUBLIC_VIEW_TO_PATH).map(([view, path]) => [path, view])
 );
@@ -139,8 +145,8 @@ interface AppContextType {
   cancelPlan: () => Promise<void>;
   renewPlan: () => Promise<void>;
   // Public (logged-out) marketing screens: landing, login, trial signup
-  publicView: 'landing' | 'login' | 'trial';
-  setPublicView: (view: 'landing' | 'login' | 'trial') => void;
+  publicView: PublicView;
+  setPublicView: (view: PublicView) => void;
   // Enters the admin dashboard for an already-authenticated Supabase user
   // (called after a successful signInWithPassword()).
   enterAdminDashboard: () => void;
@@ -365,10 +371,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('sushi_plan_status') === 'cancelled' ? 'cancelled' : 'active';
   });
   const [subscriptionStatusRaw, setSubscriptionStatusRaw] = useState<string>('active');
-  const [publicView, setPublicView] = useState<'landing' | 'login' | 'trial'>(() => {
+  const [publicView, setPublicView] = useState<PublicView>(() => {
     const pathname = window.location.pathname;
     const viewFromPath = PATH_TO_PUBLIC_VIEW[pathname];
-    if (viewFromPath) return viewFromPath as 'login' | 'trial';
+    if (viewFromPath) return viewFromPath as PublicView;
     // A dashboard link opened while logged out (or before the session is
     // confirmed) goes straight to the login screen instead of the landing
     // page — if a session turns out to be active after all, the loggedIn
@@ -552,6 +558,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // for the logged-out screens (landing/login/cadastro).
   useEffect(() => {
     if (authLoading || !loggedIn) return;
+    // Termos/Privacidade abertos por alguém logado: a URL é da página legal.
+    if (isLegalView(publicView)) return;
     const targetPath = isAdmin ? (VIEW_TO_PATH[currentView] ?? '') : '';
     if (window.location.pathname === targetPath) return;
     if (targetPath) {
@@ -561,7 +569,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Cardápio" preview): drop a stale /dashboard/... path from the URL.
       window.history.replaceState(null, '', '/' + window.location.search);
     }
-  }, [currentView, isAdmin, loggedIn, authLoading]);
+  }, [currentView, isAdmin, loggedIn, authLoading, publicView]);
 
   // Reflect the logged-out public screen (landing/login/cadastro) into the
   // URL path. Skipped once a real session is confirmed (`userId` set) even
@@ -596,7 +604,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       const pubView = PATH_TO_PUBLIC_VIEW[pathname];
       if (pubView) {
-        setPublicView(pubView as 'login' | 'trial');
+        setPublicView(pubView as PublicView);
         return;
       }
       if (pathname === '/') setPublicView('landing');

@@ -450,15 +450,24 @@ export default function LandingPages() {
                 <li><a href="https://wa.me/5543996787495?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20Zushy." target="_blank" rel="noopener noreferrer" className="hover:text-[#FB923C] transition-colors">WhatsApp</a></li>
                 <li><a href="mailto:zushy.br@gmail.com" className="hover:text-[#FB923C] transition-colors">zushy.br@gmail.com</a></li>
                 <li><a href="https://www.instagram.com/zushy.br/" target="_blank" rel="noopener noreferrer" className="hover:text-[#FB923C] transition-colors">Instagram</a></li>
+                <li>
+                  <address className="not-italic leading-relaxed">
+                    Rua Ivaí, 111<br />
+                    Califórnia - PR
+                  </address>
+                </li>
               </ul>
             </div>
           </div>
 
           <div className="mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-xs text-[#A8A29A]">
-            <p>© 2026 Zushy. Todos os direitos reservados.</p>
+            <div className="space-y-1">
+              <p>© 2026 Zushy. Todos os direitos reservados.</p>
+              <p>José Gabriel Vágula Gomes Voltarelli, CPF 102.519.429-29</p>
+            </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
-              <a href="/termos" className="hover:text-[#FB923C] transition-colors">Termos de Uso</a>
-              <a href="/privacidade" className="hover:text-[#FB923C] transition-colors">Política de Privacidade</a>
+              <a href="/termos" onClick={(e) => { e.preventDefault(); setPublicView('terms'); }} className="hover:text-[#FB923C] transition-colors">Termos de Uso</a>
+              <a href="/privacidade" onClick={(e) => { e.preventDefault(); setPublicView('privacy'); }} className="hover:text-[#FB923C] transition-colors">Política de Privacidade</a>
             </div>
           </div>
         </div>

@@ -27,6 +27,7 @@ const PublicMenuPage = lazy(() => import('./components/PublicMenuPage'));
 const MenuNotFoundPage = lazy(() => import('./components/MenuNotFoundPage'));
 const LandingPages = lazy(() => import('./components/LandingPages'));
 const LoginPage = lazy(() => import('./components/LoginPage'));
+const LegalPage = lazy(() => import('./components/LegalPage'));
 const TrialSignupPage = lazy(() => import('./components/TrialSignupPage'));
 
 function LoadingScreen() {
@@ -63,6 +64,18 @@ export default function App() {
   // session is still being verified: keep showing the loading screen instead
   // of flashing the login screen first, only to swap to the dashboard a
   // moment later once the session is confirmed.
+  // Termos de Uso e Política de Privacidade abrem para qualquer visitante,
+  // logado ou não.
+  if (publicView === 'terms' || publicView === 'privacy') {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingScreen />}>
+          <LegalPage kind={publicView} />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
   const isDashboardPath = isAdmin && currentView !== 'home' && currentView !== 'public_menu';
   if (authLoading && isDashboardPath) {
     return <LoadingScreen />;
