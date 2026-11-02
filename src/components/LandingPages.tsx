@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, useScroll, useTransform } from 'motion/react';
+import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { SushiLogoEmblem } from './SushiIcons';
 import {
@@ -10,6 +10,48 @@ import {
   ChevronRight,
   LayoutDashboard
 } from 'lucide-react';
+
+// Alturas de referência (%) das barras Seg–Dom do gráfico de mentira da hero.
+const BASE_BAR_HEIGHTS = [40, 65, 55, 80, 95, 85, 100];
+// Quanto cada barra sobe e desce (pontos de %) e quanto tempo leva um ciclo (s).
+const BAR_SWING = 10;
+const BAR_CYCLE_SECONDS = [4.2, 4.8, 3.9, 4.6, 4.0, 5.0, 3.6];
+
+// Barras sobem e descem sem parar em volta da altura de referência, cada uma no
+// seu ritmo, como um painel ao vivo. Paradas para quem pediu ao sistema para
+// reduzir animações.
+function LiveRevenueBars() {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <div className="h-20 flex items-end justify-between gap-2 pt-2 px-1">
+      {BASE_BAR_HEIGHTS.map((base, i) => (
+        <motion.div
+          key={i}
+          className="flex-1 bg-[#2A211A] rounded-t-lg relative group overflow-hidden"
+          // Cresce a partir da base com scaleY (só transform: o navegador não
+          // refaz o layout a cada quadro, como faria animando a altura) e vai e volta entre o ponto mais baixo e o mais alto,
+          // desacelerando só nas pontas, como uma onda.
+          style={{
+            height: `${base}%`,
+            originY: 1,
+            scaleY: reduceMotion ? 1 : Math.max(15, base - BAR_SWING) / base
+          }}
+          animate={reduceMotion ? undefined : { scaleY: Math.min(100, base + BAR_SWING) / base }}
+          transition={{
+            duration: BAR_CYCLE_SECONDS[i] / 2,
+            ease: [0.37, 0, 0.63, 1],
+            repeat: Infinity,
+            repeatType: 'mirror',
+            delay: i * 0.2
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-[#C2410C] to-[#F97316] rounded-t-lg transition-all" style={{ height: i >= 4 ? '100%' : '70%' }}></div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
 
 const HEADER_HEIGHT_TOP = 96;
 const HEADER_HEIGHT_SCROLLED = 64;
@@ -194,13 +236,7 @@ export default function LandingPages() {
                       <span className="font-bold text-slate-200">Evolução do Faturamento Semanal</span>
                       <span className="text-[10px] font-mono text-[#FB923C] font-bold">+28% do esperado</span>
                     </div>
-                    <div className="h-20 flex items-end justify-between gap-2 pt-2 px-1">
-                      {[40, 65, 55, 80, 95, 85, 100].map((h, i) => (
-                        <div key={i} className="flex-1 bg-[#2A211A] rounded-t-lg relative group overflow-hidden" style={{ height: `${h}%` }}>
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#C2410C] to-[#F97316] rounded-t-lg transition-all" style={{ height: i >= 4 ? '100%' : '70%' }}></div>
-                        </div>
-                      ))}
-                    </div>
+                    <LiveRevenueBars />
                     <div className="flex justify-between text-[9px] font-mono text-[#A8A29A] pt-1">
                       <span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span>
                     </div>
