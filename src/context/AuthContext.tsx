@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { flushPendingTermsAcceptance, sendTermsCopy } from '../lib/terms';
 
 interface AuthContextType {
   user: User | null;
@@ -21,8 +22,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      // Grava o aceite dos Termos que ficou pendente no cadastro (e-mail por
+      // confirmar ou insert que falhou). setTimeout evita chamar o Supabase
+      // de dentro do callback de auth, o que pode travar o cliente.
+      // No login, também pede o reenvio da cópia dos Termos por e-mail, caso o
+      // envio do cadastro tenha falhado (a função não duplica e-mails).
+      if (newSession && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        const userId = newSession.user.id;
+        setTimeout(async () => {
+          await flushPendingTermsAcceptance(userId);
+          if (event === 'SIGNED_IN') await sendTermsCopy();
+        }, 0);
+      }
     });
 
     return () => {

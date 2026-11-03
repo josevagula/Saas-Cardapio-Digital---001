@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { startCheckout } from '../lib/billing';
+import { markTermsAcceptancePending, recordTermsAcceptance } from '../lib/terms';
 import { SushiLogoEmblem } from './SushiIcons';
 import { ArrowLeft, User, Phone, Mail, Lock } from 'lucide-react';
 
@@ -32,6 +33,7 @@ export default function TrialSignupPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -47,6 +49,7 @@ export default function TrialSignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+    if (!acceptedTerms) return;
     if (!validate()) return;
 
     setLoading(true);
@@ -78,6 +81,9 @@ export default function TrialSignupPage() {
     // no projeto Supabase — não há como abrir o Checkout (que exige um token
     // de acesso) até o e-mail ser confirmado e a pessoa logar.
     if (!data.session) {
+      // Sem sessão o insert seria barrado pelo RLS: o aceite fica pendente e
+      // é gravado no primeiro login (ver AuthContext).
+      if (data.user) markTermsAcceptancePending(data.user.id);
       setLoading(false);
       setFormError('Conta criada! Confirme seu e-mail e depois faça login para concluir a assinatura.');
       return;
@@ -87,6 +93,9 @@ export default function TrialSignupPage() {
     // capturar o cartão e iniciar os 7 dias grátis. O painel só é liberado
     // depois que o webhook do Stripe confirmar a assinatura (ver
     // PlanRenewalOverlay e a coluna profiles.subscription_status).
+    // O aceite dos Termos nunca lança erro: se falhar, fica para o próximo login.
+    if (data.user) await recordTermsAcceptance(data.user.id);
+
     try {
       await startCheckout();
     } catch (err: any) {
@@ -195,9 +204,29 @@ export default function TrialSignupPage() {
                 {errors.password && <p className="text-[11px] text-red-400 font-medium">{errors.password}</p>}
               </div>
 
+              <div className="flex items-start gap-2.5">
+                <input
+                  id="trial-terms"
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 shrink-0 accent-[#F97316] cursor-pointer"
+                />
+                <label htmlFor="trial-terms" className="text-xs text-[#A8A29A] leading-relaxed cursor-pointer">
+                  Li e aceito os{' '}
+                  <a href="/termos" target="_blank" rel="noopener noreferrer" className="text-[#FB923C] font-semibold hover:underline">
+                    Termos de Uso
+                  </a>{' '}
+                  e a{' '}
+                  <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-[#FB923C] font-semibold hover:underline">
+                    Política de Privacidade
+                  </a>
+                </label>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !acceptedTerms}
                 className="w-full py-3 btn-sushi-primary text-white text-sm font-bold cursor-pointer hover:scale-[1.02] transition-transform disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {loading ? 'Abrindo pagamento...' : 'Continuar para o pagamento'}

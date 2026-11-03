@@ -1,6 +1,8 @@
 // Texto da Política de Privacidade e dos Termos de Uso, copiado dos arquivos
-// .docx enviados pelo Leo em 2026-11-02 (Downloads\documentos). Para mudar o
-// texto, edite aqui — a página LegalPage só cuida da apresentação.
+// .docx v1.1 enviados pelo Leo em 2026-11-03 (Downloads\documentos). Para mudar
+// o texto, edite aqui — a página LegalPage só cuida da apresentação. A versão
+// fica em src/lib/terms.ts.
+import { TERMS_VERSION_LABEL } from '../lib/terms';
 
 export type LegalBlock =
   | { type: 'p'; text: string; lead?: string }
@@ -20,13 +22,13 @@ export interface LegalDoc {
 
 export const PRIVACY_POLICY: LegalDoc = {
   title: 'Política de Privacidade do Zushy',
-  updated: 'Última atualização: 2 de novembro de 2026. Versão 1.0',
+  updated: TERMS_VERSION_LABEL,
   sections: [
     {
       title: '1. Quem é o responsável pelos dados',
       blocks: [
         { type: 'p', text: 'Esta Política explica como o Zushy trata dados pessoais, de acordo com a Lei Geral de Proteção de Dados (LGPD, Lei 13.709/2018).' },
-        { type: 'p', text: 'O responsável pelo tratamento dos dados do dono do restaurante é José Gabriel Vágula Gomes Voltarelli, CPF 102.519.429-29, com endereço na Rua Ívai, 111, Califórnia/PR. Canal de privacidade e contato para qualquer assunto sobre dados pessoais: zushy.br@gmail.com.' },
+        { type: 'p', text: 'O responsável pelo tratamento dos dados do dono do restaurante é José Gabriel Vágula Gomes Voltarelli, CPF 102.519.429-29, com endereço na Rua Ivaí, 111, Califórnia/PR. Canal de privacidade e contato para qualquer assunto sobre dados pessoais: zushy.br@gmail.com.' },
       ],
     },
     {
@@ -39,10 +41,10 @@ export const PRIVACY_POLICY: LegalDoc = {
           rows: [
             ['Dono do restaurante (nosso cliente)', 'Nome, e-mail, telefone ou WhatsApp, nome do restaurante, senha de acesso e data e hora do aceite dos Termos', 'Informados por você no cadastro e no uso do painel'],
             ['Clientes do restaurante', 'Nome, telefone, endereço de entrega e itens do pedido', 'Informados por eles ao fazer um pedido no cardápio digital'],
-            ['Visitantes do site', 'Páginas visitadas, tipo de aparelho e navegador, endereço IP e dados de cookies', 'Coletados automaticamente, com o Google Analytics, depois do seu aceite'],
+            ['Visitantes do site', 'Páginas visitadas, tipo de aparelho e navegador, endereço IP, escolha de cookies e, após o aceite, dados de cookies', 'Coletados automaticamente; os cookies de análise só depois do seu aceite'],
           ],
         },
-        { type: 'p', text: 'Os dados de pagamento (Pix ou cartão) são tratados pela InfinitePay. O Zushy não guarda número de cartão.' },
+        { type: 'p', text: 'Os dados de pagamento (cartão) são tratados pelo Asaas. O Zushy não guarda número de cartão.' },
       ],
     },
     {
@@ -54,6 +56,8 @@ export const PRIVACY_POLICY: LegalDoc = {
           items: [
             { lead: 'Fornecer o serviço:', text: 'criar e manter a conta, exibir o cardápio digital, registrar pedidos e mostrar o controle de vendas (execução do contrato).' },
             { lead: 'Cobrar a mensalidade:', text: 'processar pagamentos e enviar avisos e comprovantes (execução do contrato).' },
+            { lead: 'Enviar o pedido ao restaurante:', text: 'montar a mensagem do pedido, que o cliente do restaurante envia pelo seu próprio WhatsApp (execução do contrato).' },
+            { lead: 'Estúdio IA:', text: 'gerar sugestões de descrição dos pratos a partir do texto que o restaurante digita (execução do contrato).' },
             { lead: 'Falar com você:', text: 'responder dúvidas, avisar sobre a cobrança, mudanças nos Termos e problemas no serviço (execução do contrato e legítimo interesse).' },
             { lead: 'Cumprir obrigações legais:', text: 'guardar registros de pagamento e do aceite dos Termos pelo prazo exigido em lei (obrigação legal e exercício regular de direitos).' },
             { lead: 'Melhorar o site:', text: 'entender como ele é usado, com o Google Analytics, somente depois do seu consentimento para cookies.' },
@@ -71,8 +75,10 @@ export const PRIVACY_POLICY: LegalDoc = {
           rows: [
             ['Supabase', 'Banco de dados, onde ficam armazenadas as informações do serviço'],
             ['GitHub', 'Hospedagem do site'],
-            ['InfinitePay', 'Processamento dos pagamentos'],
-            ['Google (Google Analytics)', 'Estatísticas de uso do site, após o consentimento para cookies'],
+            ['Asaas', 'Processamento dos pagamentos'],
+            ['Google (Tag Manager e Google Analytics)', 'Gerenciamento das tags do site e estatísticas de uso; o Analytics só grava cookies após o consentimento'],
+            ['CookieYes', 'Aviso de cookies e registro da sua escolha de consentimento'],
+            ['Google (Gemini)', 'Geração das sugestões de descrição dos pratos (recebe apenas o texto do prato)'],
           ],
         },
         { type: 'p', text: 'Algumas dessas empresas podem armazenar dados em servidores fora do Brasil. Nesses casos, o Zushy busca fornecedores que adotem medidas de segurança adequadas, como prevê a LGPD.' },
@@ -80,15 +86,15 @@ export const PRIVACY_POLICY: LegalDoc = {
       ],
     },
     {
-      title: '5. Cookies e Google Analytics',
+      title: '5. Cookies, Google Tag Manager e Google Analytics',
       blocks: [
-        { type: 'p', text: 'O site usa cookies do Google Analytics para medir o uso das páginas, e só os carrega depois que você aceita no aviso de cookies.' },
+        { type: 'p', text: 'O site usa o Google Tag Manager e um aviso de cookies (CookieYes), que carregam em todas as páginas para registrar a sua escolha. Os cookies do Google Analytics, que medem o uso das páginas, só são gravados depois que você aceita no aviso. Até lá, o Google pode receber apenas dados técnicos básicos, como o endereço IP.' },
         {
           type: 'ul',
           items: [
             { lead: 'O que coletam:', text: 'páginas visitadas, tempo de visita, tipo de aparelho e navegador, endereço IP e uma localização aproximada.' },
             { lead: 'Para que servem:', text: 'entender o que funciona no site e melhorá-lo. O Zushy não usa esses dados para identificar você pessoalmente.' },
-            { lead: 'Como mudar de ideia:', text: 'você pode recusar ou revogar o consentimento a qualquer momento pelo link de preferências de cookies no rodapé, ou apagando os cookies no seu navegador.' },
+            { lead: 'Como mudar de ideia:', text: 'você pode recusar ou revogar o consentimento a qualquer momento pelo botão de preferências de cookies, no canto inferior da tela, ou apagando os cookies no seu navegador.' },
             { lead: 'Cookies essenciais:', text: 'os necessários para o login e o funcionamento do painel não dependem de consentimento.' },
           ],
         },
@@ -143,12 +149,12 @@ export const PRIVACY_POLICY: LegalDoc = {
 
 export const TERMS_OF_USE: LegalDoc = {
   title: 'Termos de Uso do Zushy',
-  updated: 'Última atualização: 2 de novembro de 2026. Versão 1.0',
+  updated: TERMS_VERSION_LABEL,
   sections: [
     {
       title: '1. Quem somos e aceite dos Termos',
       blocks: [
-        { type: 'p', text: 'O Zushy é um serviço online de cardápio digital e controle de vendas para restaurantes de sushi, oferecido por José Gabriel Vágula Gomes Voltarelli, CPF 102.519.429-29, com endereço na Rua Ívai, 111, Califórnia/PR, e e-mail de contato zushy.br@gmail.com ("Zushy").' },
+        { type: 'p', text: 'O Zushy é um serviço online de cardápio digital e controle de vendas para restaurantes de sushi, oferecido por José Gabriel Vágula Gomes Voltarelli, CPF 102.519.429-29, com endereço na Rua Ivaí, 111, Califórnia/PR, e e-mail de contato zushy.br@gmail.com ("Zushy").' },
         { type: 'p', text: 'Ao criar uma conta ou usar o Zushy, você declara que leu e aceitou estes Termos de Uso e a Política de Privacidade. Se não concordar, não use o serviço.' },
         { type: 'p', text: 'O serviço é destinado a maiores de 18 anos e a pessoas jurídicas ou empreendedores que contratem em nome de um restaurante, com poderes para isso.' },
         { type: 'p', text: 'Os clientes do restaurante podem fazer pedidos pelo cardápio digital, e o restaurante é responsável pelos pedidos feitos por menores de idade.' },
@@ -164,6 +170,8 @@ export const TERMS_OF_USE: LegalDoc = {
             { text: 'O Zushy é uma ferramenta de apoio. A venda dos alimentos e a entrega são de responsabilidade exclusiva do restaurante.' },
             { text: 'Recursos e telas podem mudar com o tempo, para melhorar o serviço.' },
             { text: 'Os recursos disponíveis em cada plano são os descritos na página de Preços do site.' },
+            { text: 'O Estúdio IA gera sugestões de texto para os pratos. O restaurante deve revisar o que for gerado antes de publicar, e continua responsável pelo conteúdo do seu cardápio.' },
+            { text: 'Os pedidos são enviados ao restaurante pelo WhatsApp do próprio cliente. O restaurante é responsável por ter o direito de contatar seus clientes sobre os pedidos feitos.' },
           ],
         },
       ],
@@ -178,7 +186,7 @@ export const TERMS_OF_USE: LegalDoc = {
             { text: 'Você é responsável pela senha e por tudo o que for feito na sua conta. Não compartilhe a senha com terceiros.' },
             { text: 'Se suspeitar de acesso indevido, avise o Zushy imediatamente pelo e-mail zushy.br@gmail.com.' },
             { text: 'Cada conta corresponde a um restaurante. Para usar o Zushy em mais de um estabelecimento, é preciso contratar separadamente.' },
-            { text: 'No cadastro, será pedido o aceite destes Termos, e o Zushy guarda a data, a hora e a versão aceita, e envia uma cópia dos Termos por e-mail.' },
+            { text: 'No cadastro, será pedido o aceite destes Termos, e o Zushy guarda a data, a hora e a versão aceita. Os Termos ficam sempre disponíveis em zushy.com.br/termos.' },
           ],
         },
       ],
@@ -186,13 +194,13 @@ export const TERMS_OF_USE: LegalDoc = {
     {
       title: '4. Teste grátis, preço e pagamento',
       blocks: [
-        { type: 'p', text: 'O Zushy oferece 7 dias de teste grátis, sem cobrança. Depois do teste, a assinatura custa R$ 127,00 por mês.' },
+        { type: 'p', text: 'O Zushy oferece 7 dias de teste grátis, sem cobrança. Depois do teste, a assinatura custa R$ 129,00 por mês.' },
         {
           type: 'ul',
           items: [
             { lead: 'Cobrança:', text: 'a mensalidade é cobrada todos os meses, de forma recorrente, até o cancelamento.' },
             { lead: 'Primeira cobrança:', text: 'ocorre ao fim do teste grátis. O Zushy avisa o cliente antes dessa cobrança.' },
-            { lead: 'Meios de pagamento:', text: 'Pix ou cartão, pela InfinitePay, que processa os pagamentos. O Zushy não guarda os dados do seu cartão.' },
+            { lead: 'Meios de pagamento:', text: 'Cartão, pelo Asaas, que processa os pagamentos. O Zushy não guarda os dados do seu cartão.' },
             { lead: 'Reajuste:', text: 'o valor pode mudar, com aviso prévio por e-mail ou WhatsApp, e vale apenas para as cobranças seguintes.' },
             { lead: 'Falta de pagamento:', text: 'se a cobrança falhar, o Zushy pode suspender o acesso até a regularização.' },
             { lead: 'Nota fiscal:', text: 'por enquanto, o Zushy não emite nota fiscal. Após cada pagamento, o cliente recebe um comprovante por e-mail.' },
