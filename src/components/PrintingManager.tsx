@@ -12,6 +12,7 @@ import {
   getQueueSnapshot,
   retryJob,
   reconnectPrinter,
+  reconnectPrinterWithPicker,
   getReconnectIssue,
   subscribeReconnectIssues,
   PrintJob
@@ -118,7 +119,7 @@ function PrinterCard({
     setBusy(true);
     try {
       const ok = await reconnectPrinter(printer.id);
-      if (!ok && getReconnectIssue(printer.id)) await pairNewPrinter(printer.id);
+      if (!ok && getReconnectIssue(printer.id)) await reconnectPrinterWithPicker(printer.id);
     } catch (e: any) {
       alert(e?.message || 'Falha ao reconectar a impressora.');
     } finally {

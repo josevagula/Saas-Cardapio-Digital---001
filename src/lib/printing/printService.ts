@@ -96,6 +96,23 @@ function clearDeviceMapping(printerId: string) {
   const map = getDeviceMap();
   delete map[printerId];
   writeJSON(DEVICE_MAP_KEY, map);
+  const names = readJSON<DeviceMap>(DEVICE_NAME_MAP_KEY, {});
+  delete names[printerId];
+  writeJSON(DEVICE_NAME_MAP_KEY, names);
+}
+
+// printerId -> the printer's own Bluetooth name (what it advertises, not the
+// admin's label), so the reconnect picker can be filtered down to it.
+const DEVICE_NAME_MAP_KEY = 'zushy_printer_device_names';
+
+function setDeviceName(printerId: string, deviceName: string) {
+  const names = readJSON<DeviceMap>(DEVICE_NAME_MAP_KEY, {});
+  names[printerId] = deviceName;
+  writeJSON(DEVICE_NAME_MAP_KEY, names);
+}
+
+export function getPrinterDeviceName(printerId: string): string | null {
+  return readJSON<DeviceMap>(DEVICE_NAME_MAP_KEY, {})[printerId] || null;
 }
 
 // --- Auto-print dedup (never print the same order twice for the same
@@ -247,12 +264,25 @@ function attachTransport(printerId: string, transport: BluetoothPrinterTransport
 // is responsible for creating the PrinterProfile (id/name/role/paperWidth)
 // and persisting it in visualConfig — this only handles the Bluetooth side
 // and remembers, locally, which device that profile id maps to.
-export async function pairNewPrinter(printerId: string): Promise<{ suggestedName: string }> {
-  const transport = await requestBluetoothPrinter();
+export async function pairNewPrinter(printerId: string, nameFilter?: string): Promise<{ suggestedName: string }> {
+  const transport = await requestBluetoothPrinter(nameFilter);
   await transport.connect();
   attachTransport(printerId, transport);
   setDeviceMapping(printerId, transport.deviceId);
+  // Only a real advertised name is worth filtering on later — the fallback
+  // label ('Impressora Bluetooth') would match nothing.
+  if (transport.deviceName && transport.deviceName !== 'Impressora Bluetooth') {
+    setDeviceName(printerId, transport.deviceName);
+  }
   return { suggestedName: transport.deviceName };
+}
+
+// One-click re-grant for browsers that can't reconnect silently after a
+// reload (see SilentReconnectIssue). Must be called from a click handler —
+// the browser only opens its device picker on a user gesture.
+export function reconnectPrinterWithPicker(printerId: string, showAllDevices = false) {
+  const name = showAllDevices ? undefined : getPrinterDeviceName(printerId) || undefined;
+  return pairNewPrinter(printerId, name);
 }
 
 // Guards reconnectPrinter against ever running twice at once for the same

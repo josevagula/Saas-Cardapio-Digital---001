@@ -360,14 +360,21 @@ export class BluetoothPrinterTransport implements PrinterTransport {
 // allows for discovery — there is no way to render scan results in our own
 // list, by design of the API) and returns a transport for whatever the user
 // picked.
-export async function requestBluetoothPrinter(): Promise<BluetoothPrinterTransport> {
+//
+// nameFilter: when set, the picker lists ONLY devices advertising that exact
+// name — used by the one-click "Reconectar impressora" banner so, on a
+// browser that can't reconnect silently after a reload, re-granting access
+// is just "click the printer, click Parear" instead of hunting through every
+// nearby Bluetooth device.
+export async function requestBluetoothPrinter(nameFilter?: string): Promise<BluetoothPrinterTransport> {
   if (!isWebBluetoothSupported()) {
     throw new Error('Este navegador não suporta Web Bluetooth. Use Google Chrome ou Microsoft Edge no computador ou Android (Safari/iOS não é compatível).');
   }
-  const device = await navigator.bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: KNOWN_PRINTER_SERVICE_UUIDS
-  });
+  const device = await navigator.bluetooth.requestDevice(
+    nameFilter
+      ? { filters: [{ name: nameFilter }], optionalServices: KNOWN_PRINTER_SERVICE_UUIDS }
+      : { acceptAllDevices: true, optionalServices: KNOWN_PRINTER_SERVICE_UUIDS }
+  );
   return new BluetoothPrinterTransport(device);
 }
 

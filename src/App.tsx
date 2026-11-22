@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import PlanRenewalOverlay from './components/PlanRenewalOverlay';
+import PrinterReconnectBanner from './components/PrinterReconnectBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Menu, Loader2 } from 'lucide-react';
 import { SushiLogoEmblem } from './components/SushiIcons';
@@ -205,6 +206,7 @@ export default function App() {
           </main>
         </div>
 
+        {!planCancelled && <PrinterReconnectBanner />}
         {planCancelled && <PlanRenewalOverlay />}
       </div>
     </ErrorBoundary>
