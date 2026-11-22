@@ -85,9 +85,9 @@ function AutoReconnectGuide({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         </li>
-        <li>Na opção destacada, troque <b>Default</b> por <b>Enabled</b>.</li>
-        <li>Clique em <b>Relaunch</b> para reiniciar o {browserName}.</li>
-        <li>Volte aqui e clique em <b>Reconectar impressora</b> uma última vez.</li>
+        <li>Na opção destacada, troque <b>Default (Padrão)</b> por <b>Enabled (Ativado)</b>.</li>
+        <li>Clique em <b>Relaunch (Reiniciar)</b> para reiniciar o {browserName}.</li>
+        <li>Come back here and click <b>Reconectar impressora</b> one last time.</li>
       </ol>
 
       <button
