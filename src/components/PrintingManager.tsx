@@ -11,9 +11,12 @@ import {
   subscribeQueue,
   getQueueSnapshot,
   retryJob,
+  reconnectPrinter,
+  getReconnectIssue,
+  subscribeReconnectIssues,
   PrintJob
 } from '../lib/printing/printService';
-import { isWebBluetoothSupported, PrinterConnectionStatus } from '../lib/printing/bluetoothTransport';
+import { isWebBluetoothSupported, PrinterConnectionStatus, SilentReconnectIssue } from '../lib/printing/bluetoothTransport';
 import {
   Printer,
   Bluetooth,
@@ -54,6 +57,21 @@ function usePrinterStatus(printerId: string): PrinterConnectionStatus {
   return status;
 }
 
+const ISSUE_HINTS: Record<SilentReconnectIssue, string> = {
+  'sem-bluetooth': 'Este navegador não tem Bluetooth Web. Use Google Chrome ou Microsoft Edge.',
+  'sem-permissao-persistente': 'Este navegador não guarda a permissão da impressora entre recarregamentos. Atualize o Chrome, ou ative chrome://flags/#enable-web-bluetooth-new-permissions-backend e reinicie o navegador.',
+  'dispositivo-esquecido': 'O navegador não lembra mais desta impressora (permissão removida ou outro navegador/perfil). Clique em Reconectar para escolhê-la de novo.'
+};
+
+function useReconnectIssue(printerId: string): SilentReconnectIssue | null {
+  const [issue, setIssue] = useState<SilentReconnectIssue | null>(() => getReconnectIssue(printerId));
+  useEffect(() => {
+    setIssue(getReconnectIssue(printerId));
+    return subscribeReconnectIssues(() => setIssue(getReconnectIssue(printerId)));
+  }, [printerId]);
+  return issue;
+}
+
 function useQueue(): PrintJob[] {
   const [jobs, setJobs] = useState<PrintJob[]>(() => getQueueSnapshot());
   useEffect(() => subscribeQueue(setJobs), []);
@@ -78,6 +96,7 @@ function PrinterCard({
   onRemove: (id: string) => void;
 }) {
   const status = usePrinterStatus(printer.id);
+  const issue = useReconnectIssue(printer.id);
   const meta = STATUS_META[status];
   const [busy, setBusy] = useState(false);
   const [testFeedback, setTestFeedback] = useState<string | null>(null);
@@ -88,6 +107,20 @@ function PrinterCard({
       await pairNewPrinter(printer.id);
     } catch (e: any) {
       alert(e?.message || 'Falha ao parear a impressora.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Silent reconnect (no device picker). If the browser can't do that for
+  // this printer, fall straight through to the picker — one click either way.
+  const handleReconnect = async () => {
+    setBusy(true);
+    try {
+      const ok = await reconnectPrinter(printer.id);
+      if (!ok && getReconnectIssue(printer.id)) await pairNewPrinter(printer.id);
+    } catch (e: any) {
+      alert(e?.message || 'Falha ao reconectar a impressora.');
     } finally {
       setBusy(false);
     }
@@ -126,7 +159,24 @@ function PrinterCard({
         <span className={meta.text}>{meta.label}</span>
       </div>
 
+      {status === 'desconectado' && issue && (
+        <p className="text-[10px] text-amber-300 leading-snug flex items-start gap-1.5">
+          <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+          <span>{ISSUE_HINTS[issue]}</span>
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-2 pt-1">
+        {status === 'desconectado' && (
+          <button
+            onClick={handleReconnect}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-[#141210] border border-[#2A211A] text-slate-200 hover:border-[#3A2E24] transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
+            <span>Reconectar</span>
+          </button>
+        )}
         <button
           onClick={handleRepair}
           disabled={busy}

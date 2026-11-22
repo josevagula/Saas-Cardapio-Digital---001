@@ -57,8 +57,52 @@ const CONNECT_TIMEOUT_MS = 12000;
 const HEARTBEAT_CHECK_MS = 5000;
 const HEARTBEAT_IDLE_MS = 20000;
 
+// How long to listen for the printer's BLE advertisement before giving up
+// on a "restored" (getDevices) connect — see waitForAdvertisement below.
+const ADVERTISEMENT_WAIT_MS = 10000;
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    p,
+    sleep(ms).then(() => { throw new Error(message); })
+  ]);
+}
+
+// THE page-reload fix. A BluetoothDevice handed back by getDevices() after a
+// reload is "known" but not yet "seen" by this page's Bluetooth session —
+// Chrome commonly rejects gatt.connect() on it ("Bluetooth Device is no
+// longer in range" / NetworkError) until it has received at least one
+// advertisement packet from the device in this session. That's why a printer
+// paired a minute ago printed fine, but stayed offline after F5: every
+// silent reconnect attempt failed for this reason, forever. Listening for an
+// advertisement (watchAdvertisements) and connecting right after it arrives
+// is Chrome's documented pattern for reconnecting permitted devices.
+// Best-effort: resolves false when the API is missing or nothing arrives.
+function waitForAdvertisement(device: BluetoothDevice, timeoutMs: number): Promise<boolean> {
+  if (typeof (device as any).watchAdvertisements !== 'function') return Promise.resolve(false);
+  const abort = new AbortController();
+  return new Promise<boolean>(resolve => {
+    let done = false;
+    const onAdv = () => finish(true);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    function finish(ok: boolean) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      device.removeEventListener('advertisementreceived', onAdv);
+      abort.abort();
+      resolve(ok);
+    }
+    device.addEventListener('advertisementreceived', onAdv);
+    device.watchAdvertisements({ signal: abort.signal }).catch((e: any) => {
+      printLog('warn', `watchAdvertisements() falhou para "${device.name || device.id}"`, e?.message || String(e));
+      finish(false);
+    });
+  });
 }
 
 async function findWritableCharacteristic(server: BluetoothRemoteGATTServer): Promise<{ characteristic: BluetoothRemoteGATTCharacteristic; withoutResponse: boolean } | null> {
@@ -91,6 +135,7 @@ export class BluetoothPrinterTransport implements PrinterTransport {
   private pendingBackoffResolve: (() => void) | null = null;
   private lastWriteAt = 0;
   private connectedAt = 0;
+  private disposed = false;
 
   constructor(device: BluetoothDevice) {
     this.device = device;
@@ -114,9 +159,21 @@ export class BluetoothPrinterTransport implements PrinterTransport {
   }
 
   async connect(): Promise<void> {
+    if (this.disposed) throw new Error('Transporte descartado.');
     this.manuallyDisconnected = false;
-    if (!this.device.gatt) throw new Error('Este dispositivo não expõe uma conexão GATT.');
-    const server = await this.device.gatt.connect();
+    const gatt = this.device.gatt;
+    if (!gatt) throw new Error('Este dispositivo não expõe uma conexão GATT.');
+    let server: BluetoothRemoteGATTServer;
+    try {
+      server = await withTimeout(gatt.connect(), CONNECT_TIMEOUT_MS, 'Tempo esgotado ao conectar.');
+    } catch (firstError: any) {
+      // See waitForAdvertisement — after a page reload this first attempt
+      // typically fails until the printer has been "seen" advertising.
+      printLog('info', `Conexão direta com "${this.deviceName}" falhou (${firstError?.message || firstError}); aguardando anúncio Bluetooth da impressora...`);
+      const seen = await waitForAdvertisement(this.device, ADVERTISEMENT_WAIT_MS);
+      if (!seen || this.disposed || this.manuallyDisconnected) throw firstError;
+      server = await withTimeout(gatt.connect(), CONNECT_TIMEOUT_MS, 'Tempo esgotado ao conectar.');
+    }
     const found = await findWritableCharacteristic(server);
     if (!found) {
       server.disconnect();
@@ -130,6 +187,20 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     this.reconnectAttempts = 0;
     this.setStatus('conectado');
     this.startHeartbeat();
+  }
+
+  // Detaches this wrapper from the device WITHOUT dropping the physical
+  // link — used when a failed silent-reconnect attempt is thrown away, or a
+  // transport is replaced by a new pairing. Without this, every discarded
+  // wrapper kept its 'gattserverdisconnected' listener, and the next real
+  // drop woke all of them up into their own endless reconnect loops.
+  dispose(): void {
+    this.disposed = true;
+    this.manuallyDisconnected = true;
+    this.stopHeartbeat();
+    if (this.pendingBackoffResolve) this.pendingBackoffResolve();
+    this.device.removeEventListener('gattserverdisconnected', this.handleGattDisconnected);
+    this.listeners.clear();
   }
 
   async disconnect(): Promise<void> {
@@ -183,6 +254,9 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     });
     this.stopHeartbeat();
     this.characteristic = null;
+    // Never connected through this wrapper (e.g. a failed attempt not yet
+    // disposed) — nothing of ours to reconnect.
+    if (this.disposed || !this.connectedAt) return;
     if (this.manuallyDisconnected) {
       this.setStatus('desconectado');
       return;
@@ -208,13 +282,11 @@ export class BluetoothPrinterTransport implements PrinterTransport {
     await this.cancellableSleep(backoffMs);
     if (this.manuallyDisconnected) return;
     try {
-      await Promise.race([
-        this.connect(),
-        sleep(CONNECT_TIMEOUT_MS).then(() => { throw new Error('Tempo esgotado ao tentar reconectar.'); })
-      ]);
+      // connect() carries its own per-step timeouts now.
+      await this.connect();
     } catch (e: any) {
       printLog('warn', `Reconexão ${this.reconnectAttempts} com "${this.deviceName}" falhou`, e?.message || String(e));
-      if (!this.manuallyDisconnected) this.attemptReconnect();
+      if (!this.manuallyDisconnected && !this.disposed) this.attemptReconnect();
     }
   }
 
@@ -304,13 +376,20 @@ export async function requestBluetoothPrinter(): Promise<BluetoothPrinterTranspo
 // device is no longer permitted/known (e.g. permission revoked, or a
 // different browser/profile), in which case the user must pair again via
 // "Conectar Impressora".
-export async function reconnectKnownBluetoothPrinter(deviceId: string): Promise<BluetoothPrinterTransport | null> {
+export type SilentReconnectIssue = 'sem-bluetooth' | 'sem-permissao-persistente' | 'dispositivo-esquecido';
+
+export async function reconnectKnownBluetoothPrinter(
+  deviceId: string,
+  onIssue?: (issue: SilentReconnectIssue) => void
+): Promise<BluetoothPrinterTransport | null> {
   if (!isWebBluetoothSupported()) {
     console.warn('[printing] reconnectKnownBluetoothPrinter: navigator.bluetooth não existe neste navegador.');
+    onIssue?.('sem-bluetooth');
     return null;
   }
   if (!navigator.bluetooth.getDevices) {
     console.warn('[printing] reconnectKnownBluetoothPrinter: navigator.bluetooth.getDevices não é suportado (versão do Chrome sem permissões persistentes) — reconexão silenciosa é impossível, será preciso re-parear manualmente.');
+    onIssue?.('sem-permissao-persistente');
     return null;
   }
   const known = await navigator.bluetooth.getDevices().catch((e: any) => {
@@ -320,6 +399,7 @@ export async function reconnectKnownBluetoothPrinter(deviceId: string): Promise<
   const match = known.find(d => d.id === deviceId);
   if (!match) {
     console.warn(`[printing] reconnectKnownBluetoothPrinter: ${known.length} dispositivo(s) conhecido(s) pelo navegador, nenhum com id ${deviceId} — permissão pode ter sido revogada.`);
+    onIssue?.('dispositivo-esquecido');
     return null;
   }
   return new BluetoothPrinterTransport(match);

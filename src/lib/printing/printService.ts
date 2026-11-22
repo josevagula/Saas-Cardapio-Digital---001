@@ -15,7 +15,8 @@ import {
   BluetoothPrinterTransport,
   PrinterConnectionStatus,
   requestBluetoothPrinter,
-  reconnectKnownBluetoothPrinter
+  reconnectKnownBluetoothPrinter,
+  SilentReconnectIssue
 } from './bluetoothTransport';
 import { buildOrderReceipt, buildTestReceipt, colsForPaperWidth } from './receiptTemplates';
 import { AccentMode, EscPosBuilder } from './escpos';
@@ -210,8 +211,34 @@ export function getPrinterStatus(printerId: string): PrinterConnectionStatus {
   return printerStatuses.get(printerId) ?? 'desconectado';
 }
 
+// Why a silent (no-picker) reconnect is impossible for a printer on this
+// browser, when it is — shown on the printer card so the admin knows a
+// refresh-proof connection needs a browser setting / a re-pair, instead of
+// just seeing "Desconectado" with no explanation.
+const reconnectIssues = new Map<string, SilentReconnectIssue>();
+const issueListeners = new Set<() => void>();
+
+export function getReconnectIssue(printerId: string): SilentReconnectIssue | null {
+  return reconnectIssues.get(printerId) ?? null;
+}
+
+export function subscribeReconnectIssues(cb: () => void): () => void {
+  issueListeners.add(cb);
+  return () => issueListeners.delete(cb);
+}
+
+function setReconnectIssue(printerId: string, issue: SilentReconnectIssue | null) {
+  if ((reconnectIssues.get(printerId) ?? null) === issue) return;
+  if (issue) reconnectIssues.set(printerId, issue);
+  else reconnectIssues.delete(printerId);
+  issueListeners.forEach(cb => cb());
+}
+
 function attachTransport(printerId: string, transport: BluetoothPrinterTransport) {
+  const previous = transports.get(printerId);
+  if (previous && previous !== transport) previous.dispose();
   transports.set(printerId, transport);
+  setReconnectIssue(printerId, null);
   notifyStatus(printerId, transport.isConnected() ? 'conectado' : 'desconectado');
   transport.onStatusChange(status => notifyStatus(printerId, status));
 }
@@ -258,15 +285,26 @@ export function reconnectPrinter(printerId: string): Promise<boolean> {
       console.warn(`[printing] reconnectPrinter(${printerId}): nenhum dispositivo Bluetooth salvo para essa impressora.`);
       return false;
     }
-    const transport = await reconnectKnownBluetoothPrinter(deviceId);
+    const transport = await reconnectKnownBluetoothPrinter(deviceId, issue => setReconnectIssue(printerId, issue));
     if (!transport) {
       console.warn(`[printing] reconnectPrinter(${printerId}): dispositivo ${deviceId} não encontrado entre os pareados conhecidos pelo navegador (navigator.bluetooth.getDevices).`);
       return false;
     }
+    setReconnectIssue(printerId, null);
+    // Shown as "Reconectando..." while the attempt runs (it can take a few
+    // seconds right after a page reload — see waitForAdvertisement).
+    if (!transports.get(printerId)?.isConnected()) notifyStatus(printerId, 'reconectando');
     try {
       await transport.connect();
     } catch (e: any) {
       console.warn(`[printing] reconnectPrinter(${printerId}): connect() falhou —`, e?.message || e);
+      printLog('warn', `Reconexão automática da impressora falhou (nova tentativa em instantes)`, e?.message || String(e));
+      // Throw the failed wrapper away for real — otherwise its
+      // 'gattserverdisconnected' listener lingers on the shared device.
+      transport.dispose();
+      if (getPrinterStatus(printerId) === 'reconectando' && !transports.get(printerId)?.isConnected()) {
+        notifyStatus(printerId, 'desconectado');
+      }
       return false;
     }
     attachTransport(printerId, transport);
@@ -289,7 +327,7 @@ export function reconnectPrinter(printerId: string): Promise<boolean> {
 // reconectando quando desconecta" bug. This periodically retries every
 // printer that's genuinely 'desconectado' (never one already 'reconectando'
 // — reconnectPrinter's own guard already skips those) until it's connected.
-const RECONNECT_WATCHDOG_INTERVAL_MS = 20000;
+const RECONNECT_WATCHDOG_INTERVAL_MS = 10000;
 let watchedPrinterIds: string[] = [];
 let watchdogTimer: ReturnType<typeof setInterval> | null = null;
 
