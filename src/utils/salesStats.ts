@@ -51,6 +51,15 @@ export function revenueHistoryByDay(orders: Order[], start: Date, end: Date): { 
   return days;
 }
 
+// Real per-hour revenue for one calendar day (00h–23h) — for the "Hoje" chart.
+export function revenueHistoryByHour(orders: Order[], day: Date): { date: string; amount: number }[] {
+  const totals = new Array(24).fill(0);
+  ordersInRange(orders, day, day).forEach(o => {
+    totals[new Date(o.createdAt).getHours()] += o.total;
+  });
+  return totals.map((amount, h) => ({ date: `${String(h).padStart(2, '0')}h`, amount: Math.round(amount * 100) / 100 }));
+}
+
 export interface RealSalesSummary {
   dailyRevenue: number;
   weeklyRevenue: number;

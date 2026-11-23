@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Product } from '../types';
 import OrderFiltersBar from './OrderFiltersBar';
 import { applyOrderFilters, customerOptionsFromOrders, defaultOrderFilters, hasActiveOrderFilters, OrderFilterState, productOptionsFromOrders, productSalesInOrders } from '../utils/orderFilters';
-import { computeRealSalesSummary, computeRealUnitsSoldByProductId, ordersInRange, revenueHistoryByDay, PAYMENT_METHOD_LABELS } from '../utils/salesStats';
+import { computeRealSalesSummary, computeRealUnitsSoldByProductId, ordersInRange, revenueHistoryByDay, revenueHistoryByHour, PAYMENT_METHOD_LABELS } from '../utils/salesStats';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar
@@ -44,7 +44,7 @@ export default function DashboardOverview() {
   const orders = useMemo(() => applyOrderFilters(allOrders, filters), [allOrders, filters]);
 
   // Chart view state and custom date ranges
-  const [chartView, setChartView] = useState<'semanal' | 'mensal' | 'personalizado'>('semanal');
+  const [chartView, setChartView] = useState<'hoje' | 'semanal' | 'mensal' | 'personalizado'>('semanal');
   // The demo's mock orders are rebased (see rebaseDemoOrders in AppContext)
   // to spread across the last 30 days — default the custom range to that
   // same 30-day window, instead of the fixed placeholder window real
@@ -100,6 +100,7 @@ export default function DashboardOverview() {
   const getPeriodOrders = () => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (chartView === 'hoje') return ordersInRange(orders, today, today);
     if (chartView === 'semanal') {
       const periodStart = new Date(today);
       periodStart.setDate(today.getDate() - 6);
@@ -174,7 +175,13 @@ export default function DashboardOverview() {
   let displayedChartData: { date: string; amount: number }[] = [];
   let displayedTotal = 0;
 
-  if (chartView === 'semanal') {
+  if (chartView === 'hoje') {
+    // Today's sales broken down hour by hour (00h–23h) instead of by day.
+    const now = new Date();
+    const hours = revenueHistoryByHour(orders, new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+    displayedChartData = hours;
+    displayedTotal = Math.round(hours.reduce((s, h) => s + h.amount, 0) * 100) / 100;
+  } else if (chartView === 'semanal') {
     displayedChartData = realStats.weeklyHistory;
     displayedTotal = kpi.weeklyRevenue;
   } else if (chartView === 'mensal') {
@@ -304,7 +311,7 @@ export default function DashboardOverview() {
           <div className="flex flex-wrap items-center justify-between gap-2 bg-[#1F1209] px-3.5 py-2.5 rounded-lg border border-[#4A2A10] text-xs">
             <span className="text-slate-300 font-medium">
               <span className="text-[#F5F0EA] font-bold">{selectedProductName}</span>
-              {' '}· {chartView === 'semanal' ? '7 dias' : chartView === 'mensal' ? 'mês corrente' : 'período selecionado'}
+              {' '}· {chartView === 'hoje' ? 'hoje' : chartView === 'semanal' ? '7 dias' : chartView === 'mensal' ? 'mês corrente' : 'período selecionado'}
             </span>
             <span className="font-mono text-[#A8A29A]">
               <span className="text-[#F5F0EA] font-bold">{selectedProductSales.units} un.</span>
@@ -459,6 +466,16 @@ export default function DashboardOverview() {
             </div>
             <div className="flex items-center gap-1 bg-[#0C0A08] p-1 rounded-lg border border-[#2A211A]">
               <button
+                onClick={() => setChartView('hoje')}
+                className={`px-3 py-1 text-[10px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  chartView === 'hoje'
+                    ? 'bg-gradient-to-r from-[#C2410C] to-[#F97316] text-white shadow-sm'
+                    : 'text-[#A8A29A] hover:text-white'
+                }`}
+              >
+                Hoje
+              </button>
+              <button
                 onClick={() => setChartView('semanal')}
                 className={`px-3 py-1 text-[10px] sm:text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   chartView === 'semanal' 
@@ -521,6 +538,7 @@ export default function DashboardOverview() {
           {/* Dynamic Faturamento Banner */}
           <div className="flex items-center justify-between mb-5 bg-[#1F1209] px-3.5 py-2.5 rounded-lg border border-[#4A2A10]">
             <span className="text-xs text-slate-300 font-medium">
+              {chartView === 'hoje' && "Total Faturado Hoje (por hora)"}
               {chartView === 'semanal' && "Total Faturado (7 dias)"}
               {chartView === 'mensal' && "Total Faturado (Mês corrente)"}
               {chartView === 'personalizado' && "Total Faturado no Período Selecionado"}
