@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { startCheckout } from '../lib/billing';
 import { markTermsAcceptancePending, recordTermsAcceptance } from '../lib/terms';
 import { SushiLogoEmblem } from './SushiIcons';
 import { ArrowLeft, User, Phone, Mail, Lock } from 'lucide-react';
@@ -89,19 +88,12 @@ export default function TrialSignupPage() {
       return;
     }
 
-    // Conta criada e autenticada — vai direto para o Checkout do Asaas para
-    // capturar o cartão e iniciar os 7 dias grátis. O painel só é liberado
-    // depois que o webhook do Asaas (asaas-webhook) confirmar a assinatura (ver
-    // PlanRenewalOverlay e a coluna profiles.subscription_status).
-    // O aceite dos Termos nunca lança erro: se falhar, fica para o próximo login.
+    // Conta criada e autenticada — a sessão nova faz o app entrar no painel,
+    // que fica bloqueado pelo PlanRenewalOverlay com o formulário de cartão
+    // (pagamento dentro do próprio site, 7 dias grátis) até a assinatura ser
+    // criada. O aceite dos Termos nunca lança erro: se falhar, fica para o
+    // próximo login.
     if (data.user) await recordTermsAcceptance(data.user.id);
-
-    try {
-      await startCheckout();
-    } catch (err: any) {
-      setLoading(false);
-      setFormError(err.message || 'Conta criada, mas não foi possível abrir o pagamento agora. Faça login para tentar de novo.');
-    }
   };
 
   return (

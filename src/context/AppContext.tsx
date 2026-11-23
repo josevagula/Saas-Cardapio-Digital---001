@@ -40,7 +40,7 @@ import {
   fetchOrderById
 } from '../lib/workspaceRepo';
 import { supabase } from '../lib/supabase';
-import { startCheckout, cancelSubscription } from '../lib/billing';
+import { subscribeWithCard, cancelSubscription, type CardPaymentInput } from '../lib/billing';
 import { retryUntilSuccess, getSyncPendingCount } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { API_BASE } from '../lib/apiBase';
@@ -152,7 +152,7 @@ interface AppContextType {
   subscriptionPeriodEnd: string | null;
   confirmingCheckout: boolean;
   cancelPlan: () => Promise<void>;
-  renewPlan: () => Promise<void>;
+  renewPlan: (card: CardPaymentInput) => Promise<{ firstChargeDate: string }>;
   // Public (logged-out) marketing screens: landing, login, trial signup
   publicView: PublicView;
   setPublicView: (view: PublicView) => void;
@@ -1650,20 +1650,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCategories(prev => prev.filter(c => c.id !== id));
   };
 
-  // Real Asaas billing actions. renewPlan redirects to the Asaas Checkout (or
-  // to an overdue invoice) to start/resume paying — the asaas-webhook Edge
-  // Function updates the real status in Supabase, and the effect above
-  // re-reads it once the browser comes back. cancelPlan cancels right away
-  // and re-reads the status (access lasts until the paid period ends).
-  const cancelPlan = async () => {
-    await cancelSubscription();
+  // Real Asaas billing actions. renewPlan sends the card from the on-site
+  // payment form to the asaas-subscribe-card Edge Function, which creates the
+  // subscription and updates profiles before answering — so re-reading the
+  // status right after unlocks the dashboard at once. cancelPlan cancels right
+  // away and re-reads the status (access lasts until the paid period ends).
+  const reloadSubscriptionStatus = async () => {
     if (!userId) return;
     const { status, periodEnd } = await fetchSubscriptionStatus(userId);
     setPlanStatus(mapSubscriptionStatus(status, periodEnd));
     setSubscriptionStatusRaw(status);
     setSubscriptionPeriodEnd(periodEnd);
   };
-  const renewPlan = () => startCheckout();
+  const cancelPlan = async () => {
+    await cancelSubscription();
+    await reloadSubscriptionStatus();
+  };
+  const renewPlan = async (card: CardPaymentInput) => {
+    const result = await subscribeWithCard(card);
+    await reloadSubscriptionStatus();
+    return result;
+  };
 
   // Enters the admin dashboard for an already-authenticated Supabase user.
   // Workspace data isn't reset here — it's loaded automatically by the
