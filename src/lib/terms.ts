@@ -3,8 +3,8 @@ import { supabase } from './supabase';
 // Versão vigente dos Termos de Uso e da Política de Privacidade.
 // Troque as duas linhas aqui quando os documentos mudarem: TERMS_VERSION é o
 // que fica gravado em terms_acceptances; o rótulo aparece no topo das páginas.
-export const TERMS_VERSION = '2026-11-03';
-export const TERMS_VERSION_LABEL = 'Versão 1.1 · 3 de novembro de 2026';
+export const TERMS_VERSION = '2026-11-23';
+export const TERMS_VERSION_LABEL = 'Versão 1.2 · 23 de novembro de 2026';
 
 // O localStorage guarda só um lembrete de que falta gravar o aceite no banco
 // (cadastro sem sessão ou insert que falhou). Não é prova de aceite: a prova é

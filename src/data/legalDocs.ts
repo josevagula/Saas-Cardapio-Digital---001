@@ -194,7 +194,7 @@ export const TERMS_OF_USE: LegalDoc = {
     {
       title: '4. Teste grátis, preço e pagamento',
       blocks: [
-        { type: 'p', text: 'O Zushy oferece 7 dias de teste grátis, sem cobrança. Depois do teste, a assinatura custa R$ 129,00 por mês.' },
+        { type: 'p', text: 'O Zushy oferece 7 dias de teste grátis, sem cobrança. Depois do teste, a assinatura custa R$ 127,00 por mês.' },
         {
           type: 'ul',
           items: [
