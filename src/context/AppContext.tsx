@@ -150,6 +150,7 @@ interface AppContextType {
   // profiles.subscription_current_period_end: when access ends after a
   // cancellation (end of the paid month or of the free trial).
   subscriptionPeriodEnd: string | null;
+  confirmingCheckout: boolean;
   cancelPlan: () => Promise<void>;
   renewPlan: () => Promise<void>;
   // Public (logged-out) marketing screens: landing, login, trial signup
@@ -380,6 +381,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [subscriptionStatusRaw, setSubscriptionStatusRaw] = useState<string>('active');
   const [subscriptionPeriodEnd, setSubscriptionPeriodEnd] = useState<string | null>(null);
+  // True while waiting for Asaas to confirm a checkout the user just completed.
+  const [confirmingCheckout, setConfirmingCheckout] = useState(false);
   const [publicView, setPublicView] = useState<PublicView>(() => {
     const pathname = window.location.pathname;
     const viewFromPath = PATH_TO_PUBLIC_VIEW[pathname];
@@ -547,18 +550,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const params = new URLSearchParams(window.location.search);
     if (!params.has('checkout') && !params.has('billing')) return;
 
-    fetchSubscriptionStatus(userId)
-      .then(({ status, periodEnd }) => {
-        setPlanStatus(mapSubscriptionStatus(status, periodEnd));
-        setSubscriptionStatusRaw(status);
-        setSubscriptionPeriodEnd(periodEnd);
-      })
-      .catch(err => console.error('Falha ao atualizar status da assinatura:', err));
+    // After a successful checkout, Asaas' CHECKOUT_PAID webhook usually lands
+    // a few seconds later — keep re-checking (up to ~60s) instead of showing
+    // "Pagamento pendente" to someone who just added their card.
+    const waitForWebhook = params.get('checkout') === 'success';
+    let cancelled = false;
+    let attempts = 0;
+    const check = () => {
+      fetchSubscriptionStatus(userId)
+        .then(({ status, periodEnd }) => {
+          if (cancelled) return;
+          setPlanStatus(mapSubscriptionStatus(status, periodEnd));
+          setSubscriptionStatusRaw(status);
+          setSubscriptionPeriodEnd(periodEnd);
+          const stillPending = status === 'incomplete' || status === 'canceled' || status === 'past_due';
+          if (waitForWebhook && stillPending && ++attempts < 20) {
+            setTimeout(check, 3000);
+          } else {
+            setConfirmingCheckout(false);
+          }
+        })
+        .catch(err => {
+          console.error('Falha ao atualizar status da assinatura:', err);
+          if (!cancelled) setConfirmingCheckout(false);
+        });
+    };
+    if (waitForWebhook) setConfirmingCheckout(true);
+    check();
 
     params.delete('checkout');
     params.delete('billing');
     const newSearch = params.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`);
+    return () => {
+      cancelled = true;
+      setConfirmingCheckout(false);
+    };
   }, [userId, workspaceReady]);
 
   // Reflect the open admin dashboard section into the URL path, so the
@@ -1729,6 +1756,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       planStatus,
       subscriptionStatusRaw,
       subscriptionPeriodEnd,
+      confirmingCheckout,
       cancelPlan,
       renewPlan,
       publicView,

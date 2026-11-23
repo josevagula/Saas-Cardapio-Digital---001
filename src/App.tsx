@@ -41,7 +41,7 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, workspaceReady, authLoading, publicMenuNotFound } = useApp();
+  const { loggedIn, isAdmin, currentView, visualConfig, publicView, planStatus, isDemoMode, workspaceReady, authLoading, publicMenuNotFound } = useApp();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const goLogoHome = useLogoHome();
 
@@ -133,12 +133,11 @@ export default function App() {
     return <LoadingScreen />;
   }
 
-  // TEMPORARILY DISABLED: the "Finalize sua assinatura para começar" /
-  // "Seu plano precisa ser renovado" paywall lock (PlanRenewalOverlay) is
-  // switched off on purpose — every logged-in account gets full dashboard
-  // access regardless of real (Asaas) subscription status. To re-enable,
-  // restore: `const planCancelled = planStatus === 'cancelled';`
-  const planCancelled = false;
+  // Paywall lock (PlanRenewalOverlay): a new account must add a card on the
+  // Asaas Checkout (7 days free, then R$127/mês) before using the dashboard.
+  // Accounts with profiles.billing_exempt (customers from before billing)
+  // come through as 'exempt' -> planStatus 'active', so they're never locked.
+  const planCancelled = !isDemoMode && planStatus === 'cancelled';
 
   return (
     <ErrorBoundary>

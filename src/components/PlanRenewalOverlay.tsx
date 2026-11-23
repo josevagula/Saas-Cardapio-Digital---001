@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { SushiLogoEmblem } from './SushiIcons';
 
 export default function PlanRenewalOverlay() {
-  const { renewPlan, setLoggedIn, setCurrentView, subscriptionStatusRaw } = useApp();
+  const { renewPlan, setLoggedIn, setCurrentView, subscriptionStatusRaw, confirmingCheckout } = useApp();
   const { logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,6 +28,20 @@ export default function PlanRenewalOverlay() {
       setError(err.message || 'Não foi possível abrir o pagamento agora. Tente novamente.');
     }
   };
+
+  // Just came back from the Asaas Checkout: wait for its confirmation instead
+  // of asking for the card again.
+  if (confirmingCheckout) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in font-sans">
+        <div className="bg-[#141210] border border-[#2A211A] rounded-2xl w-full max-w-sm p-8 text-center text-slate-100 shadow-2xl">
+          <div className="w-8 h-8 border-2 border-[#F97316]/30 border-t-[#F97316] rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-base font-black text-[#F5F0EA] font-display">Confirmando seu cartão…</h2>
+          <p className="text-xs text-[#A8A29A] mt-2">Isso leva só alguns segundos. Seu painel será liberado automaticamente.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in font-sans">
