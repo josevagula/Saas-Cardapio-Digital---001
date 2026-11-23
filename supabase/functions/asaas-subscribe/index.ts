@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
 
     const { data: profile, error: profileError } = await admin
       .from("profiles")
-      .select("nome, telefone, subscription_status, asaas_subscription_id, billing_exempt")
+      .select("subscription_status, asaas_subscription_id, billing_exempt")
       .eq("id", user.id)
       .maybeSingle();
     if (profileError || !profile) return json({ error: "Falha ao carregar dados da conta." }, 500);
@@ -51,11 +51,9 @@ Deno.serve(async (req) => {
     const today = todayBR();
     const nextDueDate = firstTime ? addDays(today, TRIAL_DAYS) : today;
 
-    const phoneDigits = String(profile.telefone || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
-    const customerData: Record<string, unknown> = {};
-    if (profile.nome) customerData.name = profile.nome;
-    if (user.email) customerData.email = user.email;
-    if (phoneDigits.length === 10 || phoneDigits.length === 11) customerData.phone = phoneDigits;
+    // No customerData: Asaas requires cpfCnpj whenever it is sent, and the
+    // signup form doesn't ask for it. Without it, the hosted Checkout page
+    // collects name, CPF/CNPJ, e-mail and phone itself.
 
     const checkout = await asaas("/checkouts", {
       method: "POST",
@@ -78,7 +76,6 @@ Deno.serve(async (req) => {
           value: PLAN_VALUE,
         }],
         subscription: { cycle: "MONTHLY", nextDueDate },
-        ...(Object.keys(customerData).length ? { customerData } : {}),
       },
     });
 
