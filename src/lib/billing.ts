@@ -1,34 +1,32 @@
 import { supabase } from './supabase';
-import { API_BASE } from './apiBase';
 
-// Calls one of the /api/stripe/* routes on our own Express server, attaching
-// the signed-in user's Supabase access token so the server can verify who's
-// asking before touching Stripe or the profiles table.
-async function authPost(path: string): Promise<{ url: string }> {
+// Calls one of the asaas-* Supabase Edge Functions (supabase/functions/).
+// supabase-js attaches the signed-in user's access token automatically, and
+// the function verifies it before touching Asaas or the profiles table.
+async function invokeBilling<T>(name: string): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Sessão expirada. Faça login novamente.');
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${session.access_token}` }
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || 'Não foi possível conectar com a cobrança agora. Tente novamente.');
+  const { data, error } = await supabase.functions.invoke(name, { method: 'POST' });
+  if (error) {
+    // Non-2xx responses carry our { error } JSON in error.context (a Response).
+    let message = '';
+    try { message = (await (error as any).context?.json())?.error || ''; } catch { /* not JSON */ }
+    throw new Error(message || 'Não foi possível conectar com a cobrança agora. Tente novamente.');
   }
-  return data;
+  return data as T;
 }
 
-// Redirects the browser to a Stripe Checkout page to start or renew the
-// account's paid subscription.
+// Redirects the browser to the Asaas hosted Checkout (credit card, monthly)
+// to start or renew the subscription — or, when a charge is overdue, to that
+// charge's invoice page so the card can be retried or replaced.
 export async function startCheckout(): Promise<void> {
-  const { url } = await authPost('/api/stripe/create-checkout-session');
+  const { url } = await invokeBilling<{ url: string }>('asaas-subscribe');
   window.location.href = url;
 }
 
-// Redirects the browser to Stripe's hosted Billing Portal, where the account
-// can update payment details or cancel the subscription.
-export async function openBillingPortal(): Promise<void> {
-  const { url } = await authPost('/api/stripe/create-portal-session');
-  window.location.href = url;
+// Cancels the Asaas subscription. Access continues until the end of the
+// period already paid (or of the free trial).
+export async function cancelSubscription(): Promise<void> {
+  await invokeBilling<{ ok: true }>('asaas-cancel');
 }

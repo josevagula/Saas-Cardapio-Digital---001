@@ -40,7 +40,7 @@ import {
   fetchOrderById
 } from '../lib/workspaceRepo';
 import { supabase } from '../lib/supabase';
-import { startCheckout, openBillingPortal } from '../lib/billing';
+import { startCheckout, cancelSubscription } from '../lib/billing';
 import { retryUntilSuccess, getSyncPendingCount } from '../lib/retry';
 import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { API_BASE } from '../lib/apiBase';
@@ -51,11 +51,16 @@ import { handleOrderReceivedForPrinting, handleOrderConfirmedForPrinting } from 
 import { setWatchedPrinters } from '../lib/printing/printService';
 import { orderLocalDate } from '../components/financial/financeData';
 
-// Maps a raw Stripe subscription_status value (trialing, active, past_due,
-// canceled, unpaid, incomplete, incomplete_expired…) onto the simple
-// active/cancelled flag the dashboard UI locks/unlocks on.
-const mapSubscriptionStatus = (status: string): 'active' | 'cancelled' =>
-  status === 'trialing' || status === 'active' ? 'active' : 'cancelled';
+// Maps profiles.subscription_status (written by the asaas-webhook Edge
+// Function: incomplete, trialing, active, past_due, canceled) onto the simple
+// active/cancelled flag the dashboard UI locks/unlocks on. A cancelled
+// subscription keeps access until the end of the period already paid (or of
+// the free trial), like any regular subscription site.
+const mapSubscriptionStatus = (status: string, periodEnd: string | null = null): 'active' | 'cancelled' => {
+  if (status === 'exempt' || status === 'trialing' || status === 'active') return 'active';
+  if (status === 'canceled' && periodEnd && new Date(periodEnd).getTime() > Date.now()) return 'active';
+  return 'cancelled';
+};
 
 // Maps each admin dashboard currentView onto a real URL path, so the address
 // bar and the browser's back/forward buttons reflect which section is open.
@@ -133,15 +138,18 @@ interface AppContextType {
   publicMenuNotFound: boolean;
   currentPlan: 'basic' | 'pro' | 'premium';
   setCurrentPlan: (plan: 'basic' | 'pro' | 'premium') => void;
-  // Billing status of the current account's real Stripe subscription, mapped
+  // Billing status of the current account's real Asaas subscription, mapped
   // down to a simple lock/unlock flag. When 'cancelled', the admin dashboard
   // renders blurred with a renewal prompt until renewPlan() is called.
   planStatus: 'active' | 'cancelled';
-  // The raw profiles.subscription_status value straight from Stripe/Supabase
+  // The raw profiles.subscription_status value straight from Supabase (set by asaas-webhook)
   // (e.g. 'trialing', 'incomplete', 'canceled'…) — lets PlanRenewalOverlay
   // tell "never subscribed yet" (incomplete) apart from "was active, now
   // cancelled" and show the right copy for each.
   subscriptionStatusRaw: string;
+  // profiles.subscription_current_period_end: when access ends after a
+  // cancellation (end of the paid month or of the free trial).
+  subscriptionPeriodEnd: string | null;
   cancelPlan: () => Promise<void>;
   renewPlan: () => Promise<void>;
   // Public (logged-out) marketing screens: landing, login, trial signup
@@ -371,6 +379,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('sushi_plan_status') === 'cancelled' ? 'cancelled' : 'active';
   });
   const [subscriptionStatusRaw, setSubscriptionStatusRaw] = useState<string>('active');
+  const [subscriptionPeriodEnd, setSubscriptionPeriodEnd] = useState<string | null>(null);
   const [publicView, setPublicView] = useState<PublicView>(() => {
     const pathname = window.location.pathname;
     const viewFromPath = PATH_TO_PUBLIC_VIEW[pathname];
@@ -516,8 +525,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCoupons(data.coupons);
           setCustomers(data.customers);
           setAnalytics(data.analytics ?? BLANK_ANALYTICS);
-          setPlanStatus(mapSubscriptionStatus(data.subscriptionStatus));
+          setPlanStatus(mapSubscriptionStatus(data.subscriptionStatus, data.subscriptionPeriodEnd));
           setSubscriptionStatusRaw(data.subscriptionStatus);
+          setSubscriptionPeriodEnd(data.subscriptionPeriodEnd);
           setWorkspaceReady(true);
           syncGateUserIdRef.current = userId;
         })
@@ -528,8 +538,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     syncGateUserIdRef.current = userId;
   }, [userId, authLoading, publicMenuSlug]);
 
-  // The browser lands back here with ?checkout=... after Stripe Checkout, or
-  // ?billing=return after the Billing Portal — re-check the real subscription
+  // The browser lands back here with ?checkout=... after the Asaas Checkout
+  // (or ?billing=... from older links) — re-check the real subscription
   // status right away instead of waiting for the next full reload, then strip
   // the marker so a page refresh doesn't re-trigger this.
   useEffect(() => {
@@ -538,9 +548,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!params.has('checkout') && !params.has('billing')) return;
 
     fetchSubscriptionStatus(userId)
-      .then(status => {
-        setPlanStatus(mapSubscriptionStatus(status));
+      .then(({ status, periodEnd }) => {
+        setPlanStatus(mapSubscriptionStatus(status, periodEnd));
         setSubscriptionStatusRaw(status);
+        setSubscriptionPeriodEnd(periodEnd);
       })
       .catch(err => console.error('Falha ao atualizar status da assinatura:', err));
 
@@ -1612,12 +1623,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCategories(prev => prev.filter(c => c.id !== id));
   };
 
-  // Real Stripe billing actions. renewPlan redirects to a Stripe Checkout page
-  // to start/resume paying; cancelPlan redirects to Stripe's Billing Portal,
-  // where the account actually cancels. Neither flips planStatus locally —
-  // the Stripe webhook updates the real status in Supabase, and the effect
-  // above re-reads it once the browser comes back from Stripe.
-  const cancelPlan = () => openBillingPortal();
+  // Real Asaas billing actions. renewPlan redirects to the Asaas Checkout (or
+  // to an overdue invoice) to start/resume paying — the asaas-webhook Edge
+  // Function updates the real status in Supabase, and the effect above
+  // re-reads it once the browser comes back. cancelPlan cancels right away
+  // and re-reads the status (access lasts until the paid period ends).
+  const cancelPlan = async () => {
+    await cancelSubscription();
+    if (!userId) return;
+    const { status, periodEnd } = await fetchSubscriptionStatus(userId);
+    setPlanStatus(mapSubscriptionStatus(status, periodEnd));
+    setSubscriptionStatusRaw(status);
+    setSubscriptionPeriodEnd(periodEnd);
+  };
   const renewPlan = () => startCheckout();
 
   // Enters the admin dashboard for an already-authenticated Supabase user.
@@ -1710,6 +1728,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentPlan,
       planStatus,
       subscriptionStatusRaw,
+      subscriptionPeriodEnd,
       cancelPlan,
       renewPlan,
       publicView,

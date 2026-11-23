@@ -11,7 +11,7 @@ import { useLogoHome } from './hooks/useLogoHome';
 // Every one of these used to be a plain import, so visiting any single
 // screen (even the public cardápio a customer opens on their phone) pulled
 // down the whole app in one ~1.2MB bundle — the admin dashboard's charts,
-// Stripe/AI screens, and the landing page's animation library included.
+// billing/AI screens, and the landing page's animation library included.
 // Lazy-loading splits each into its own chunk that only loads when that
 // screen is actually shown.
 const DashboardOverview = lazy(() => import('./components/DashboardOverview'));
@@ -136,7 +136,7 @@ export default function App() {
   // TEMPORARILY DISABLED: the "Finalize sua assinatura para começar" /
   // "Seu plano precisa ser renovado" paywall lock (PlanRenewalOverlay) is
   // switched off on purpose — every logged-in account gets full dashboard
-  // access regardless of real Stripe subscription status. To re-enable,
+  // access regardless of real (Asaas) subscription status. To re-enable,
   // restore: `const planCancelled = planStatus === 'cancelled';`
   const planCancelled = false;
 

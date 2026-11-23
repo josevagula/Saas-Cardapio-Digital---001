@@ -11,7 +11,7 @@ export default function PlanRenewalOverlay() {
   const [error, setError] = useState('');
 
   // 'incomplete' is the default for a brand-new account that signed up but
-  // never finished Stripe Checkout (or whose card failed on the very first
+  // never finished the Asaas Checkout (or whose card failed on the very first
   // attempt) — it has no subscription to "renew", so the copy below is
   // tailored differently from an account that was active and got cancelled.
   const neverSubscribed = subscriptionStatusRaw === 'incomplete';
@@ -20,7 +20,7 @@ export default function PlanRenewalOverlay() {
     setError('');
     setLoading(true);
     try {
-      // Redirects the browser to Stripe Checkout — loading only matters until
+      // Redirects the browser to the Asaas Checkout (or an overdue invoice) — loading only matters until
       // that navigation happens, or an error comes back instead.
       await renewPlan();
     } catch (err: any) {

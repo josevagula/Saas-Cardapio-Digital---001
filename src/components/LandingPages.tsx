@@ -77,7 +77,7 @@ export default function LandingPages() {
     {
       name: 'Plano Profissional',
       desc: 'Ideal para temakerias, restaurantes japoneses e deliveries de sushi.',
-      priceMonthly: 129,
+      priceMonthly: 127,
       features: [
         'Cardápio Customizável (Branding)',
         'Produtos Ilimitados',
@@ -95,7 +95,7 @@ export default function LandingPages() {
   const faqs = [
     {
       question: 'Posso testar o Zushy antes de pagar alguma coisa?',
-      answer: 'Pode. Você tem 7 dias para montar o seu cardápio e ver o painel funcionando com o seu restaurante. Para começar, você informa o cartão, mas nada é cobrado durante o teste. Se não cancelar até o fim dos 7 dias, a assinatura de R$ 129/mês é cobrada automaticamente.'
+      answer: 'Pode. Você tem 7 dias para montar o seu cardápio e ver o painel funcionando com o seu restaurante. Para começar, você informa o cartão, mas nada é cobrado durante o teste. Se não cancelar até o fim dos 7 dias, a assinatura de R$ 127/mês é cobrada automaticamente.'
     },
     {
       question: 'Vou conseguir saber de verdade quanto o meu sushi está vendendo?',

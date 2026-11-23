@@ -31,7 +31,9 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) {
-  const { currentView, setCurrentView, visualConfig, currentPlan, planStatus, cancelPlan, setIsAdmin, setLoggedIn, isDemoMode } = useApp();
+  const { currentView, setCurrentView, visualConfig, currentPlan, planStatus, cancelPlan, subscriptionStatusRaw, subscriptionPeriodEnd, setIsAdmin, setLoggedIn, isDemoMode } = useApp();
+  const subscriptionCancellable = ['trialing', 'active', 'past_due'].includes(subscriptionStatusRaw);
+  const accessUntil = subscriptionPeriodEnd ? new Date(subscriptionPeriodEnd).toLocaleDateString('pt-BR') : null;
   const { logout } = useAuth();
   const goLogoHome = useLogoHome();
   const [copied, setCopied] = useState(false);
@@ -264,13 +266,20 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
         </button>
 
         {!isDemoMode && (
-          planStatus === 'active' ? (
+          subscriptionStatusRaw === 'exempt' ? (
+            <div className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-[#A8A29A] font-semibold">
+              <span>Plano cortesia</span>
+            </div>
+          ) : subscriptionCancellable ? (
             <button
               onClick={() => {
-                if (window.confirm('Isso vai te levar até a página segura da Stripe para gerenciar ou cancelar sua assinatura. Continuar?')) {
-                  cancelPlan().catch((err: any) => {
-                    window.alert(err.message || 'Não foi possível abrir o gerenciamento da assinatura agora. Tente novamente.');
-                  });
+                const until = accessUntil ? ` Você continua com acesso até ${accessUntil}.` : '';
+                if (window.confirm(`Tem certeza que deseja cancelar sua assinatura? Nenhuma nova cobrança será feita no seu cartão.${until}`)) {
+                  cancelPlan()
+                    .then(() => window.alert('Assinatura cancelada.'))
+                    .catch((err: any) => {
+                      window.alert(err.message || 'Não foi possível cancelar a assinatura agora. Tente novamente.');
+                    });
                 }
               }}
               className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-[#6B655C] hover:text-red-400 transition-all font-semibold cursor-pointer"
@@ -281,7 +290,11 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
           ) : (
             <div className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] text-red-400 font-bold">
               <ShieldAlert className="w-3 h-3" />
-              <span>Assinatura cancelada</span>
+              <span>
+                {subscriptionStatusRaw === 'canceled' && planStatus === 'active' && accessUntil
+                  ? `Cancelada · acesso até ${accessUntil}`
+                  : subscriptionStatusRaw === 'incomplete' ? 'Assinatura pendente' : 'Assinatura cancelada'}
+              </span>
             </div>
           )
         )}

@@ -295,6 +295,7 @@ export async function fetchWorkspace(userId: string): Promise<{
   customers: CustomerInfo[];
   analytics: SalesAnalytics | null;
   subscriptionStatus: string;
+  subscriptionPeriodEnd: string | null;
 }> {
   const [categoriesRes, productsRes, ordersRes, couponsRes, customersRes, visualConfigRes, analyticsRes, profileRes] = await Promise.all([
     supabase.from('categories').select('*').eq('user_id', userId),
@@ -308,7 +309,7 @@ export async function fetchWorkspace(userId: string): Promise<{
     supabase.from('customers').select('*').eq('user_id', userId),
     supabase.from('visual_configs').select('*').eq('user_id', userId).maybeSingle(),
     supabase.from('analytics_snapshots').select('*').eq('user_id', userId).maybeSingle(),
-    supabase.from('profiles').select('subscription_status').eq('id', userId).maybeSingle()
+    supabase.from('profiles').select('subscription_status, subscription_current_period_end, billing_exempt').eq('id', userId).maybeSingle()
   ]);
 
   // A failed read must never be treated as "this account has no data" — the
@@ -339,17 +340,27 @@ export async function fetchWorkspace(userId: string): Promise<{
     coupons: (couponsRes.data || []).map(rowToCoupon),
     customers: (customersRes.data || []).map(rowToCustomer),
     analytics: analyticsRes.data ? (analyticsRes.data.data as SalesAnalytics) : null,
-    subscriptionStatus: (profileRes.data?.subscription_status as string | undefined) ?? 'trialing'
+    // billing_exempt accounts (customers from before Asaas billing) are
+    // reported as 'exempt': never charged, never locked by the paywall.
+    subscriptionStatus: profileRes.data?.billing_exempt ? 'exempt' : ((profileRes.data?.subscription_status as string | undefined) ?? 'trialing'),
+    subscriptionPeriodEnd: (profileRes.data?.subscription_current_period_end as string | null | undefined) ?? null
   };
 }
 
-// Re-checks just the billing status, used after the browser returns from a
-// Stripe Checkout or Billing Portal redirect so the dashboard unlocks/locks
+// Re-checks just the billing status, used after the browser returns from the
+// Asaas Checkout (or after cancelling) so the dashboard unlocks/locks
 // immediately instead of waiting for the next full page load.
-export async function fetchSubscriptionStatus(userId: string): Promise<string> {
-  const { data, error } = await supabase.from('profiles').select('subscription_status').eq('id', userId).maybeSingle();
+export async function fetchSubscriptionStatus(userId: string): Promise<{ status: string; periodEnd: string | null }> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('subscription_status, subscription_current_period_end, billing_exempt')
+    .eq('id', userId)
+    .maybeSingle();
   if (error) throw new Error(`Falha ao verificar status da assinatura: ${error.message}`);
-  return (data?.subscription_status as string | undefined) ?? 'trialing';
+  return {
+    status: data?.billing_exempt ? 'exempt' : ((data?.subscription_status as string | undefined) ?? 'trialing'),
+    periodEnd: (data?.subscription_current_period_end as string | null | undefined) ?? null
+  };
 }
 
 export const syncCategories = (userId: string, categories: Category[]) =>

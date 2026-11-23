@@ -89,9 +89,9 @@ export default function TrialSignupPage() {
       return;
     }
 
-    // Conta criada e autenticada — vai direto para o Checkout do Stripe para
+    // Conta criada e autenticada — vai direto para o Checkout do Asaas para
     // capturar o cartão e iniciar os 7 dias grátis. O painel só é liberado
-    // depois que o webhook do Stripe confirmar a assinatura (ver
+    // depois que o webhook do Asaas (asaas-webhook) confirmar a assinatura (ver
     // PlanRenewalOverlay e a coluna profiles.subscription_status).
     // O aceite dos Termos nunca lança erro: se falhar, fica para o próximo login.
     if (data.user) await recordTermsAcceptance(data.user.id);
