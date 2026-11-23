@@ -113,6 +113,11 @@ async function handleEvent(admin: Any, body: Any): Promise<{ profileId: string |
     case "SUBSCRIPTION_DELETED": {
       const sub = body.subscription || {};
       let profile = await findProfile(admin, "asaas_subscription_id", sub.id);
+      // Subscriptions created by a Checkout carry its id in checkoutSession
+      // (externalReference stays null) — the most reliable link we have.
+      if (!profile && sub.checkoutSession) {
+        profile = await findProfile(admin, "asaas_checkout_id", sub.checkoutSession);
+      }
       if (!profile && UUID_RE.test(String(sub.externalReference || ""))) {
         profile = await findProfile(admin, "id", sub.externalReference);
       }
@@ -125,6 +130,13 @@ async function handleEvent(admin: Any, body: Any): Promise<{ profileId: string |
         sub.deleted === true || (sub.status && sub.status !== "ACTIVE");
 
       if (event === "SUBSCRIPTION_CREATED" && !ended) {
+        // Renewing on top of an older, still-live subscription: stop the old
+        // one so the account is never billed twice.
+        const old = profile.asaas_subscription_id;
+        if (old && old !== sub.id) {
+          await asaas(`/subscriptions/${old}`, { method: "DELETE" }).catch((e: Error) =>
+            console.error(`Failed to delete old subscription ${old}:`, e.message));
+        }
         await updateProfile(admin, profile.id, { asaas_subscription_id: sub.id, asaas_customer_id: sub.customer ?? null });
         return { profileId: profile.id, note: "subscription linked" };
       }
