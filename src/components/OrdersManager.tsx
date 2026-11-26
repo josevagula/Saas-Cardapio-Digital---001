@@ -404,6 +404,13 @@ export default function OrdersManager() {
                   <span>R$ {formatCurrency(order.deliveryFee)}</span>
                 </div>
               )}
+              {/* Without this line, Subtotal + Taxa didn't add up to Total on couponed orders. */}
+              {order.discountAmount > 0 && (
+                <div className="flex justify-between gap-3 text-[#A8A29A]">
+                  <span>Desconto{order.couponCode ? ` (${order.couponCode})` : ''}:</span>
+                  <span>- R$ {formatCurrency(order.discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between gap-3">
                 <span className="text-[#A8A29A]">Total:</span>
                 <span className="text-sm font-extrabold text-[#F5F0EA]">R$ {formatCurrency(order.total)}</span>

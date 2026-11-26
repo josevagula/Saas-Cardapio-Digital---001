@@ -14,7 +14,7 @@ export default function HalfAndHalfModal({ product, onClose, onAddToCart }: Half
     'Salmão Completo c/ Cream Cheese',
     'Skin Crocante c/ Tarê',
     'Kani Kama c/ Cebolinha',
-    'Camarão Empanado Panko (+ R$ 3,00)',
+    'Camarão Empanado Panko',
     'Salmão Grelhado Teriyaki'
   ];
 
@@ -24,12 +24,10 @@ export default function HalfAndHalfModal({ product, onClose, onAddToCart }: Half
 
   const isReady = flavor1.length > 0 && flavor2.length > 0;
 
-  // Additional fee if premium flavor selected
-  let extraFee = 0;
-  if (flavor1.includes('Camarão') || flavor2.includes('Camarão')) extraFee += 3.00;
-
-  const basePrice = getUnitPrice(product);
-  const finalPrice = basePrice + extraFee;
+  // The cart charges the product's own price for any flavor pair — a
+  // hardcoded "+R$3 Camarão" fee used to show here that was never charged,
+  // so this modal's price disagreed with the cart/order by R$3.
+  const finalPrice = getUnitPrice(product);
 
   const handleConfirm = () => {
     if (!isReady) return;

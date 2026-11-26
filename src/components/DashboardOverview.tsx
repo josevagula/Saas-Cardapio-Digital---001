@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product } from '../types';
+import { getUnitPrice } from '../utils/formatters';
 import OrderFiltersBar from './OrderFiltersBar';
 import { applyOrderFilters, customerOptionsFromOrders, defaultOrderFilters, hasActiveOrderFilters, OrderFilterState, productOptionsFromOrders, productSalesInOrders } from '../utils/orderFilters';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId, ordersInRange, revenueHistoryByDay, revenueHistoryByHour, PAYMENT_METHOD_LABELS } from '../utils/salesStats';
@@ -210,9 +211,13 @@ export default function DashboardOverview() {
     });
     const sum = Object.values(totals).reduce((a, b) => a + b, 0);
     if (sum <= 0) return [];
+    // `amount` is the real money per method — it used to be rebuilt as
+    // (rounded %) × period total, which was off by reais/cents and didn't
+    // add up to the total.
     return Object.entries(totals).map(([method, amount]) => ({
       name: method === 'card' ? 'Cartão' : (PAYMENT_METHOD_LABELS[method] || method),
-      value: Math.round((amount / sum) * 100)
+      value: Math.round((amount / sum) * 100),
+      amount: Math.round(amount * 100) / 100
     }));
   })();
 
@@ -609,7 +614,7 @@ export default function DashboardOverview() {
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value: any, name: any) => [`${value}% (${formatCurrency((value / 100) * displayedTotal)})`, name]}
+                  formatter={(value: any, name: any, entry: any) => [`${value}% (${formatCurrency(entry?.payload?.amount)})`, name]}
                   contentStyle={{ backgroundColor: '#141210', borderRadius: '12px', color: '#F5F0EA', border: '1px solid #2A211A', fontSize: '11px', padding: '8px 12px' }}
                 />
               </PieChart>
@@ -630,7 +635,7 @@ export default function DashboardOverview() {
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-[#F5F0EA] font-bold font-mono text-xs">
-                    {formatCurrency((item.value / 100) * displayedTotal)}
+                    {formatCurrency(item.amount)}
                   </span>
                   <span className="text-[10px] text-[#A8A29A] font-mono font-medium ml-1.5 inline-block">({item.value}%)</span>
                 </div>
@@ -657,7 +662,7 @@ export default function DashboardOverview() {
                   </div>
                   <div className="min-w-0">
                     <h5 className="text-xs sm:text-sm font-bold text-[#F5F0EA] truncate">{prod.name}</h5>
-                    <span className="text-[11px] text-[#A8A29A] block truncate font-mono">{formatCurrency(prod.price)}</span>
+                    <span className="text-[11px] text-[#A8A29A] block truncate font-mono">{formatCurrency(getUnitPrice(prod))}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -686,7 +691,7 @@ export default function DashboardOverview() {
                   />
                   <div className="min-w-0">
                     <h5 className="text-xs sm:text-sm font-bold text-[#F5F0EA] truncate">{prod.name}</h5>
-                    <span className="text-[11px] text-[#A8A29A] block truncate font-mono">{formatCurrency(prod.price)}</span>
+                    <span className="text-[11px] text-[#A8A29A] block truncate font-mono">{formatCurrency(getUnitPrice(prod))}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">

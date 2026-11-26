@@ -35,6 +35,41 @@ export function getStrikePrice(p: { price: any; promoPrice?: any }): number | nu
   return Math.max(price, promo);
 }
 
+// Money math in whole cents: summing floats (0.1 + 0.2…) and unrounded
+// percentage discounts made a total disagree with its own lines by a cent.
+export function roundMoney(val: number): number {
+  return Math.round((safeNumber(val) + Number.EPSILON) * 100) / 100;
+}
+
+// One cart/order line: unit price × quantity, plus the line's extras (each
+// extra's quantity is chosen for the whole line, not per unit).
+export function lineTotal(item: { product: { price: any; promoPrice?: any }; quantity: any; extras?: { price: any; quantity: any }[] }): number {
+  const extras = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
+  return roundMoney(getUnitPrice(item.product) * safeNumber(item.quantity, 1) + extras);
+}
+
+// The single source of truth for checkout math — the cart screen and the
+// saved order both use it, so what the customer sees is what is stored.
+// The discount never exceeds what it can discount, so
+// subtotal + fee − discount === total always holds to the cent.
+export function computeCartTotals(
+  items: Parameters<typeof lineTotal>[0][],
+  deliveryFee: any,
+  coupon?: { discountType: string; value: any } | null
+): { subtotal: number; deliveryFee: number; discountAmount: number; total: number } {
+  const subtotal = roundMoney(items.reduce((s, item) => s + lineTotal(item), 0));
+  const fee = roundMoney(deliveryFee);
+  let discount = 0;
+  if (coupon) {
+    if (coupon.discountType === 'percentage') discount = (subtotal * safeNumber(coupon.value)) / 100;
+    else if (coupon.discountType === 'fixed') discount = safeNumber(coupon.value);
+    else if (coupon.discountType === 'free_delivery') discount = fee;
+  }
+  const discountAmount = roundMoney(Math.min(Math.max(0, discount), subtotal + fee));
+  const total = roundMoney(subtotal + fee - discountAmount);
+  return { subtotal, deliveryFee: fee, discountAmount, total };
+}
+
 export function formatCurrency(val: any): string {
   return safeNumber(val).toFixed(2);
 }

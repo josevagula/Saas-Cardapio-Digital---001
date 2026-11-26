@@ -46,7 +46,7 @@ import { buildFallbackPromoReport } from '../lib/promoFallback';
 import { API_BASE } from '../lib/apiBase';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId } from '../utils/salesStats';
 import { calculatePointsEarned, hasUnlockedReward, pointsAfterRedemption, computeLoyaltyByPhone, buildLoyaltyHistory, type CustomerLoyaltyStats, type LoyaltyHistoryItem } from '../utils/loyalty';
-import { formatOrderCode, getUnitPrice } from '../utils/formatters';
+import { formatOrderCode, computeCartTotals } from '../utils/formatters';
 import { handleOrderReceivedForPrinting, handleOrderConfirmedForPrinting } from '../lib/printing/printBridge';
 import { setWatchedPrinters } from '../lib/printing/printService';
 import { orderLocalDate } from '../components/financial/financeData';
@@ -887,7 +887,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Shopping Cart Handlers
   const addToCart = (product: Product, quantity = 1, notes = "", removedIngredients?: string[], extras?: SelectedExtra[], isCartOffer = false) => {
     setCart(prev => {
-      const existingIndex = prev.findIndex(item =>
+      // A line's extras are charged once per line (their quantity is picked
+      // for the whole line), so merging a second "same product + extras"
+      // into it would raise the quantity but drop the second set of extras
+      // — undercharging. Lines with extras always stay separate.
+      const hasExtras = (extras || []).length > 0;
+      const existingIndex = hasExtras ? -1 : prev.findIndex(item =>
         item.product.id === product.id &&
         JSON.stringify(item.removedIngredients || []) === JSON.stringify(removedIngredients || []) &&
         JSON.stringify(item.extras || []) === JSON.stringify(extras || []) &&
@@ -931,11 +936,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Calculate current cart total
-    const subtotal = cart.reduce((acc, item) => {
-      const price = getUnitPrice(item.product);
-      const extrasTotal = (item.extras || []).reduce((s, ex) => s + ex.price * ex.quantity, 0);
-      return acc + ((typeof price === 'number' && !isNaN(price) ? price : parseFloat(price as any) || 0) * item.quantity) + extrasTotal;
-    }, 0);
+    const { subtotal } = computeCartTotals(cart, 0, null);
 
     const minVal = typeof coupon.minOrderValue === 'number' && !isNaN(coupon.minOrderValue) ? coupon.minOrderValue : (parseFloat(coupon.minOrderValue as any) || 0);
 
@@ -972,26 +973,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     paymentMethod: PaymentMethod,
     cashChangeInfo?: { needsChange?: boolean; changeAmount?: string }
   ): Promise<Order> => {
-    const subtotal = cart.reduce((acc, item) => {
-      const price = getUnitPrice(item.product);
-      const extrasTotal = (item.extras || []).reduce((s, ex) => s + ex.price * ex.quantity, 0);
-      return acc + (price * item.quantity) + extrasTotal;
-    }, 0);
-
-    const deliveryFee = deliveryMethod === 'delivery' ? visualConfig.deliveryFee : 0;
-    
-    let discountAmount = 0;
-    if (appliedCoupon) {
-      if (appliedCoupon.discountType === 'percentage') {
-        discountAmount = (subtotal * appliedCoupon.value) / 100;
-      } else if (appliedCoupon.discountType === 'fixed') {
-        discountAmount = appliedCoupon.value;
-      } else if (appliedCoupon.discountType === 'free_delivery') {
-        discountAmount = deliveryFee;
-      }
-    }
-
-    const total = Math.max(0, subtotal + deliveryFee - discountAmount);
+    const { deliveryFee, discountAmount, total } = computeCartTotals(
+      cart,
+      deliveryMethod === 'delivery' ? visualConfig.deliveryFee : 0,
+      appliedCoupon
+    );
     // orders.id is a GLOBAL primary key (every restaurant shares it), so the
     // old `LUV-<4 random digits>` (9000 values) collided more and more often
     // as orders accumulated — the insert then failed forever.

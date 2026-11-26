@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product, Category, PaymentMethod, DeliveryMethod, SelectedComboPiece, SelectedHalfAndHalf, SelectedExtra, OrderItem } from '../types';
-import { safeNumber, formatCurrency, parseCashAmount, getUnitPrice, getStrikePrice } from '../utils/formatters';
+import { safeNumber, formatCurrency, parseCashAmount, getUnitPrice, getStrikePrice, computeCartTotals } from '../utils/formatters';
 import { computeDeliveryEstimate } from '../utils/deliveryEstimate';
 import { 
   ShoppingBag, 
@@ -453,26 +453,13 @@ export default function PublicMenuPage() {
   };
 
   // Calculations
-  const subtotal = cart.reduce((acc, item) => {
-    const price = getUnitPrice(item.product);
-    const extrasTotal = (item.extras || []).reduce((s, ex) => s + safeNumber(ex.price) * safeNumber(ex.quantity), 0);
-    return acc + (price * safeNumber(item.quantity, 1)) + extrasTotal;
-  }, 0);
-
-  const deliveryFee = deliveryMethod === 'delivery' ? safeNumber(visualConfig.deliveryFee) : 0;
-  
-  let discountAmount = 0;
-  if (appliedCoupon) {
-    if (appliedCoupon.discountType === 'percentage') {
-      discountAmount = (subtotal * safeNumber(appliedCoupon.value)) / 100;
-    } else if (appliedCoupon.discountType === 'fixed') {
-      discountAmount = safeNumber(appliedCoupon.value);
-    } else if (appliedCoupon.discountType === 'free_delivery') {
-      discountAmount = deliveryFee;
-    }
-  }
-
-  const finalTotal = Math.max(0, subtotal + deliveryFee - discountAmount);
+  // Same function the saved order uses (AppContext.createOrder), so the
+  // cart's total is exactly what gets stored and printed.
+  const { subtotal, deliveryFee, discountAmount, total: finalTotal } = computeCartTotals(
+    cart,
+    deliveryMethod === 'delivery' ? visualConfig.deliveryFee : 0,
+    appliedCoupon
+  );
   const totalCartCount = cart.reduce((a, b) => a + b.quantity, 0);
 
   const categoryIndex = new Map(categories.map((c, i) => [c.id, i]));
