@@ -12,8 +12,9 @@ type EditableLine = OrderItem & { _key: string };
 
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: 'pix', label: 'PIX' },
-  { value: 'credit_card', label: 'Cartão de Crédito' },
-  { value: 'debit_card', label: 'Cartão de Débito' },
+  // One "Cartão" option, stored as credit_card — same as the public menu's
+  // checkout. Every screen/receipt already shows both card codes as "Cartão".
+  { value: 'credit_card', label: 'Cartão' },
   { value: 'cash', label: 'Dinheiro' }
 ];
 
@@ -38,7 +39,7 @@ export default function OrderEditModal({ order, onClose }: { order: Order; onClo
   const [customerAddress, setCustomerAddress] = useState(order.customerAddress || '');
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(order.deliveryMethod);
   const [deliveryFee, setDeliveryFee] = useState(String(safeNumber(order.deliveryFee)).replace('.', ','));
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(order.paymentMethod);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(order.paymentMethod === 'debit_card' ? 'credit_card' : order.paymentMethod);
   const [needsChange, setNeedsChange] = useState(!!order.needsChange);
   const [changeAmount, setChangeAmount] = useState(order.changeAmount || '');
   const [notes, setNotes] = useState(order.notes || '');
