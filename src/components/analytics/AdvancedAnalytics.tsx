@@ -16,6 +16,12 @@ import {
   customerKey
 } from '../../utils/analyticsStats';
 import { localISO } from '../financial/financeShared';
+import { useAuth } from '../../context/AuthContext';
+import { mercadoSeries, useMercadoRevenueByDay } from '../../lib/mercadoRevenue';
+
+// Dois tons validados (escuro, daltonismo) para Delivery × Mercados.
+const COLOR_DELIVERY = '#EA580C';
+const COLOR_MERCADOS = '#0EA5E9';
 import { CARD_CLASS, VIP_TIER_BADGE_CLASS, formatChangePercent, changeColorClass } from './analyticsShared';
 import { ClientesAtivosTable, ClientesInativosTable, VipRankingTable } from './AnalyticsTables';
 import {
@@ -29,7 +35,8 @@ import {
 const TOOLTIP_STYLE = { backgroundColor: '#141210', borderRadius: '12px', color: '#F5F0EA', border: '1px solid #2A211A', fontSize: '11px', padding: '8px 12px' };
 
 export default function AdvancedAnalytics() {
-  const { orders, loyaltyByPhone } = useApp();
+  const { orders, loyaltyByPhone, isDemoMode } = useApp();
+  const { user } = useAuth();
 
   const [filterPreset, setFilterPreset] = useState<FilterPreset>('30d');
   const [customStart, setCustomStart] = useState(() => {
@@ -69,7 +76,16 @@ export default function AdvancedAnalytics() {
   const vipRanking = useMemo(() => computeVipRanking(orders, globalRange, pointsByPhone), [orders, globalRange, pointsByPhone]);
 
   const globalHistory = useMemo(() => historyForRange(orders, globalRange), [orders, globalRange]);
-  const globalRevenueTotal = useMemo(() => globalHistory.reduce((s, d) => s + d.revenue, 0), [globalHistory]);
+  // Faturamento = delivery + vendas para mercados (página Mercados). Ticket
+  // médio, recompra etc. continuam só do cardápio (mercado não é pedido).
+  const mercadoAll = useMercadoRevenueByDay(!isDemoMode && user ? user.id : null);
+  const revenueHistory = useMemo(() => {
+    const m = mercadoSeries(mercadoAll, globalRange.start, globalHistory.length);
+    return globalHistory.map((d, i) => ({ date: d.date, delivery: d.revenue, mercados: m[i], revenue: Math.round((d.revenue + m[i]) * 100) / 100 }));
+  }, [globalHistory, mercadoAll, globalRange]);
+  const globalRevenueTotal = useMemo(() => revenueHistory.reduce((s, d) => s + d.revenue, 0), [revenueHistory]);
+  const globalMercadosTotal = useMemo(() => Math.round(revenueHistory.reduce((s, d) => s + d.mercados, 0) * 100) / 100, [revenueHistory]);
+  const hasMercados = globalMercadosTotal > 0;
   const globalOrdersTotal = useMemo(() => globalHistory.reduce((s, d) => s + d.orders, 0), [globalHistory]);
   const ticketEvolution = useMemo(() => globalHistory.map(d => ({ date: d.date, amount: d.ticket })), [globalHistory]);
 
@@ -293,12 +309,18 @@ export default function AdvancedAnalytics() {
             </div>
             <div className="text-right">
               <p className="text-sm font-black text-[#FB923C] font-mono">R$ {formatCurrency(globalRevenueTotal)}</p>
-              <p className="text-[10px] text-[#A8A29A]">{globalOrdersTotal} pedidos</p>
+              <p className="text-[10px] text-[#A8A29A]">{globalOrdersTotal} pedidos{hasMercados ? ' + mercados' : ''}</p>
             </div>
           </div>
+          {hasMercados && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 -mt-2 mb-3 text-[11px] text-[#A8A29A]">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COLOR_DELIVERY }} />Delivery <span className="font-mono text-slate-200">R$ {formatCurrency(globalRevenueTotal - globalMercadosTotal)}</span></span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COLOR_MERCADOS }} />Mercados <span className="font-mono text-slate-200">R$ {formatCurrency(globalMercadosTotal)}</span></span>
+            </div>
+          )}
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={globalHistory}>
+              <AreaChart data={revenueHistory}>
                 <defs>
                   <linearGradient id="analyticsRevGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#F97316" stopOpacity={0.35} />
@@ -308,8 +330,16 @@ export default function AdvancedAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2A211A" />
                 <XAxis dataKey="date" stroke="#8A7E72" fontSize={11} tickLine={false} />
                 <YAxis stroke="#8A7E72" fontSize={11} tickLine={false} tickFormatter={(v) => `R$${v}`} />
-                <Tooltip formatter={(val: any) => [`R$ ${formatCurrency(val)}`, 'Faturamento']} contentStyle={TOOLTIP_STYLE} />
-                <Area type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={2.5} fillOpacity={1} fill="url(#analyticsRevGradient)" isAnimationActive={false} />
+                <Tooltip formatter={(val: any, name: any) => [`R$ ${formatCurrency(val)}`, name === 'mercados' ? 'Mercados' : name === 'delivery' ? 'Delivery' : 'Faturamento']} contentStyle={TOOLTIP_STYLE} />
+                {!hasMercados && (
+                  <Area type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={2.5} fillOpacity={1} fill="url(#analyticsRevGradient)" isAnimationActive={false} />
+                )}
+                {hasMercados && (
+                  <Area type="monotone" dataKey="delivery" stackId="fat" stroke={COLOR_DELIVERY} strokeWidth={2} fill={COLOR_DELIVERY} fillOpacity={0.25} isAnimationActive={false} />
+                )}
+                {hasMercados && (
+                  <Area type="monotone" dataKey="mercados" stackId="fat" stroke={COLOR_MERCADOS} strokeWidth={2} fill={COLOR_MERCADOS} fillOpacity={0.25} isAnimationActive={false} />
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>

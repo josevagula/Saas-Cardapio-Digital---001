@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { invalidateMercadoRevenue } from './mercadoRevenue';
 
 // Módulo "Mercados" (venda para supermercados). Tabelas da migration
 // 20261127120000_mercados.sql — dinheiro sempre em centavos (integer).
@@ -211,6 +212,7 @@ export async function salvarPedido(
     if (error.message.includes('pedido_vazio')) throw new Error('O pedido está vazio: informe a quantidade de pelo menos um produto.');
     throw fail('Erro ao salvar pedido', error);
   }
+  invalidateMercadoRevenue();
   return id as number;
 }
 
@@ -225,6 +227,21 @@ export async function updatePedidoStatus(id: number, status: StatusPedido, pagoE
 export async function deletePedido(id: number): Promise<void> {
   const { error } = await supabase.from('pedidos_mercado').delete().eq('id', id);
   if (error) throw fail('Erro ao excluir pedido', error);
+  invalidateMercadoRevenue();
+}
+
+// ---------- Vendas (aba "Vendas") ----------
+
+export async function vendasPorDia(inicio: string, fim: string): Promise<{ data: string; total: number; pedidos: number }[]> {
+  const { data, error } = await supabase.rpc('vendas_mercados_por_dia', { p_inicio: inicio, p_fim: fim });
+  if (error) throw fail('Erro ao carregar vendas', error);
+  return (data || []).map((r: any) => ({ data: r.data, total: Number(r.total), pedidos: r.pedidos }));
+}
+
+export async function vendasPorMercado(inicio: string, fim: string): Promise<{ mercado_id: number; total: number; pago: number; pedidos: number }[]> {
+  const { data, error } = await supabase.rpc('vendas_mercados_por_mercado', { p_inicio: inicio, p_fim: fim });
+  if (error) throw fail('Erro ao carregar vendas por mercado', error);
+  return (data || []).map((r: any) => ({ mercado_id: Number(r.mercado_id), total: Number(r.total), pago: Number(r.pago), pedidos: r.pedidos }));
 }
 
 export async function getResumo(hoje: string): Promise<ResumoMercados> {

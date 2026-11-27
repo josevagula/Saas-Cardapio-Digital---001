@@ -5,6 +5,13 @@ import { getUnitPrice } from '../utils/formatters';
 import OrderFiltersBar from './OrderFiltersBar';
 import { applyOrderFilters, customerOptionsFromOrders, defaultOrderFilters, hasActiveOrderFilters, OrderFilterState, productOptionsFromOrders, productSalesInOrders } from '../utils/orderFilters';
 import { computeRealSalesSummary, computeRealUnitsSoldByProductId, ordersInRange, revenueHistoryByDay, revenueHistoryByHour, PAYMENT_METHOD_LABELS } from '../utils/salesStats';
+import { rangeForPreset } from '../utils/analyticsStats';
+import { useAuth } from '../context/AuthContext';
+import { filterMercadoRevenue, mercadoDia, mercadoSeries, mercadoTotalBetween, useMercadoRevenueByDay } from '../lib/mercadoRevenue';
+
+// Dois tons validados (claro/escuro, daltonismo) para Delivery × Mercados.
+const COLOR_DELIVERY = '#EA580C';
+const COLOR_MERCADOS = '#0EA5E9';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar
@@ -43,6 +50,16 @@ export default function DashboardOverview() {
   const productOptions = useMemo(() => productOptionsFromOrders(allOrders), [allOrders]);
   const customerOptions = useMemo(() => customerOptionsFromOrders(allOrders), [allOrders]);
   const orders = useMemo(() => applyOrderFilters(allOrders, filters), [allOrders, filters]);
+
+  // Vendas para mercados (página Mercados) entram no faturamento. Só têm
+  // data (sem hora) e não são "pedidos" do cardápio: somam no faturado e
+  // nos gráficos por dia, mas não no nº de pedidos nem no ticket médio.
+  const { user } = useAuth();
+  const mercadoAll = useMercadoRevenueByDay(!isDemoMode && user ? user.id : null);
+  const mercado = useMemo(() => {
+    const range = filters.datePreset === 'todos' ? null : rangeForPreset(filters.datePreset, { start: filters.customStart, end: filters.customEnd });
+    return filterMercadoRevenue(mercadoAll, filters, range);
+  }, [mercadoAll, filters]);
 
   // Chart view state and custom date ranges
   const [chartView, setChartView] = useState<'hoje' | 'semanal' | 'mensal' | 'personalizado'>('semanal');
@@ -120,7 +137,6 @@ export default function DashboardOverview() {
 
   // Chart totals: always computed from real orders (the demo's own rebased
   // mock orders included) so they agree with the day summary cards below.
-  const kpi = { weeklyRevenue: realStats.weeklyRevenue, monthlyRevenue: realStats.monthlyRevenue };
 
   // Day summary (Faturado / Total de Pedidos / Ticket Médio) — all three are
   // computed from the same set of non-cancelled orders placed on one chosen
@@ -139,10 +155,14 @@ export default function DashboardOverview() {
   };
 
   const daySummary = useMemo(() => {
+    // revenue = delivery + mercados; ticket médio só do delivery (faturado
+    // do cardápio ÷ pedidos do cardápio), já que mercado não é pedido.
     const summarize = (day: Date) => {
       const dayOrders = ordersInRange(orders, day, day);
-      const revenue = Math.round(dayOrders.reduce((s, o) => s + o.total, 0) * 100) / 100;
-      return { revenue, count: dayOrders.length, ticket: dayOrders.length > 0 ? Math.round((revenue / dayOrders.length) * 100) / 100 : 0 };
+      const delivery = Math.round(dayOrders.reduce((s, o) => s + o.total, 0) * 100) / 100;
+      const mercados = mercadoDia(mercado, day);
+      const revenue = Math.round((delivery + mercados) * 100) / 100;
+      return { revenue, delivery, mercados, count: dayOrders.length, ticket: dayOrders.length > 0 ? Math.round((delivery / dayOrders.length) * 100) / 100 : 0 };
     };
     const current = summarize(selectedDay);
     const prevDay = new Date(selectedDay);
@@ -153,9 +173,10 @@ export default function DashboardOverview() {
     // the 1st up to today for the current one.
     const monthStart = new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1);
     const monthEnd = new Date(selectedDay.getFullYear(), selectedDay.getMonth() + 1, 0);
-    const monthRevenue = Math.round(ordersInRange(orders, monthStart, monthEnd).reduce((s, o) => s + o.total, 0) * 100) / 100;
-    return { ...current, previous, cancelled, monthRevenue };
-  }, [orders, dayKey, todayKey]);
+    const monthMercados = mercadoTotalBetween(mercado, monthStart, monthEnd);
+    const monthRevenue = Math.round((ordersInRange(orders, monthStart, monthEnd).reduce((s, o) => s + o.total, 0) + monthMercados) * 100) / 100;
+    return { ...current, previous, cancelled, monthRevenue, monthMercados };
+  }, [orders, dayKey, todayKey, mercado]);
 
   const dayLabel = isToday
     ? 'Hoje'
@@ -173,30 +194,44 @@ export default function DashboardOverview() {
 
   // Determine active chart data and total based on the selected view —
   // always real orders, demo included (see kpi above).
-  let displayedChartData: { date: string; amount: number }[] = [];
+  // amount = delivery + mercados (o que o gráfico e o eixo usam);
+  // delivery/mercados alimentam as duas áreas empilhadas.
+  let displayedChartData: { date: string; amount: number; delivery: number; mercados: number }[] = [];
   let displayedTotal = 0;
+  let displayedMercados = 0;
+  // Gráfico por hora: mercado não tem horário, entra só no total do banner.
+  let mercadosSemHora = 0;
 
-  if (chartView === 'hoje') {
-    // Today's sales broken down hour by hour (00h–23h) instead of by day.
+  const withMercados = (days: { date: string; amount: number }[], start: Date) => {
+    const m = mercadoSeries(mercado, start, days.length);
+    return days.map((d, i) => ({ date: d.date, delivery: d.amount, mercados: m[i], amount: Math.round((d.amount + m[i]) * 100) / 100 }));
+  };
+
+  {
     const now = new Date();
-    const hours = revenueHistoryByHour(orders, new Date(now.getFullYear(), now.getMonth(), now.getDate()));
-    displayedChartData = hours;
-    displayedTotal = Math.round(hours.reduce((s, h) => s + h.amount, 0) * 100) / 100;
-  } else if (chartView === 'semanal') {
-    displayedChartData = realStats.weeklyHistory;
-    displayedTotal = kpi.weeklyRevenue;
-  } else if (chartView === 'mensal') {
-    displayedChartData = realStats.monthlyHistory;
-    displayedTotal = kpi.monthlyRevenue;
-  } else {
-    // Custom date range: real orders placed within the selected window.
-    // fromDayKey, not new Date(key): a bare YYYY-MM-DD parses as UTC
-    // midnight, which in Brazil is 21:00 of the previous day — that shifted
-    // the range start back by 3 hours and dropped the last day entirely.
-    const days = revenueHistoryByDay(orders, fromDayKey(startDate), fromDayKey(endDate));
-    displayedChartData = days;
-    displayedTotal = Math.round(days.reduce((s, d) => s + d.amount, 0) * 100) / 100;
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (chartView === 'hoje') {
+      // Today's sales broken down hour by hour (00h–23h) instead of by day.
+      const hours = revenueHistoryByHour(orders, today);
+      displayedChartData = hours.map(h => ({ date: h.date, amount: h.amount, delivery: h.amount, mercados: 0 }));
+      mercadosSemHora = mercadoDia(mercado, today);
+    } else if (chartView === 'semanal') {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 6);
+      displayedChartData = withMercados(realStats.weeklyHistory, start);
+    } else if (chartView === 'mensal') {
+      displayedChartData = withMercados(realStats.monthlyHistory, new Date(today.getFullYear(), today.getMonth(), 1));
+    } else {
+      // Custom date range: real orders placed within the selected window.
+      // fromDayKey, not new Date(key): a bare YYYY-MM-DD parses as UTC
+      // midnight, which in Brazil is 21:00 of the previous day — that shifted
+      // the range start back by 3 hours and dropped the last day entirely.
+      displayedChartData = withMercados(revenueHistoryByDay(orders, fromDayKey(startDate), fromDayKey(endDate)), fromDayKey(startDate));
+    }
+    displayedMercados = Math.round((displayedChartData.reduce((s, d) => s + d.mercados, 0) + mercadosSemHora) * 100) / 100;
+    displayedTotal = Math.round((displayedChartData.reduce((s, d) => s + d.delivery, 0) + displayedMercados) * 100) / 100;
   }
+  const chartHasMercados = displayedChartData.some(d => d.mercados > 0);
 
   // Only ever built from orders that were actually placed and paid — a
   // payment method with zero real orders in the period simply doesn't
@@ -401,6 +436,11 @@ export default function DashboardOverview() {
                 <span className="text-[#A8A29A] font-medium">Nenhuma venda neste dia</span>
               )}
             </div>
+            {daySummary.mercados > 0 && (
+              <p className="mt-1 text-[9px] sm:text-[10px] text-[#A8A29A] font-mono truncate">
+                Delivery {formatCurrency(daySummary.delivery)} · Mercados {formatCurrency(daySummary.mercados)}
+              </p>
+            )}
           </div>
 
           {/* Orders on the selected day */}
@@ -436,7 +476,9 @@ export default function DashboardOverview() {
             </h3>
             <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#A8A29A] font-medium">
               <span>
-                {daySummary.count > 0 ? 'Faturado ÷ pedidos do dia' : 'Sem pedidos neste dia'}
+                {daySummary.count > 0
+                  ? (daySummary.mercados > 0 ? 'Delivery ÷ pedidos (sem mercados)' : 'Faturado ÷ pedidos do dia')
+                  : 'Sem pedidos neste dia'}
               </span>
             </div>
           </div>
@@ -453,7 +495,9 @@ export default function DashboardOverview() {
               {formatCurrency(daySummary.monthRevenue)}
             </h3>
             <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] text-[#A8A29A] font-medium">
-              <span className="first-letter:uppercase">{monthLabel}</span>
+              <span className="first-letter:uppercase truncate">
+                {monthLabel}{daySummary.monthMercados > 0 ? ` · Mercados ${formatCurrency(daySummary.monthMercados)}` : ''}
+              </span>
             </div>
           </div>
         </div>
@@ -552,6 +596,13 @@ export default function DashboardOverview() {
               {formatCurrency(displayedTotal)}
             </span>
           </div>
+          {displayedMercados > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 -mt-3 mb-4 text-[11px] text-[#A8A29A]">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COLOR_DELIVERY }} />Delivery <span className="font-mono text-slate-200">{formatCurrency(displayedTotal - displayedMercados)}</span></span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COLOR_MERCADOS }} />Mercados <span className="font-mono text-slate-200">{formatCurrency(displayedMercados)}</span></span>
+              {mercadosSemHora > 0 && <span className="italic">Mercados não têm horário — somados só no total, fora do gráfico por hora.</span>}
+            </div>
+          )}
 
           <div key={animKey} className={`h-64 ${shouldAnimate ? 'animate-rise-up' : ''}`}>
             <ResponsiveContainer width="100%" height="100%">
@@ -571,19 +622,19 @@ export default function DashboardOverview() {
                   tickLine={false} 
                   tickFormatter={(val) => `R$${val}`} 
                 />
-                <Tooltip 
-                  formatter={(val: any) => [formatCurrency(val), 'Faturamento']}
+                <Tooltip
+                  formatter={(val: any, name: any) => [formatCurrency(val), name === 'mercados' ? 'Mercados' : name === 'delivery' ? 'Delivery' : 'Faturamento']}
                   contentStyle={{ backgroundColor: '#141210', borderRadius: '12px', color: '#F5F0EA', border: '1px solid #2A211A', fontSize: '11px', padding: '8px 12px' }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="amount" 
-                  stroke="#F97316" 
-                  strokeWidth={2.5} 
-                  fillOpacity={1} 
-                  fill="url(#colorRevenue)" 
-                  isAnimationActive={false} 
-                />
+                {!chartHasMercados && (
+                  <Area type="monotone" dataKey="amount" stroke="#F97316" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" isAnimationActive={false} />
+                )}
+                {chartHasMercados && (
+                  <Area type="monotone" dataKey="delivery" stackId="fat" stroke={COLOR_DELIVERY} strokeWidth={2} fill={COLOR_DELIVERY} fillOpacity={0.25} isAnimationActive={false} />
+                )}
+                {chartHasMercados && (
+                  <Area type="monotone" dataKey="mercados" stackId="fat" stroke={COLOR_MERCADOS} strokeWidth={2} fill={COLOR_MERCADOS} fillOpacity={0.25} isAnimationActive={false} />
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>

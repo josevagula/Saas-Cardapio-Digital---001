@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { LayoutDashboard, ClipboardList, History, Store, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, History, Store, CheckCircle2, AlertCircle, X, TrendingUp } from 'lucide-react';
+import VendasMercados from './mercados/VendasMercados';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { listMercados, Mercado } from '../lib/mercadosRepo';
@@ -12,11 +13,12 @@ import CadastroMercados from './mercados/CadastroMercados';
 // Só existe no painel do administrador (Sidebar) — o cardápio público não
 // tem nenhum caminho até aqui, e o RLS restringe os dados ao dono logado.
 
-export type MercadosTab = 'painel' | 'lancar' | 'historico' | 'cadastro';
+export type MercadosTab = 'painel' | 'vendas' | 'lancar' | 'historico' | 'cadastro';
 export type Notify = (msg: string, tipo?: 'ok' | 'erro') => void;
 
 const TABS: { id: MercadosTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'painel', label: 'Painel', icon: LayoutDashboard },
+  { id: 'vendas', label: 'Vendas', icon: TrendingUp },
   { id: 'lancar', label: 'Lançar Pedido', icon: ClipboardList },
   { id: 'historico', label: 'Histórico', icon: History },
   { id: 'cadastro', label: 'Mercados e Produtos', icon: Store }
@@ -104,6 +106,7 @@ export default function MercadosManager() {
       ) : (
         <>
           {tab === 'painel' && <PainelMercados mercados={mercados} loadingMercados={loading} onCadastrar={() => irParaCadastro('novo')} onLancar={() => setTab('lancar')} notify={notify} />}
+          {tab === 'vendas' && <VendasMercados mercados={mercados} onCadastrar={() => irParaCadastro('novo')} notify={notify} />}
           {tab === 'lancar' && (
             <LancarPedido
               mercados={mercados}
