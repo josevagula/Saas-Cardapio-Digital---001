@@ -197,6 +197,9 @@ interface AppContextType {
   reorderProductInCategory: (productId: string, direction: -1 | 1, categoryId: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   deleteOrder: (orderId: string) => void;
+  // Admin-only edit of an order's content (items, customer, payment,
+  // address…). Refused for archived orders, which are read-only history.
+  updateOrder: (orderId: string, changes: Partial<Order>) => boolean;
   // Moves completed orders into "Pedidos Arquivados" (or back out). Display
   // only — status stays 'delivered', so loyalty/receitas/analytics are kept.
   archiveOrders: (orderIds: string[]) => void;
@@ -1603,6 +1606,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Admin edit ("Editar Pedido"). Only the content changes — status,
+  // createdAt, orderNumber and archivedAt are never touched here. Archived
+  // orders are frozen history and can't be edited at all (nor can cancelled
+  // ones, whose metrics were already reversed). Side effects are re-applied
+  // so every number stays consistent with the edited order:
+  //  - product salesCount moves by the per-product quantity difference;
+  //  - a delivered order has its loyalty reversed and re-credited (new total
+  //    and/or new phone) and its automatic Receita re-synced (idempotent
+  //    upsert keyed on order_id).
+  const updateOrder = (orderId: string, changes: Partial<Order>): boolean => {
+    if (publicMenuSlug) return false;
+    const order = orders.find(o => o.id === orderId);
+    if (!order || order.archivedAt || order.status === 'cancelled') return false;
+
+    const { id: _id, status: _status, createdAt: _createdAt, orderNumber: _num, archivedAt: _arch, pointsEarned: _pts, ...allowed } = changes;
+    const updated: Order = { ...order, ...allowed };
+
+    const qtyByProduct = (o: Order) => {
+      const map = new Map<string, number>();
+      o.items.forEach(i => map.set(i.product.id, (map.get(i.product.id) ?? 0) + (Number(i.quantity) || 0)));
+      return map;
+    };
+    const before = qtyByProduct(order);
+    const after = qtyByProduct(updated);
+    const deltas = new Map<string, number>();
+    new Set([...before.keys(), ...after.keys()]).forEach(id => {
+      const d = (after.get(id) ?? 0) - (before.get(id) ?? 0);
+      if (d !== 0) deltas.set(id, d);
+    });
+    if (deltas.size > 0) {
+      setProducts(prev => prev.map(p => deltas.has(p.id) ? { ...p, salesCount: Math.max(0, p.salesCount + deltas.get(p.id)!) } : p));
+    }
+
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...allowed } : o)));
+
+    if (order.status === 'delivered') {
+      if (updated.total !== order.total || updated.customerPhone !== order.customerPhone) {
+        reverseOrderLoyalty(order);
+        creditOrderLoyalty(updated);
+      }
+      if (updated.total !== order.total || updated.paymentMethod !== order.paymentMethod || updated.deliveryMethod !== order.deliveryMethod) {
+        syncOrderRevenue(updated);
+      }
+    }
+    return true;
+  };
+
   const archiveOrders = (orderIds: string[]) => {
     const ids = new Set(orderIds);
     const now = new Date().toISOString();
@@ -1778,6 +1828,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       purgeProduct,
       updateOrderStatus,
       deleteOrder,
+      updateOrder,
       archiveOrders,
       unarchiveOrder,
       ensureOrderNumber,

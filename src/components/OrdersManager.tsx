@@ -8,6 +8,7 @@ import { computeDeliveryEstimate } from '../utils/deliveryEstimate';
 import { printOrderOnPrinter, hasEverPrintedOrder, subscribeQueue, PrintJob } from '../lib/printing/printService';
 import { DEFAULT_PRINTING_CONFIG } from '../data/mockData';
 import MessageTemplatesModal from './MessageTemplatesModal';
+import OrderEditModal from './OrderEditModal';
 import { getMessageTemplates, fillMessageTemplate } from '../utils/messageTemplates';
 import {
   Check,
@@ -28,7 +29,8 @@ import {
   ArchiveRestore,
   ArrowLeft,
   CalendarDays,
-  Table2
+  Table2,
+  Pencil
 } from 'lucide-react';
 
 // Local-time YYYY-MM-DD, so an order placed at 23:30 lands on that day and
@@ -106,6 +108,7 @@ export default function OrdersManager() {
   // Simulated WhatsApp State
   const [selectedOrderForWhats, setSelectedOrderForWhats] = useState<Order | null>(null);
   const [showMessagesEditor, setShowMessagesEditor] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [customWhatsText, setCustomWhatsText] = useState('');
 
   const tabs: { id: OrderStatus; label: string; icon: any; color: string; hoverColor: string }[] = [
@@ -429,6 +432,19 @@ export default function OrdersManager() {
                   title="Cancelar Pedido"
                 >
                   <Ban className="w-4.5 h-4.5" />
+                </button>
+              )}
+
+              {/* Editing is only possible before archiving — archived
+                  orders are frozen history. Cancelled ones too, since their
+                  metrics were already reversed. */}
+              {order.status !== 'cancelled' && !isArchived && (
+                <button
+                  onClick={() => setEditingOrder(order)}
+                  className="p-2 rounded-lg bg-[#1F1209] text-[#F97316] border border-[#4A2A10] hover:bg-[#2A180C] transition-colors cursor-pointer"
+                  title="Editar Pedido"
+                >
+                  <Pencil className="w-4.5 h-4.5" />
                 </button>
               )}
 
@@ -800,6 +816,8 @@ export default function OrdersManager() {
       )}
 
       {showMessagesEditor && <MessageTemplatesModal onClose={() => setShowMessagesEditor(false)} />}
+
+      {editingOrder && <OrderEditModal order={editingOrder} onClose={() => setEditingOrder(null)} />}
 
       {/* WHATSAPP AUTOMATION SIMULATOR DIALOG */}
       {selectedOrderForWhats && (
