@@ -74,6 +74,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   menu_manager: '/dashboard/cardapio',
   customers: '/dashboard/clientes-fidelidade',
   financial: '/dashboard/financeiro-cupons',
+  markets: '/dashboard/mercados',
   analytics_advanced: '/dashboard/analytics',
   printing: '/dashboard/impressao',
   customizer: '/dashboard/personalizacao',

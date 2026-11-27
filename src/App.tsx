@@ -19,6 +19,7 @@ const DigitalMenuManager = lazy(() => import('./components/DigitalMenuManager'))
 const OrdersManager = lazy(() => import('./components/OrdersManager'));
 const CustomersLoyalty = lazy(() => import('./components/CustomersLoyalty'));
 const FinancialManager = lazy(() => import('./components/FinancialManager'));
+const MercadosManager = lazy(() => import('./components/MercadosManager'));
 const AdvancedAnalytics = lazy(() => import('./components/analytics/AdvancedAnalytics'));
 const PrintingManager = lazy(() => import('./components/PrintingManager'));
 const AISmartAssistant = lazy(() => import('./components/AISmartAssistant'));
@@ -196,6 +197,7 @@ export default function App() {
               {currentView === 'orders' && <OrdersManager />}
               {currentView === 'customers' && <CustomersLoyalty />}
               {currentView === 'financial' && <FinancialManager />}
+              {currentView === 'markets' && <MercadosManager />}
               {currentView === 'analytics_advanced' && <AdvancedAnalytics />}
               {currentView === 'printing' && <PrintingManager />}
               {currentView === 'tutorials' && <TutorialVideos />}

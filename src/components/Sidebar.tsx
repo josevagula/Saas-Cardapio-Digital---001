@@ -20,7 +20,8 @@ import {
   ShieldAlert,
   MessageCircle,
   Loader2,
-  PlayCircle
+  PlayCircle,
+  Store
 } from 'lucide-react';
 import { HashiIcon, SushiRollIcon, SushiLogoEmblem, WasabiTag } from './SushiIcons';
 import { useLogoHome } from '../hooks/useLogoHome';
@@ -45,6 +46,7 @@ export default function Sidebar({ isMobile, onCloseMobile }: SidebarProps = {}) 
     { id: 'menu_manager', label: 'Cardápio', icon: SushiRollIcon },
     { id: 'customers', label: 'Clientes & Fidelidade', icon: Users },
     { id: 'financial', label: 'Financeiro', icon: TrendingUp },
+    { id: 'markets', label: 'Mercados', icon: Store },
     { id: 'analytics_advanced', label: 'Analytics Avançado', icon: BarChart3 },
     { id: 'printing', label: 'Impressão', icon: Printer },
     { id: 'customizer', label: 'Personalização', icon: Palette },
