@@ -382,7 +382,11 @@ export default function OrderEditModal({ order, onClose }: { order: Order; onClo
           )}
         </div>
 
-        <div className="p-4 bg-[#181512] border-t border-[#2A211A] flex gap-2 justify-end shrink-0">
+        <div className="p-4 bg-[#181512] border-t border-[#2A211A] flex items-center gap-2 justify-end shrink-0">
+          <div className="mr-auto font-mono leading-tight">
+            <span className="text-[10px] text-[#A8A29A] block">Novo total</span>
+            <span className="text-base font-extrabold text-[#F5F0EA]">R$ {formatCurrency(totals.total)}</span>
+          </div>
           <button onClick={onClose} className="px-4 py-2 bg-[#141210] hover:bg-[#2A211A] text-slate-300 text-xs font-semibold rounded-lg border border-[#2A211A] transition-colors cursor-pointer">
             Cancelar
           </button>

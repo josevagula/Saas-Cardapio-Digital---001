@@ -1639,7 +1639,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setProducts(prev => prev.map(p => deltas.has(p.id) ? { ...p, salesCount: Math.max(0, p.salesCount + deltas.get(p.id)!) } : p));
     }
 
-    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...allowed } : o)));
+    // Not yet delivered: keep the points preview in step with the new total
+    // (the real credit is recomputed on delivery anyway).
+    const extra: Partial<Order> = order.status === 'delivered'
+      ? {}
+      : { pointsEarned: calculatePointsEarned(updated.total, visualConfig.loyaltyConfig ?? DEFAULT_LOYALTY_CONFIG) };
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...allowed, ...extra } : o)));
+
+    // Clientes: the customer record follows the edited name/phone/address
+    // (same register-or-update as checkout). Runs before the loyalty
+    // re-credit below so a new phone gets one record, not a duplicate.
+    if (updated.customerPhone && (updated.customerPhone !== order.customerPhone || updated.customerName !== order.customerName || updated.customerAddress !== order.customerAddress)) {
+      setCustomers(prev => {
+        const existing = prev.find(c => c.phone === updated.customerPhone);
+        if (existing) {
+          return prev.map(c => c.phone === updated.customerPhone
+            ? { ...c, name: updated.customerName, address: updated.customerAddress || c.address }
+            : c);
+        }
+        const newCust: CustomerInfo = {
+          id: `cust-${Math.floor(100 + Math.random() * 900)}`,
+          name: updated.customerName,
+          phone: updated.customerPhone,
+          email: updated.customerEmail || `${updated.customerName.toLowerCase().replace(/\s+/g, '')}@exemplo.com`,
+          address: updated.customerAddress || '',
+          loyaltyPoints: 0,
+          orderCount: 0,
+          lastOrderDate: ''
+        };
+        return [...prev, newCust];
+      });
+    }
 
     if (order.status === 'delivered') {
       if (updated.total !== order.total || updated.customerPhone !== order.customerPhone) {
