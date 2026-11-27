@@ -97,6 +97,15 @@ const rowToProduct = (r: any): Product => ({
   deletedAt: r.deleted_at ?? undefined
 });
 
+// A product photo embedded as base64 (data:...) made each order line ~115KB,
+// and every admin load downloads every order — that alone blew the Supabase
+// egress quota (Nov 2026). Order screens/receipts never show photos, so no
+// order is ever saved with one, whichever path writes it.
+const stripOrderItemPhotos = (items: Order['items']): Order['items'] =>
+  (items || []).map(item =>
+    item?.product?.imageUrl?.startsWith('data:') ? { ...item, product: { ...item.product, imageUrl: '' } } : item
+  );
+
 const orderToRow = (o: Order, userId: string) => ({
   id: o.id,
   user_id: userId,
@@ -104,7 +113,7 @@ const orderToRow = (o: Order, userId: string) => ({
   customer_phone: o.customerPhone,
   customer_email: o.customerEmail ?? null,
   customer_address: o.customerAddress ?? null,
-  items: o.items,
+  items: stripOrderItemPhotos(o.items),
   status: o.status,
   payment_method: o.paymentMethod,
   delivery_method: o.deliveryMethod,
